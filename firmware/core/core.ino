@@ -308,32 +308,36 @@ static uint8_t doubleBits(uint8_t nibble) {
   return out;
 }
 
-// One character at twice the size (16x16 pixels, 4 tiles) at tile column/row.
-static void drawBigChar(uint8_t column, uint8_t row, char c) {
+// One tile of a short word in large letters (the 8x8 font doubled to 16x16), centered on tile
+// rows 1 and 2; every other tile is blank. It is computed tile by tile so that the whole screen
+// can be replaced in one pass: from the progress bar straight to the word, with no blank screen
+// or flicker in between.
+static void resultTile(uint8_t column, uint8_t row, const char *text, uint8_t start, uint8_t length, uint8_t *tile) {
+  memset(tile, 0, 8);
+  if (row < 1 || row > 2 || column < start || column >= start + 2 * length) return;
+  char c = text[(column - start) / 2];
   uint8_t glyph = (c >= 32 && c < 128) ? c - 32 : '?' - 32;
-  uint8_t tile[2][2][8];  // [vertical][horizontal][pixel column]
+  uint8_t half = (column - start) % 2;
   for (uint8_t i = 0; i < 8; i++) {
-    uint8_t bits = param(PARAM_FONT + 4 + glyph * 8 + i);
-    uint8_t x = (2 * i) % 8, half = (2 * i) / 8;  // every source column becomes two
-    tile[0][half][x] = tile[0][half][x + 1] = doubleBits(bits & 0x0F);
-    tile[1][half][x] = tile[1][half][x + 1] = doubleBits(bits >> 4);
+    uint8_t bits = param(PARAM_FONT + 4 + glyph * 8 + half * 4 + i / 2);  // every source column becomes two
+    tile[i] = doubleBits(row == 1 ? bits & 0x0F : bits >> 4);
   }
-  for (uint8_t v = 0; v < 2; v++)
-    for (uint8_t h = 0; h < 2; h++) oled.drawTile(column + h, row + v, 1, tile[v][h]);
 }
 
-// A short word in large letters, centered on tile rows 1 and 2 (at most 8 characters).
-static void showBig(const char *text) {
+// A word in large letters (at most 8 characters) replaces whatever is on the display.
+static void showResult(const char *text) {
+  clearScreen();  // the text grid is blank now, nothing is drawn yet
+  wakeDisplay();  // only draws if the display was off or showed the logo
   uint8_t length = strlen(text);
   uint8_t start = (16 - 2 * length) / 2;
-  for (uint8_t i = 0; i < length; i++) drawBigChar(start + 2 * i, 1, text[i]);
-}
-
-static void showResult(const char *text) {
-  clearScreen();
-  wakeDisplay();
-  render();  // the grid is blank now; the word is drawn over it, outside the grid
-  showBig(text);
+  uint8_t tile[8];
+  for (uint8_t row = 0; row < 4; row++) {
+    for (uint8_t column = 0; column < 16; column++) {
+      resultTile(column, row, text, start, length, tile);
+      oled.drawTile(column, row, 1, tile);
+    }
+  }
+  dirtyRows = 0;
   resultUntil = millis() + RESULT_SHOW_MS;
 }
 
@@ -412,6 +416,7 @@ static void finishPending(Outcome outcome) {
         break;
       case TC_CMD_WIPE:
         windowStart = 128;  // the wipe's own progress is a plain bar
+        setFill(0);         // starting from the empty bar
         tc_store_wipe(wipeProgress, NULL);
         Serial.println(F("OK"));
         break;
@@ -554,21 +559,9 @@ static void readSerial() {
 
 // ---------------------------------------------------------------- main loop
 
-// Two quick inversions of the whole display: "you held it too long".
-static void blinkDisplay() {
-  bool inverted = tc_store_config() & TC_CFG_INVERT;
-  for (uint8_t i = 0; i < 2; i++) {
-    sendDisplayCommand(inverted ? 0xA6 : 0xA7);
-    delay(90);
-    sendDisplayCommand(inverted ? 0xA7 : 0xA6);
-    delay(90);
-  }
-}
-
 static void servicePending(ButtonEvent event, uint32_t held) {
   uint32_t now = millis();
   if (now - pendingStart > REQUEST_TIMEOUT_MS) {
-    setFill(0);
     finishPending(OUTCOME_TIMEOUT);
     return;
   }
@@ -577,13 +570,10 @@ static void servicePending(ButtonEvent event, uint32_t held) {
     return;
   }
   if (buttonStableDown && buttonHeldMs() > pendingMaxMs) {  // past the window: no need to wait for the release
-    setFill(0);
-    blinkDisplay();
     finishPending(OUTCOME_TOO_LONG);
     return;
   }
   if (event == BUTTON_RELEASED) {
-    setFill(0);
     bool accepted = held >= pendingMinMs && held <= pendingMaxMs;
     finishPending(accepted ? OUTCOME_ACCEPTED : OUTCOME_DENIED);
     return;
@@ -658,7 +648,6 @@ static void sweepFill(uint8_t target) {
 }
 
 static void autoFinish(const char *text) {
-  setFill(0);
   state = STATE_IDLE;
   showResult(text);
 }
@@ -746,7 +735,6 @@ static void autoIdleHold(ButtonEvent event, uint32_t held) {
     autoArmed = false;
     if (autoHoldBar) {
       autoHoldBar = false;
-      setFill(0);
       if (held >= AUTO_HOLD_MIN_MS && held <= AUTO_HOLD_MAX_MS) {
         startAutoWipe();
       } else {
@@ -760,8 +748,6 @@ static void autoIdleHold(ButtonEvent event, uint32_t held) {
   lastActivity = millis();  // keep the display awake while the button is held
   if (autoHoldBar && ms > AUTO_HOLD_MAX_MS) {  // past the window: stop here, the release will be ignored
     autoArmed = autoHoldBar = false;
-    setFill(0);
-    blinkDisplay();
     showResult("Too long");
     return;
   }

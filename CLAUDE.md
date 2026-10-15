@@ -291,6 +291,8 @@ Implemented and tested: the CLI without the daemon.
 - `calibrate` (`internal/logo`, done): `contrast full|dim VALUE`, `logo FILE.png [--invert]`, `font FILE.bin`, `show`, `forget logo|font|contrast`. They talk to the calibration firmware (version 0.2 adds `FONTDATA`/`FONTTEXT`), apply the setting live and remember it in `~/.config/trustctl/device.json` (`--profile PATH`), which `flash` patches into the core firmware. PNG conversion follows the "Logo images" rules above; unit tests cover black/near-black/transparent truecolor, 16-bit gray, palettes (darkest off, equal colors off, ties, white-first 1-bit palette), centering with odd margins, invert with margin, size limits and the bit layout.
 - Not done yet: signing or checksums of the profile, a `calibrate` subcommand for rotation and inversion (use `trustctl config set` on the core firmware), NetBSD, a Windows run.
 
+- `tools/dummy-keys.html`: a single-file page (no network, no dependencies; its own SHA-1/HMAC, checked against the RFC vectors in node and driven once in headless Chromium) to make up dummy TOTP keys, stored unencrypted in localStorage, so that real keys never go onto the open dev device. It shows the live codes with a countdown, applies the device's name rules, offers "Copy add command" (`echo SECRET | trustctl add NAME --digits N --period S`), the secret and an otpauth URI, and checks a code typed from the device (current, previous or next window).
+
 ## Tooling and environment
 
 - `arduino-cli` (with `arduino:avr`), `avrdude`, and PlatformIO are installed; the user is in the `dialout` group.

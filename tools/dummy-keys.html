@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trust Issues: dummy keys</title>
+<style>
+  :root { color-scheme: light dark; --accent: #2a6fdb; --bad: #c0392b; --good: #1e8e3e; --line: #8884; }
+  body { font: 16px/1.4 system-ui, sans-serif; max-width: 52rem; margin: 1.5rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; margin-bottom: .2rem; }
+  .warn { border: 1px solid var(--bad); border-radius: .4rem; padding: .5rem .8rem; margin: .8rem 0; }
+  fieldset { border: 1px solid var(--line); border-radius: .4rem; margin: 1rem 0; padding: .8rem 1rem; }
+  legend { padding: 0 .4rem; font-weight: 600; }
+  label { display: inline-block; margin: .2rem .8rem .2rem 0; }
+  input, select, button { font: inherit; padding: .25rem .5rem; }
+  input[type=text] { width: 16rem; }
+  input.secret { width: 28rem; max-width: 95%; font-family: ui-monospace, monospace; }
+  button { cursor: pointer; }
+  .key { border: 1px solid var(--line); border-radius: .4rem; padding: .6rem .8rem; margin: .6rem 0; }
+  .key .head { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; flex-wrap: wrap; }
+  .name { font-weight: 600; }
+  .code { font: 600 1.8rem ui-monospace, monospace; letter-spacing: .08em; }
+  .meta { color: #888; font-size: .85rem; }
+  .bar { height: 4px; background: var(--line); border-radius: 2px; margin: .4rem 0; }
+  .bar > div { height: 100%; background: var(--accent); border-radius: 2px; }
+  .secret-line { font-family: ui-monospace, monospace; font-size: .85rem; word-break: break-all; }
+  .actions button { margin: .3rem .3rem 0 0; font-size: .85rem; }
+  .msg { min-height: 1.4em; margin: .4rem 0; }
+  .ok { color: var(--good); } .err { color: var(--bad); }
+  details summary { cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>Trust Issues: dummy keys</h1>
+<div>Make up TOTP keys, put them on the device, and compare the codes. Everything stays in this browser (localStorage).</div>
+<div class="warn"><b>Dummy keys only.</b> The secrets are stored unencrypted in this browser. Never enter a real key here.</div>
+
+<fieldset>
+  <legend>New dummy key</legend>
+  <label>Name <input type="text" id="name" maxlength="27" placeholder="GitHub" autocomplete="off"></label>
+  <label>Digits <select id="digits"><option>6</option><option>7</option><option>8</option></select></label>
+  <label>Period <select id="period"><option value="30">30 s</option><option value="60">60 s</option></select></label>
+  <br>
+  <label>Secret (Base32, leave empty for a random one)<br>
+    <input type="text" id="secret" class="secret" placeholder="random 160 bit secret" autocomplete="off" spellcheck="false"></label>
+  <br>
+  <button id="create">Create</button>
+  <div class="msg" id="createMsg"></div>
+</fieldset>
+
+<fieldset>
+  <legend>Check a code from the device</legend>
+  <label>Code <input type="text" id="check" inputmode="numeric" maxlength="8" placeholder="123456" autocomplete="off"></label>
+  <button id="checkButton">Check</button>
+  <div class="msg" id="checkMsg"></div>
+</fieldset>
+
+<div id="keys"></div>
+<div class="meta" id="clock"></div>
+
+<details>
+  <summary>How to put a key on the device</summary>
+  <p>Use the "Copy add command" button and run it in a terminal. The secret goes in over stdin, never on the command line
+  of <code>trustctl</code> itself. Confirm on the device by holding the button for 1 to 2 seconds. Then
+  <code>trustctl token NAME</code> prints the device's code (hold the button again) and it must match the code shown here.</p>
+</details>
+
+<script>
+"use strict";
+
+// ---------------------------------------------------------------- crypto (no dependencies, works from file://)
+
+function sha1(bytes) {
+  const words = [];
+  const length = bytes.length;
+  const padded = new Uint8Array(((length + 9 + 63) >> 6) << 6);
+  padded.set(bytes);
+  padded[length] = 0x80;
+  const bits = length * 8;
+  const view = new DataView(padded.buffer);
+  view.setUint32(padded.length - 8, Math.floor(bits / 4294967296));
+  view.setUint32(padded.length - 4, bits >>> 0);
+  let h0 = 0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE, h3 = 0x10325476, h4 = 0xC3D2E1F0;
+  const rol = (v, n) => ((v << n) | (v >>> (32 - n))) >>> 0;
+  for (let block = 0; block < padded.length; block += 64) {
+    for (let i = 0; i < 16; i++) words[i] = view.getUint32(block + 4 * i);
+    for (let i = 16; i < 80; i++) words[i] = rol(words[i - 3] ^ words[i - 8] ^ words[i - 14] ^ words[i - 16], 1);
+    let a = h0, b = h1, c = h2, d = h3, e = h4;
+    for (let i = 0; i < 80; i++) {
+      let f, k;
+      if (i < 20) { f = (b & c) | (~b & d); k = 0x5A827999; }
+      else if (i < 40) { f = b ^ c ^ d; k = 0x6ED9EBA1; }
+      else if (i < 60) { f = (b & c) | (b & d) | (c & d); k = 0x8F1BBCDC; }
+      else { f = b ^ c ^ d; k = 0xCA62C1D6; }
+      const t = (rol(a, 5) + f + e + k + words[i]) >>> 0;
+      e = d; d = c; c = rol(b, 30); b = a; a = t;
+    }
+    h0 = (h0 + a) >>> 0; h1 = (h1 + b) >>> 0; h2 = (h2 + c) >>> 0; h3 = (h3 + d) >>> 0; h4 = (h4 + e) >>> 0;
+  }
+  const out = new Uint8Array(20);
+  const outView = new DataView(out.buffer);
+  [h0, h1, h2, h3, h4].forEach((h, i) => outView.setUint32(4 * i, h));
+  return out;
+}
+
+function hmacSha1(key, message) {
+  if (key.length > 64) key = sha1(key);
+  const inner = new Uint8Array(64 + message.length);
+  const outer = new Uint8Array(64 + 20);
+  for (let i = 0; i < 64; i++) {
+    const k = i < key.length ? key[i] : 0;
+    inner[i] = k ^ 0x36;
+    outer[i] = k ^ 0x5C;
+  }
+  inner.set(message, 64);
+  outer.set(sha1(inner), 64);
+  return sha1(outer);
+}
+
+const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+function base32Encode(bytes) {
+  let bits = 0, value = 0, out = "";
+  for (const byte of bytes) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) { out += BASE32[(value >>> (bits - 5)) & 31]; bits -= 5; }
+  }
+  if (bits > 0) out += BASE32[(value << (5 - bits)) & 31];
+  return out;
+}
+
+// same rules as trustctl: letters, digits, spaces and dashes are tolerated, 1 to 20 bytes
+function normalizeSecret(text) {
+  const clean = text.toUpperCase().replace(/[ \t-]/g, "").replace(/=+$/, "");
+  if (!clean) throw new Error("the secret is empty");
+  const bad = clean.match(/[^A-Z2-7]/);
+  if (bad) throw new Error(`the secret contains "${bad[0]}", which is not Base32 (letters A-Z and digits 2-7)`);
+  const bytes = [];
+  let bits = 0, value = 0;
+  for (const c of clean) {
+    value = (value << 5) | BASE32.indexOf(c);
+    bits += 5;
+    if (bits >= 8) { bytes.push((value >>> (bits - 8)) & 255); bits -= 8; }
+  }
+  if (bytes.length > 20) throw new Error(`the secret is ${bytes.length} bytes, the device stores at most 20`);
+  return { text: clean, bytes: Uint8Array.from(bytes) };
+}
+
+function hotp(secretBytes, counter, digits) {
+  const message = new Uint8Array(8);
+  const view = new DataView(message.buffer);
+  view.setUint32(0, Math.floor(counter / 4294967296));
+  view.setUint32(4, counter >>> 0);
+  const mac = hmacSha1(secretBytes, message);
+  const offset = mac[19] & 15;
+  const binary = ((mac[offset] & 0x7F) << 24) | (mac[offset + 1] << 16) | (mac[offset + 2] << 8) | mac[offset + 3];
+  return String(binary % 10 ** digits).padStart(digits, "0");
+}
+
+function totp(secretBytes, unixSeconds, period, digits, windowOffset = 0) {
+  return hotp(secretBytes, Math.floor(unixSeconds / period) + windowOffset, digits);
+}
+
+// the rules of the device's key names
+function validateName(name) {
+  if (!name) return "the name is empty";
+  if (name.length > 27) return `the name has ${name.length} characters, the device stores at most 27`;
+  const bad = name.match(/[^A-Za-z0-9.:\- ]/);
+  if (bad) return `the name contains "${bad[0]}"; allowed are letters A-Z a-z, digits, . : - and space`;
+  if (name.startsWith(" ") || name.endsWith(" ")) return "the name starts or ends with a space";
+  if (name.includes("  ")) return "the name contains two spaces in a row";
+  return "";
+}
+
+globalThis.TI = { sha1, hmacSha1, base32Encode, normalizeSecret, hotp, totp, validateName };
+
+// ---------------------------------------------------------------- the page
+
+if (typeof document !== "undefined") {
+  const STORE = "trustissues-dummy-keys";
+  const $ = (id) => document.getElementById(id);
+  let keys = [];
+  try { keys = JSON.parse(localStorage.getItem(STORE) || "[]"); } catch (e) { keys = []; }
+  const save = () => localStorage.setItem(STORE, JSON.stringify(keys));
+
+  function say(id, text, ok) {
+    const el = $(id);
+    el.textContent = text;
+    el.className = "msg " + (ok ? "ok" : "err");
+  }
+
+  function copy(text, button) {
+    const done = () => { const old = button.textContent; button.textContent = "copied"; setTimeout(() => (button.textContent = old), 1200); };
+    if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(done, () => fallback()); return; }
+    fallback();
+    function fallback() {
+      const area = document.createElement("textarea");
+      area.value = text;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      area.remove();
+      done();
+    }
+  }
+
+  $("create").onclick = () => {
+    const name = $("name").value;
+    const problem = validateName(name);
+    if (problem) return say("createMsg", problem, false);
+    if (keys.some((k) => k.name.toLowerCase() === name.toLowerCase()))
+      return say("createMsg", "a key with this name exists (the device compares names ignoring case)", false);
+    if (keys.length >= 20) return say("createMsg", "the device stores 20 keys at most", false);
+    let secret;
+    try {
+      if ($("secret").value.trim()) {
+        secret = normalizeSecret($("secret").value);
+      } else {
+        const random = new Uint8Array(20);
+        crypto.getRandomValues(random);
+        secret = { text: base32Encode(random), bytes: random };
+      }
+    } catch (e) { return say("createMsg", e.message, false); }
+    keys.push({ name, secret: secret.text, digits: +$("digits").value, period: +$("period").value });
+    save();
+    $("name").value = $("secret").value = "";
+    say("createMsg", `created "${name}"`, true);
+    render();
+  };
+
+  $("checkButton").onclick = () => {
+    const code = $("check").value.trim();
+    if (!/^\d{6,8}$/.test(code)) return say("checkMsg", "enter the 6 to 8 digits shown by the device", false);
+    const now = Math.floor(Date.now() / 1000);
+    const hits = [];
+    for (const key of keys) {
+      if (key.digits !== code.length) continue;
+      const bytes = normalizeSecret(key.secret).bytes;
+      for (const offset of [0, -1, 1]) {
+        if (totp(bytes, now, key.period, key.digits, offset) === code)
+          hits.push(`"${key.name}" (${["current", "previous", "next"][offset === 0 ? 0 : offset < 0 ? 1 : 2]} window)`);
+      }
+    }
+    if (hits.length) say("checkMsg", "matches " + hits.join(", "), true);
+    else say("checkMsg", `no key has this code now or one window before or after; is the time right? (${new Date().toLocaleTimeString()})`, false);
+  };
+  $("check").addEventListener("keydown", (e) => { if (e.key === "Enter") $("checkButton").click(); });
+
+  function render() {
+    const root = $("keys");
+    root.textContent = "";
+    if (!keys.length) { root.innerHTML = '<div class="meta">No dummy keys yet.</div>'; return; }
+    keys.forEach((key, index) => {
+      const div = document.createElement("div");
+      div.className = "key";
+      div.innerHTML = `<div class="head"><span class="name"></span><span class="code" data-code="${index}"></span></div>
+        <div class="bar"><div data-bar="${index}"></div></div>
+        <div class="meta"></div>
+        <div class="secret-line"></div>
+        <div class="actions"></div>`;
+      div.querySelector(".name").textContent = key.name;
+      div.querySelector(".meta").textContent = `${key.digits} digits, ${key.period} s, SHA-1, slot order ${index}`;
+      div.querySelector(".secret-line").textContent = key.secret;
+      const actions = div.querySelector(".actions");
+      const add = (label, text) => {
+        const b = document.createElement("button");
+        b.textContent = label;
+        b.onclick = () => copy(text, b);
+        actions.appendChild(b);
+      };
+      const quoted = (s) => "'" + s.replace(/'/g, "'\\''") + "'";
+      add("Copy secret", key.secret);
+      add("Copy add command", `echo ${quoted(key.secret)} | trustctl add ${quoted(key.name)} --digits ${key.digits} --period ${key.period}`);
+      add("Copy otpauth URI", `otpauth://totp/${encodeURIComponent(key.name)}?secret=${key.secret}&issuer=${encodeURIComponent(key.name)}&digits=${key.digits}&period=${key.period}`);
+      const del = document.createElement("button");
+      del.textContent = "Delete";
+      del.onclick = () => { keys.splice(index, 1); save(); render(); };
+      actions.appendChild(del);
+      root.appendChild(div);
+    });
+    tick();
+  }
+
+  function tick() {
+    const now = Date.now() / 1000;
+    keys.forEach((key, index) => {
+      const code = totp(normalizeSecret(key.secret).bytes, Math.floor(now), key.period, key.digits);
+      const codeEl = document.querySelector(`[data-code="${index}"]`);
+      if (codeEl) codeEl.textContent = code.length === 6 ? code.slice(0, 3) + " " + code.slice(3) : code;
+      const barEl = document.querySelector(`[data-bar="${index}"]`);
+      if (barEl) barEl.style.width = (100 * (key.period - (now % key.period)) / key.period) + "%";
+    });
+    const offset = -new Date().getTimezoneOffset() / 60;
+    $("clock").textContent = `This computer's time: ${new Date().toLocaleString()} (UTC${offset >= 0 ? "+" : ""}${offset}), unix ${Math.floor(now)}`;
+  }
+
+  render();
+  setInterval(tick, 250);
+}
+</script>
+</body>
+</html>

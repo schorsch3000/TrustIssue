@@ -21,6 +21,7 @@ var commandTable = []struct{ name, description string }{
 	{"font", "write the current font to a file to work on (font extract FILE.bin)"},
 	{"logo", "write the current logo to a file to work on (logo extract FILE.png)"},
 	{"calibrate", "try out contrast, logo and font on the calibration firmware"},
+	{"version", "the versions of trustctl and of the firmware built into it"},
 	{"help", "show the short usage text"},
 	{"help-options", "every option with its argument, environment variable and config file syntax"},
 	{"autocomplete", "print the completion code for bash and sh"},
@@ -132,6 +133,7 @@ _trustctl() {
       elif [[ "$cur" == -* ]]; then
         COMPREPLY=($(compgen -W "--no-patch --profile --wait --countdown" -- "$cur"))
       elif [ "$npos" -eq 0 ]; then
+        COMPREPLY=($(compgen -W "core calibration" -- "$cur"))
         _trustctl_files "$cur" hex
       fi ;;
     font|logo)
@@ -227,7 +229,7 @@ _trustctl() {
             '--profile[settings to patch in]:profile:_files -g "*.json"' \
             '--wait[how long to wait for the bootloader]:duration:' \
             '--countdown[seconds before the device is reset]:seconds:' \
-            '1:hex file:_files -g "*.hex"'
+            '1:what to flash:_alternative "builtin:built-in firmware:(core calibration)" "files:hex file:_files -g \"*.hex\""'
           ;;
         font|logo)
           if (( CURRENT == 2 )); then
@@ -360,6 +362,7 @@ complete -c trustctl -n '__trustctl_is flash' -l no-patch -d 'flash the file as 
 complete -c trustctl -n '__trustctl_is flash' -l profile -r -d 'settings to patch in'
 complete -c trustctl -n '__trustctl_is flash' -l wait -x -d 'how long to wait for the bootloader'
 complete -c trustctl -n '__trustctl_is flash' -l countdown -x -d 'seconds before the device is reset'
+complete -c trustctl -n '__trustctl_is flash 0' -a 'core calibration' -d 'built-in firmware'
 complete -c trustctl -n '__trustctl_is flash 0' -F
 complete -c trustctl -n '__trustctl_is font; or __trustctl_is logo' -l from -r -d 'firmware hex file'
 complete -c trustctl -n '__trustctl_is font; or __trustctl_is logo' -l profile -r -d 'profile file'

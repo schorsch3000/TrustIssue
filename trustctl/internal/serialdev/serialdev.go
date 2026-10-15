@@ -127,7 +127,7 @@ func OpenCalibration(path string) (*Device, error) {
 		if err == nil {
 			err = fmt.Errorf("it says %q", banner)
 		}
-		return nil, fmt.Errorf("%s is not running the calibration firmware (%w). Build it with firmware/calibration/build.sh and flash it: trustctl --device %s flash firmware/calibration/build/calibration.ino.hex --no-patch; flash the core firmware again afterwards", path, err, path)
+		return nil, fmt.Errorf("%s is not running the calibration firmware (%w). Flash it with: trustctl --device %s flash calibration; flash the core firmware again afterwards (trustctl flash core)", path, err, path)
 	}
 	client.ReplyTimeout = 3 * time.Second
 	client.Settle(100 * time.Millisecond)

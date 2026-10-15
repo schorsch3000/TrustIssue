@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"trustissues/trustctl/internal/daemon"
+	"trustissues/trustctl/internal/firmware"
 	"trustissues/trustctl/internal/flasher"
 	"trustissues/trustctl/internal/hexfile"
 	"trustissues/trustctl/internal/params"
@@ -44,12 +46,13 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 	noPatch := set.Bool("no-patch", false, "")
 	wait := set.Duration("wait", 90*time.Second, "")
 	countdown := set.Int("countdown", 4, "")
-	// the hex file comes first: trustctl flash firmware.hex --no-patch
-	if len(args) == 0 {
-		return usageError("flash needs a .hex file")
+	// what to flash comes first: trustctl flash [core|calibration|FILE.hex] --no-patch;
+	// without it the built-in core firmware is flashed
+	what := firmware.Core
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		what, args = args[0], args[1:]
 	}
-	file := args[0]
-	if err := set.Parse(args[1:]); err != nil || set.NArg() != 0 {
+	if err := set.Parse(args); err != nil || set.NArg() != 0 {
 		return usageError("flash: bad options")
 	}
 	path, err := devicePath(opt, loadConfig())
@@ -57,17 +60,29 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("flash needs the serial port: use --device PATH (probing would reset other boards)")
 	}
 
-	f, err := os.Open(file)
-	if err != nil {
-		return err
-	}
-	img, err := hexfile.Parse(f)
-	f.Close()
-	if err != nil {
-		return fmt.Errorf("%s: %w", file, err)
+	// the built-in names win, unless the argument looks like a path
+	img, builtin, err := firmware.Image(what)
+	switch {
+	case err != nil:
+		return fmt.Errorf("built-in %s firmware: %w", what, err)
+	case builtin:
+		fmt.Fprintf(stderr, "Flashing the built-in %s firmware %s.\n", what, firmware.Version())
+		if what == firmware.Calibration {
+			*noPatch = true // it has no parameter block
+		}
+	default:
+		f, err := os.Open(what)
+		if err != nil {
+			return fmt.Errorf("%w\n(\"flash\" takes core, calibration or the path of a .hex file)", err)
+		}
+		img, err = hexfile.Parse(f)
+		f.Close()
+		if err != nil {
+			return fmt.Errorf("%s: %w", what, err)
+		}
 	}
 	if img.Highest() >= flasher.BootStart {
-		return fmt.Errorf("%s writes into the bootloader's section (from %#x)", file, flasher.BootStart)
+		return fmt.Errorf("%s writes into the bootloader's section (from %#x)", what, flasher.BootStart)
 	}
 	if !*noPatch {
 		p, err := profile.Load(*profilePath)

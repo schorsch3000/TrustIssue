@@ -16,10 +16,14 @@ import (
 	"golang.org/x/term"
 
 	"trustissues/trustctl/internal/daemon"
+	"trustissues/trustctl/internal/firmware"
 	"trustissues/trustctl/internal/protocol"
 	"trustissues/trustctl/internal/serialdev"
 	"trustissues/trustctl/internal/sim"
 )
+
+// version is set at release time: -ldflags "-X main.version=..."
+var version = "dev"
 
 const usage = `usage: trustctl [options] <command> [arguments]
 
@@ -36,11 +40,14 @@ commands:
   wipe                      erase all keys (hold the button 5 to 6 seconds)
   hello                     show what the device says about itself
   daemon [status|stop]      the background process that keeps the port open (started by the first command)
+  version                   the versions of trustctl and of the firmware built into it
   help-options              every option with its --argument, environment variable and config file syntax
   autocomplete              print the completion code for bash and sh: source <(trustctl autocomplete)
   autocomplete-zsh          the same for zsh
   autocomplete-fish         the same for fish: trustctl autocomplete-fish | source
-  flash FILE.hex            program the firmware through the bootloader (needs the button gesture)
+  flash [core|calibration]  program the firmware that is built into trustctl through the bootloader
+                            (needs the button gesture); core is the default
+  flash FILE.hex            the same with a firmware file of your own (for development)
         --no-patch --profile PATH --wait 90s --countdown 4
   font extract FILE.bin     write the current font to a file to work on (--from FILE.hex: the one in a firmware)
   logo extract FILE.png     write the current logo as a 128x32 PNG to work on
@@ -93,6 +100,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch command {
 	case "help":
 		fmt.Fprint(stdout, usage)
+		return exitOK
+	case "version", "--version":
+		fmt.Fprintf(stdout, "trustctl %s, built-in firmware %s\n", version, firmware.Version())
 		return exitOK
 	case "help-options":
 		printOptions(stdout)

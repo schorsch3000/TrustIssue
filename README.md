@@ -37,12 +37,12 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
    The fuses of a stock Nano (`hfuse 0xDA`) are right already.
 2. **Host tool.** `cd trustctl && go build -o bin/trustctl ./cmd/trustctl` (a static binary; Go 1.25+, which
    the module fetches by itself).
-3. **Firmware.** `firmware/core/build.sh`, then
-   `trustctl --device /dev/ttyUSB0 flash firmware/core/build/core.ino.hex`. It tells you what to do on
+3. **Firmware.** `trustctl --device /dev/ttyUSB0 flash` (the core firmware is built into the `trustctl` binary;
+   for development `flash FILE.hex` takes your own build, e.g. from `firmware/core/build.sh`). It tells you what to do on
    the device: hold the button while it resets, release when the display says so, wait for the bar,
    then tap, tap, press a third time and hold until the bar is full.
-4. **Look and feel (optional).** Build `firmware/calibration/build.sh` and flash it the same way
-   (`trustctl flash firmware/calibration/build/calibration.ino.hex --no-patch`), then
+4. **Look and feel (optional).** Flash the built-in calibration firmware the same way
+   (`trustctl flash calibration`), then
    `trustctl calibrate contrast full 0x20`, `calibrate contrast dim 0`, `calibrate logo logo.png`,
    `calibrate font firmware/fonts/victoriamedium8.bin` (the options like `--device` may stand before or after
    the command), and flash the core firmware again; the settings are
@@ -120,3 +120,12 @@ The code never appears on a command line: it goes to `xdotool`, `wtype`, `xclip`
 - `cd trustctl && go test ./...`: the host tool against a simulated device.
 - With the rig: `tools/core_test.py`, `tools/boot_test.py`, `tools/autowipe_test.py`,
   `tools/trustctl_e2e.py`, `tools/trustctl_flash_e2e.py` (the Uno does the button gestures).
+
+## Releases
+
+`trustctl` and the firmware are released together: every `trustctl` binary carries the core and the calibration firmware
+(`trustctl/internal/firmware/`, embedded with `go:embed`), so users flash with `trustctl flash` (core, the default) or
+`trustctl flash calibration` and need no other file. `trustctl version` shows both versions. `tools/release.sh` runs
+`tools/embed_firmware.sh` (builds both firmwares, copies the images, takes the version from `firmware/core/core.ino`) and
+cross-compiles all platforms into `dist/` with `SHA256SUMS`. Commit the embedded images with the code; a test fails if the
+embedded version differs from the source. Bump `VERSION` in `core.ino` for every firmware change that is released.

@@ -44,7 +44,7 @@ var commandOptions = []struct {
 		{"--period S", "", "", "30", "Seconds a code is valid, 30 or 60. Only for a plain Base32 secret; an otpauth:// URI brings its own."},
 	}},
 	{"flash FILE.hex", []option{
-		{"--no-patch", "", "", "off", "Flash the hex file as it is, without the font, logo and contrast of the profile."},
+		{"--no-patch", "", "", "off", "Flash the firmware as it is, without the font, logo and contrast of the profile."},
 		{"--profile PATH", "", "", "the device profile (see below)", "The profile file to patch into the firmware."},
 		{"--wait DURATION", "", "", "90s", "How long to wait for the bootloader to open (the button gesture)."},
 		{"--countdown N", "", "", "4", "Seconds between \"hold the button\" and the reset of the device."},

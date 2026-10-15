@@ -757,7 +757,11 @@ static void serviceIdle(ButtonEvent event, uint32_t held) {
 #endif
   // idle sequence: the screen, then (with the logo option) the logo at full
   // contrast, the logo dimmed, and finally the display off
-  uint32_t quiet = now - lastActivity;
+  // `now` was read before autoIdleHold() may have set lastActivity a few
+  // milliseconds later; an unsigned difference would then wrap to about 49 days
+  // and put the display to sleep at once.
+  int32_t sinceActivity = (int32_t)(now - lastActivity);
+  uint32_t quiet = sinceActivity < 0 ? 0 : (uint32_t)sinceActivity;
   bool logo = (tc_store_config() & TC_CFG_LOGO) && logoAvailable();
   if (idlePhase == IDLE_BOOT_LOGO) {  // the logo after power-up, then the idle screen
     if (quiet > BOOT_LOGO_MS) {

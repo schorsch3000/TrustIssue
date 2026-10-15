@@ -19,6 +19,8 @@ var commandTable = []struct{ name, description string }{
 	{"daemon", "status of the background process, or stop it"},
 	{"flash", "program the firmware through the bootloader"},
 	{"calibrate", "try out contrast, logo and font on the calibration firmware"},
+	{"help", "show the short usage text"},
+	{"help-options", "every option with its argument, environment variable and config file syntax"},
 	{"autocomplete", "print the completion code for bash and sh"},
 	{"autocomplete-zsh", "print the completion code for zsh"},
 	{"autocomplete-fish", "print the completion code for fish"},

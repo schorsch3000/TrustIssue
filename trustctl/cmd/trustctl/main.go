@@ -36,6 +36,7 @@ commands:
   wipe                      erase all keys (hold the button 5 to 6 seconds)
   hello                     show what the device says about itself
   daemon [status|stop]      the background process that keeps the port open (started by the first command)
+  help-options              every option with its --argument, environment variable and config file syntax
   autocomplete              print the completion code for bash and sh: source <(trustctl autocomplete)
   autocomplete-zsh          the same for zsh
   autocomplete-fish         the same for fish: trustctl autocomplete-fish | source
@@ -87,6 +88,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	command, rest := global.Arg(0), global.Args()[1:]
 	switch command {
+	case "help":
+		fmt.Fprint(stdout, usage)
+		return exitOK
+	case "help-options":
+		printOptions(stdout)
+		return exitOK
 	case "autocomplete", "autocomplete-bash", "autocomplete-sh":
 		fmt.Fprint(stdout, completionScript("bash"))
 		return exitOK
@@ -169,7 +176,7 @@ func usageError(format string, args ...any) error {
 
 // devicePath resolves which serial port to use ("" means: probe).
 func devicePath(opt options, cfg config) (string, error) {
-	path := firstNonEmpty(opt.device, os.Getenv("TRUSTCTL_DEVICE"), cfg.device)
+	path := firstNonEmpty(opt.device, os.Getenv(envDevice), cfg.device)
 	if path == "" && !opt.autoprobe && !cfg.autoprobe {
 		return "", errors.New("no device given: use --device PATH, TRUSTCTL_DEVICE, \"device = PATH\" in " + configPath() + ", or --autoprobe")
 	}
@@ -187,7 +194,7 @@ func openDevice(path string, probe bool) (*serialdev.Device, error) {
 }
 
 func connect(opt options, stderr io.Writer) (*protocol.Client, func(), error) {
-	if opt.simulate || os.Getenv("TRUSTCTL_SIMULATE") != "" {
+	if opt.simulate || os.Getenv(envSimulate) != "" {
 		fmt.Fprintln(stderr, "(simulated device, every confirmation is accepted)")
 		conn, _ := sim.New(sim.AcceptAll)
 		client := protocol.NewClient(conn)
@@ -202,7 +209,7 @@ func connect(opt options, stderr io.Writer) (*protocol.Client, func(), error) {
 		return nil, nil, err
 	}
 	probe := opt.autoprobe || cfg.autoprobe
-	if opt.noDaemon || cfg.noDaemon || os.Getenv("TRUSTCTL_NO_DAEMON") != "" {
+	if opt.noDaemon || cfg.noDaemon || os.Getenv(envNoDaemon) != "" {
 		dev, err := openDevice(path, probe)
 		if err != nil {
 			return nil, nil, err

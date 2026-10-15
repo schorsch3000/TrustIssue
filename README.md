@@ -47,7 +47,8 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
    patched in from `~/.config/trustctl/device.json`.
 5. `trustctl config set logo=on` for the idle logo.
 
-Put `device = /dev/ttyUSB0` into `~/.config/trustctl/config` to leave out `--device`.
+Put `device = /dev/ttyUSB0` into `~/.config/trustctl/config` to leave out `--device`. `trustctl help-options` lists every
+option with its `--argument`, environment variable and config file syntax, and the defaults.
 
 Tab completion (commands, options, key names asked from the device, file names for `flash` and `calibrate`):
 

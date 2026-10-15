@@ -8,6 +8,19 @@ import (
 	"time"
 )
 
+// The keys of the config file and the environment variables, shared by the code
+// and by the help-options text, so that they cannot drift apart.
+const (
+	configKeyDevice      = "device"
+	configKeyAutoprobe   = "autoprobe"
+	configKeyDaemon      = "daemon"
+	configKeyIdleTimeout = "idle_timeout"
+
+	envDevice   = "TRUSTCTL_DEVICE"
+	envSimulate = "TRUSTCTL_SIMULATE"
+	envNoDaemon = "TRUSTCTL_NO_DAEMON"
+)
+
 // config is the optional ~/.config/trustctl/config file: lines "key = value",
 // "#" starts a comment. Keys: device (serial port path), autoprobe (true/false), daemon (false disables
 // the background daemon), idle_timeout (daemon lifetime without a command, default 5m).
@@ -46,13 +59,13 @@ func loadConfig() config {
 		}
 		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
 		switch key {
-		case "device":
+		case configKeyDevice:
 			c.device = value
-		case "autoprobe":
+		case configKeyAutoprobe:
 			c.autoprobe = value == "true" || value == "yes" || value == "1"
-		case "daemon":
+		case configKeyDaemon:
 			c.noDaemon = value == "false" || value == "no" || value == "0"
-		case "idle_timeout":
+		case configKeyIdleTimeout:
 			if d, err := time.ParseDuration(value); err == nil {
 				c.idleTimeout = d
 			}

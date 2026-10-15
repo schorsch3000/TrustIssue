@@ -1,6 +1,6 @@
 # Trust Issues: project notes
 
-Hardware TOTP token vault for people who don't trust their computers. See `branding.md` for naming and tone (Core = device firmware, `trustctl` = CLI client, Trust Desk = GUI).
+Hardware TOTP token vault for people who don't trust their computers. Components: Core is the device firmware, `trustctl` the command line client, Trust Desk the planned GUI.
 
 This file records the design decisions and the state of the project. The firmware, the bootloader and `trustctl` exist and are tested on the dev rig (see the status sections). Items marked **OPEN** are undecided.
 

@@ -25,6 +25,7 @@ parser.add_argument("--device", default="/dev/ttyUSB0")
 parser.add_argument("--rig", default="/dev/ttyUSB1")
 parser.add_argument("--calibration-hex", default="calibration")
 parser.add_argument("--core-hex", default="core")
+parser.add_argument("--font", help="with --flash-only: flash this font too (and let the profile remember it)")
 parser.add_argument("--flash-only", action="store_true", help="only flash the core firmware, patched with ~/.config/trustctl/device.json")
 args = parser.parse_args()
 failures = 0
@@ -75,7 +76,7 @@ def run(*cmd, gate=False, stdin=None):
 run("daemon", "stop")
 
 if "--flash-only" in sys.argv:  # just flash the core firmware with the real profile
-    code, out, err = run("flash", args.core_hex, "--countdown", "1", gate=True)
+    code, out, err = run("flash", args.core_hex, "--countdown", "1", *(["--font", args.font] if args.font else []), gate=True)
     print(out or err[-3:])
     sys.exit(code)
 

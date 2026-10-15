@@ -55,7 +55,7 @@ option with its `--argument`, environment variable and config file syntax, and t
 
 Seven fonts are built into `trustctl` (`trustctl font list`; sources and licenses in `trustctl/internal/fonts/README.md`).
 `trustctl calibrate font NAME` previews one on the calibration firmware and remembers it, `trustctl flash --font NAME`
-patches one in for a single flash, and `trustctl font extract FILE.bin --name NAME` writes one out as a starting point.
+patches one in and, once flashed, remembers it in the profile, and `trustctl font extract FILE.bin --name NAME` writes one out as a starting point.
 A font file of your own works wherever a name does.
 
 `tools/user/c64rom2font.py ROM [--set upper|lower] [--outdir DIR]` makes fonts from a C64 character ROM: a 4096 byte ROM gives

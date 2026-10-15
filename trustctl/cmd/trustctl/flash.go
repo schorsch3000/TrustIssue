@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -141,6 +142,18 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	fmt.Fprintln(stdout, "Done: the device restarts into the new firmware.")
+	if *fontSpec != "" { // the font on the device is now this one, so the profile says so too
+		stored, err := profile.Load(*profilePath)
+		if err == nil {
+			if stored.Font, err = fonts.Canonical(*fontSpec, filepath.Abs); err == nil {
+				err = stored.Save(*profilePath)
+			}
+		}
+		if err != nil {
+			return fmt.Errorf("the device is flashed, but the profile %s could not remember the font: %w", *profilePath, err)
+		}
+		fmt.Fprintf(stderr, "The profile %s remembers the font %s.\n", *profilePath, stored.Font)
+	}
 	return nil
 }
 

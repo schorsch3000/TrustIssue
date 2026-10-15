@@ -1,0 +1,520 @@
+// Trust Issues core firmware: TOTP vault with serial protocol, display and button.
+//
+// Build with firmware/core/build.sh (it enlarges the serial receive buffer).
+// Not implemented yet: idle logo, autonomous wipe, flash-patched device
+// parameters (contrast, font, logo); those use compile-time constants for now.
+
+#include <Arduino.h>
+#include <EEPROM.h>
+#include <U8x8lib.h>
+#include <Wire.h>
+#include <tc_protocol.h>
+#include <tc_storage.h>
+#include <tc_time.h>
+#include <tc_totp.h>
+
+#include "core_types.h"
+#include "font_default.h"
+
+// ---------------------------------------------------------------- settings
+
+static const char VERSION[] PROGMEM = "0.1.0";
+static const uint8_t BUTTON_PIN = 2;
+static const uint8_t DISPLAY_ADDRESS = 0x3C;
+static const uint8_t CONTRAST_FULL = 0x20;
+static const uint8_t DEFAULT_CONFIG = 0;
+
+static const uint16_t DEBOUNCE_MS = 25;
+static const uint16_t ACCEPT_MIN_MS = 1000;
+static const uint16_t ACCEPT_MAX_MS = 2000;
+static const uint16_t WIPE_MIN_MS = 5000;
+static const uint16_t WIPE_MAX_MS = 6000;
+static const uint32_t REQUEST_TIMEOUT_MS = 30000;
+static const uint32_t IDLE_OFF_MS = 10000;
+static const uint16_t RESULT_SHOW_MS = 1200;
+
+// ---------------------------------------------------------------- EEPROM
+
+static uint8_t eepromRead(uint16_t address) { return EEPROM.read(address); }
+static void eepromWrite(uint16_t address, uint8_t value) { EEPROM.update(address, value); }
+static const TcEeprom EEPROM_OPS = {eepromRead, eepromWrite};
+
+// ---------------------------------------------------------------- display
+
+U8X8_SSD1306_128X32_UNIVISION_HW_I2C oled(U8X8_PIN_NONE);
+
+static char grid[4][16];   // what the screen shows, 4 rows of 16 characters
+static uint8_t dirtyRows;  // rows whose tiles must be redrawn
+static uint8_t fillPixels; // progress bar: this many columns from the left are inverted
+static bool displayOn = true;
+static uint32_t lastActivity;
+
+static uint8_t tileFill(uint8_t column) {
+  int16_t pixels = (int16_t)fillPixels - column * 8;
+  return pixels <= 0 ? 0 : pixels >= 8 ? 8 : pixels;
+}
+
+static void drawTile(uint8_t column, uint8_t row) {
+  uint8_t tile[8];
+  char c = grid[row][column];
+  uint8_t glyph = (c >= 32 && c < 128) ? c - 32 : '?' - 32;
+  uint8_t inverted = tileFill(column);
+  for (uint8_t i = 0; i < 8; i++) {
+    tile[i] = pgm_read_byte(&FONT_DEFAULT[4 + glyph * 8 + i]);
+    if (i < inverted) tile[i] = ~tile[i];
+  }
+  oled.drawTile(column, row, 1, tile);
+}
+
+static void render() {
+  if (!displayOn) return;
+  for (uint8_t row = 0; row < 4; row++) {
+    if (!(dirtyRows & (1 << row))) continue;
+    for (uint8_t column = 0; column < 16; column++) drawTile(column, row);
+    dirtyRows &= ~(1 << row);
+  }
+}
+
+static void setRow(uint8_t row, const char *text, uint8_t maxChars = 16) {
+  uint8_t i = 0;
+  for (; i < 16 && i < maxChars && text[i]; i++) grid[row][i] = text[i];
+  for (; i < 16; i++) grid[row][i] = ' ';
+  dirtyRows |= 1 << row;
+}
+
+static void setRowP(uint8_t row, PGM_P text) {
+  char buffer[17];
+  strncpy_P(buffer, text, 16);
+  buffer[16] = '\0';
+  setRow(row, buffer);
+}
+
+static void clearScreen() {
+  for (uint8_t row = 0; row < 4; row++) setRow(row, "");
+  fillPixels = 0;
+}
+
+// Name over rows 1 and 2, first 16 characters on the first row.
+static void showName(const char *name) {
+  setRow(1, name, 16);
+  setRow(2, strlen(name) > 16 ? name + 16 : "");
+}
+
+static void setFill(uint8_t pixels) {
+  if (pixels > 128) pixels = 128;
+  if (pixels == fillPixels) return;
+  render();
+  uint8_t low = min(pixels, fillPixels) / 8, high = min(max(pixels, fillPixels) / 8, 15);
+  fillPixels = pixels;
+  if (!displayOn) return;
+  for (uint8_t row = 0; row < 4; row++)
+    for (uint8_t column = low; column <= high; column++) drawTile(column, row);
+}
+
+static void sendDisplayCommand(uint8_t command) {
+  Wire.beginTransmission(DISPLAY_ADDRESS);
+  Wire.write((uint8_t)0x00);
+  Wire.write(command);
+  Wire.endTransmission();
+}
+
+static void applyConfig(uint8_t config) {
+  oled.setFlipMode(config & TC_CFG_ROTATE ? 1 : 0);
+  sendDisplayCommand(config & TC_CFG_INVERT ? 0xA7 : 0xA6);
+}
+
+static void wakeDisplay() {
+  lastActivity = millis();
+  if (displayOn) return;
+  oled.setPowerSave(0);
+  displayOn = true;
+  dirtyRows = 0x0F;
+  render();
+}
+
+static void sleepDisplay() {
+  oled.setPowerSave(1);
+  displayOn = false;
+}
+
+static void showIdle() {
+  clearScreen();
+  setRowP(1, PSTR("Trust Issues"));
+  char count[17];
+  snprintf_P(count, sizeof(count), PSTR("%u keys"), tc_store_count());
+  setRow(2, count);
+  render();
+}
+
+// ---------------------------------------------------------------- button
+
+static bool buttonStableDown, buttonLastRaw;
+static uint32_t buttonLastChange, buttonPressedAt;
+
+// Debounced: a change counts after the level was stable for DEBOUNCE_MS, and
+// its time is that of the last raw edge. A release reports the hold time.
+static ButtonEvent pollButton(uint32_t *held) {
+  bool raw = !digitalRead(BUTTON_PIN);
+  uint32_t now = millis();
+  if (raw != buttonLastRaw) {
+    buttonLastRaw = raw;
+    buttonLastChange = now;
+  } else if (raw != buttonStableDown && now - buttonLastChange >= DEBOUNCE_MS) {
+    buttonStableDown = raw;
+    if (raw) {
+      buttonPressedAt = buttonLastChange;
+      return BUTTON_PRESSED;
+    }
+    *held = buttonLastChange - buttonPressedAt;
+    return BUTTON_RELEASED;
+  }
+  return BUTTON_NONE;
+}
+
+static uint32_t buttonHeldMs() { return buttonStableDown ? millis() - buttonPressedAt : 0; }
+
+// ---------------------------------------------------------------- requests
+
+static State state = STATE_IDLE;
+static TcCommand pending;
+static uint32_t pendingStart;
+static uint32_t pendingMinMs, pendingMaxMs;
+static uint32_t resultUntil;
+static uint32_t lastClockCheck;
+static uint8_t shownMinute = 255;
+
+static uint32_t unixNow() { return pending.time + (millis() - pendingStart) / 1000; }
+
+static void showTokenTime() {
+  int8_t zone = tc_store_timezone();
+  TcDateTime now = tc_local_time(unixNow(), zone);
+  char text[20];
+  tc_format_local(now, zone, text);
+  setRow(3, text);
+  shownMinute = now.minute;
+}
+
+static void showPending() {
+  clearScreen();
+  char text[20];
+  switch (pending.type) {
+    case TC_CMD_TOKEN:
+      setRowP(0, PSTR("TOKEN"));
+      showName(pending.key.name);
+      showTokenTime();
+      break;
+    case TC_CMD_ADD:
+      setRowP(0, PSTR("ADD KEY"));
+      showName(pending.key.name);
+      snprintf_P(text, sizeof(text), PSTR("%u digits %u s"), pending.key.digits,
+                 pending.key.period);
+      setRow(3, text);
+      break;
+    case TC_CMD_DEL:
+      setRowP(0, PSTR("DELETE KEY"));
+      showName(pending.key.name);
+      setRowP(3, PSTR("Hold 1-2 s"));
+      break;
+    case TC_CMD_SETTZ:
+      setRowP(0, PSTR("SET TIMEZONE"));
+      tc_format_offset(pending.timezone, true, text);
+      setRow(1, text);
+      setRowP(3, PSTR("Hold 1-2 s"));
+      break;
+    case TC_CMD_SETCFG:
+      setRowP(0, PSTR("SETTINGS"));
+      snprintf_P(text, sizeof(text), PSTR("Rot:%s Inv:%s"),
+                 pending.config & TC_CFG_ROTATE ? "on" : "off",
+                 pending.config & TC_CFG_INVERT ? "on" : "off");
+      setRow(1, text);
+      snprintf_P(text, sizeof(text), PSTR("Logo:%s Wipe:%s"),
+                 pending.config & TC_CFG_LOGO ? "on" : "off",
+                 pending.config & TC_CFG_AUTOWIPE ? "on" : "off");
+      setRow(2, text);
+      setRowP(3, PSTR("Hold 1-2 s"));
+      break;
+    case TC_CMD_WIPE:
+      setRowP(0, PSTR("WIPE ALL KEYS?"));
+      setRowP(1, PSTR("Hold 5-6 s"));
+      snprintf_P(text, sizeof(text), PSTR("%u keys"), tc_store_count());
+      setRow(3, text);
+      break;
+    default:
+      break;
+  }
+  wakeDisplay();
+  render();
+}
+
+static void showResult(const char *text) {
+  clearScreen();
+  setRow(1, text);
+  wakeDisplay();
+  render();
+  resultUntil = millis() + RESULT_SHOW_MS;
+}
+
+static const __FlashStringHelper *statusText(TcStatus status) {
+  switch (status) {
+    case TC_BADARG: return F("ERR BADARG");
+    case TC_DUPLICATE: return F("ERR DUPLICATE");
+    case TC_FULL: return F("ERR FULL");
+    case TC_NOT_FOUND: return F("ERR NOTFOUND");
+    default: return F("OK");
+  }
+}
+
+static TcStatus precheckAdd(const TcKey &key) {
+  if (!tc_name_valid(key.name)) return TC_BADARG;
+  bool freeSlot = false;
+  for (uint8_t id = 0; id < TC_SLOT_COUNT; id++) {
+    TcKey existing;
+    if (tc_store_get(id, &existing)) {
+      if (tc_name_equal(existing.name, key.name)) return TC_DUPLICATE;
+    } else {
+      freeSlot = true;
+    }
+  }
+  return freeSlot ? TC_OK : TC_FULL;
+}
+
+static void wipeProgress(uint16_t done, uint16_t total, void *) {
+  setFill((uint32_t)done * 128 / total);
+}
+
+static void finishPending(Outcome outcome) {
+  if (outcome != OUTCOME_ACCEPTED) {
+    if (pending.type == TC_CMD_SETCFG) applyConfig(tc_store_config());  // undo the preview
+    bool timedOut = outcome == OUTCOME_TIMEOUT;
+    Serial.println(timedOut ? F("ERR TIMEOUT") : F("ERR DENIED"));
+    showResult(timedOut ? "Timed out" : "Denied");
+  } else {
+    switch (pending.type) {
+      case TC_CMD_TOKEN: {
+        TcKey key;
+        if (!tc_store_get(pending.id, &key)) {
+          Serial.println(F("ERR NOTFOUND"));
+          break;
+        }
+        char code[10];
+        tc_format_code(tc_totp(key.secret, TC_SECRET_BYTES, unixNow(), key.period, key.digits),
+                       key.digits, code);
+        memset(key.secret, 0, sizeof(key.secret));
+        Serial.print(F("OK "));
+        Serial.println(code);
+        break;
+      }
+      case TC_CMD_ADD: {
+        uint8_t id = 0;
+        TcStatus status = tc_store_add(&pending.key, &id);
+        if (status == TC_OK) {
+          Serial.print(F("OK "));
+          Serial.println(id);
+        } else {
+          Serial.println(statusText(status));
+        }
+        break;
+      }
+      case TC_CMD_DEL:
+        Serial.println(statusText(tc_store_delete(pending.id)));
+        break;
+      case TC_CMD_SETTZ:
+        tc_store_set_timezone(pending.timezone);
+        Serial.println(F("OK"));
+        break;
+      case TC_CMD_SETCFG:
+        tc_store_set_config(pending.config);
+        applyConfig(pending.config);
+        Serial.println(F("OK"));
+        break;
+      case TC_CMD_WIPE:
+        tc_store_wipe(wipeProgress, NULL);
+        Serial.println(F("OK"));
+        break;
+      default:
+        break;
+    }
+    showResult("Done");
+  }
+  memset(&pending, 0, sizeof(pending));  // no secret stays in RAM
+  state = STATE_IDLE;
+}
+
+static void startPending() {
+  pendingStart = millis();
+  bool wipe = pending.type == TC_CMD_WIPE;
+  pendingMinMs = wipe ? WIPE_MIN_MS : ACCEPT_MIN_MS;
+  pendingMaxMs = wipe ? WIPE_MAX_MS : ACCEPT_MAX_MS;
+  state = STATE_PENDING;
+  Serial.println(F("PENDING"));
+  showPending();
+  if (pending.type == TC_CMD_SETCFG) applyConfig(pending.config);  // preview
+}
+
+static void handleCommand() {
+  switch (pending.type) {
+    case TC_CMD_HELLO:
+      Serial.print(F("TrustIssue "));
+      Serial.print((const __FlashStringHelper *)VERSION);
+      Serial.println(F(" proto 1"));
+      return;
+    case TC_CMD_LIST:
+      for (uint8_t id = 0; id < TC_SLOT_COUNT; id++) {
+        TcKey key;
+        if (!tc_store_get(id, &key)) continue;
+        Serial.print(F("KEY "));
+        Serial.print(id);
+        Serial.print(' ');
+        Serial.println(key.name);
+      }
+      Serial.println(F("END"));
+      return;
+    case TC_CMD_GETTZ:
+      Serial.print(F("OK "));
+      Serial.println(tc_store_timezone());
+      return;
+    case TC_CMD_GETCFG: {
+      uint8_t config = tc_store_config();
+      Serial.print(F("OK "));
+      if (config < 16) Serial.print('0');
+      Serial.println(config, HEX);
+      return;
+    }
+    case TC_CMD_ADD: {
+      TcStatus status = precheckAdd(pending.key);
+      if (status != TC_OK) {
+        Serial.println(statusText(status));
+        return;
+      }
+      break;
+    }
+    case TC_CMD_DEL:
+    case TC_CMD_TOKEN:
+      if (!tc_store_get(pending.id, &pending.key)) {
+        Serial.println(F("ERR NOTFOUND"));
+        return;
+      }
+      break;
+    case TC_CMD_WIPE:
+      if (tc_store_count() == 0) {  // nothing to destroy, nothing to confirm
+        Serial.println(F("OK"));
+        return;
+      }
+      break;
+    default:
+      break;
+  }
+  startPending();
+}
+
+// ---------------------------------------------------------------- serial
+
+static char line[100];
+static uint8_t lineLength;
+static bool lineOverflow;
+
+static void processLine() {
+  if (state == STATE_PENDING) {
+    Serial.println(F("ERR BUSY"));
+    return;
+  }
+  TcParseResult result = tc_parse_command(line, &pending);
+  if (result == TC_PARSE_UNKNOWN) {
+    Serial.println(F("ERR UNKNOWN"));
+  } else if (result == TC_PARSE_BADARG) {
+    Serial.println(F("ERR BADARG"));
+  } else {
+    handleCommand();
+  }
+  if (state != STATE_PENDING) memset(&pending, 0, sizeof(pending));
+}
+
+static void readSerial() {
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\r') continue;
+    if (c == '\n') {
+      line[lineLength] = '\0';
+      if (lineOverflow) {
+        Serial.println(F("ERR BADARG"));
+      } else if (lineLength) {
+        processLine();
+      }
+      lineLength = 0;
+      lineOverflow = false;
+    } else if (lineLength < sizeof(line) - 1) {
+      line[lineLength++] = c;
+    } else {
+      lineOverflow = true;
+    }
+  }
+}
+
+// ---------------------------------------------------------------- main loop
+
+static void servicePending(ButtonEvent event, uint32_t held) {
+  uint32_t now = millis();
+  if (now - pendingStart > REQUEST_TIMEOUT_MS) {
+    setFill(0);
+    finishPending(OUTCOME_TIMEOUT);
+    return;
+  }
+  if (event == BUTTON_RELEASED) {
+    setFill(0);
+    bool accepted = held >= pendingMinMs && held <= pendingMaxMs;
+    finishPending(accepted ? OUTCOME_ACCEPTED : OUTCOME_DENIED);
+    return;
+  }
+  if (buttonStableDown) {
+    setFill(min(buttonHeldMs(), pendingMaxMs) * 128UL / pendingMaxMs);
+  } else if (pending.type == TC_CMD_TOKEN && now - lastClockCheck >= 250) {
+    lastClockCheck = now;
+    TcDateTime local = tc_local_time(unixNow(), tc_store_timezone());
+    if (local.minute != shownMinute) {
+      showTokenTime();
+      render();
+    }
+  }
+}
+
+static void serviceIdle(ButtonEvent event) {
+  uint32_t now = millis();
+  if (resultUntil && (int32_t)(now - resultUntil) >= 0) {
+    resultUntil = 0;
+    showIdle();
+  }
+  if (event == BUTTON_PRESSED) {
+    bool wasOff = !displayOn;
+    wakeDisplay();
+    if (wasOff) showIdle();  // a press that only wakes the display does nothing else
+  } else if (displayOn && now - lastActivity > IDLE_OFF_MS) {
+    sleepDisplay();
+  }
+}
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  buttonStableDown = buttonLastRaw = !digitalRead(BUTTON_PIN);
+  tc_store_begin(&EEPROM_OPS, DEFAULT_CONFIG);
+  oled.begin();
+  oled.setBusClock(400000);
+  oled.setContrast(CONTRAST_FULL);
+  applyConfig(tc_store_config());
+  showIdle();
+  lastActivity = millis();
+  Serial.print(F("TrustIssue "));
+  Serial.print((const __FlashStringHelper *)VERSION);
+  Serial.println(F(" proto 1"));
+}
+
+void loop() {
+  readSerial();
+  uint32_t held = 0;
+  ButtonEvent event = pollButton(&held);
+  if (state == STATE_PENDING) {
+    servicePending(event, held);
+  } else {
+    serviceIdle(event);
+  }
+}

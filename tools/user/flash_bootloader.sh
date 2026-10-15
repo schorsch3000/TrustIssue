@@ -15,22 +15,21 @@
 #
 # Another ISP programmer: set ISP_ARGS, e.g. ISP_ARGS="-c usbasp" tools/user/flash_bootloader.sh - --yes
 set -e
+usage() { sed -n '2,15p' "$0"; exit 64; }
+[ $# -ge 1 ] || usage
 port="$1"
-shift || true
+shift
 yes=0 keep=0 hex=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --yes) yes=1 ;;
     --keep-eeprom) keep=1 ;;
-    --hex) hex="$2"; shift ;;
-    *) echo "unknown option $1"; exit 64 ;;
+    --hex) [ $# -ge 2 ] || { echo "--hex needs a file" >&2; usage; }; hex="$2"; shift ;;
+    *) echo "unknown option $1" >&2; usage ;;
   esac
   shift
 done
-if [ -z "$port" ] || [ "$yes" != 1 ]; then
-  sed -n '2,15p' "$0"
-  exit 64
-fi
+if [ -z "$port" ] || [ "$yes" != 1 ]; then usage; fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 : "${ISP_ARGS:=-c stk500v1 -b 19200 -P $port}"
 # shellcheck disable=SC2086

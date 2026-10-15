@@ -50,12 +50,13 @@ type Device struct {
 	config  uint8
 	pending bool
 	out     io.Writer
+	counts  map[string]int
 }
 
 // New returns the host side of a connection to a fresh simulated device.
 func New(decide Decider) (io.ReadWriteCloser, *Device) {
 	host, dev := net.Pipe()
-	d := &Device{decide: decide, out: dev}
+	d := &Device{decide: decide, out: dev, counts: map[string]int{}}
 	go d.serve(dev)
 	return host, d
 }
@@ -71,6 +72,13 @@ func (d *Device) Keys() []string {
 		}
 	}
 	return names
+}
+
+// Count returns how many commands with this first word the device has handled.
+func (d *Device) Count(word string) int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.counts[word]
 }
 
 func (d *Device) say(format string, args ...any) {
@@ -137,6 +145,7 @@ func (d *Device) handle(line string) {
 	word, rest, _ := strings.Cut(line, " ")
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.counts[word]++
 	switch word {
 	case "HELLO":
 		d.say("TrustIssue 0.1.0 proto 1")

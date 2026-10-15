@@ -15,6 +15,7 @@ import (
 
 	"golang.org/x/term"
 
+	"trustissues/trustctl/internal/daemon"
 	"trustissues/trustctl/internal/protocol"
 	"trustissues/trustctl/internal/serialdev"
 	"trustissues/trustctl/internal/sim"
@@ -32,6 +33,10 @@ commands:
   config [get|set FLAG=on|off ...]   flags: rotate invert logo autowipe
   wipe                      erase all keys (hold the button 5 to 6 seconds)
   hello                     show what the device says about itself
+  daemon [status|stop]      the background process that keeps the port open (started by the first command)
+  flash FILE.hex            program the firmware through the bootloader (needs the button gesture)
+        --no-patch --profile PATH --wait 90s --countdown 4
+  calibrate ...             try out contrast, logo and font on the calibration firmware (see: trustctl calibrate)
 
 NAME is a key name (any case), its slot number, or a unique beginning of a name.
 
@@ -39,6 +44,7 @@ options:
   --device PATH             serial port of the device (or TRUSTCTL_DEVICE, or "device =" in the config file)
   --autoprobe               try all serial ports; this resets every board it opens
   --simulate                use a simulated device that confirms everything
+  --no-daemon               talk to the device directly (TRUSTCTL_NO_DAEMON=1, or "daemon = false" in the config file)
 `
 
 // exit codes
@@ -54,6 +60,7 @@ type options struct {
 	device    string
 	autoprobe bool
 	simulate  bool
+	noDaemon  bool
 }
 
 func main() {
@@ -67,11 +74,27 @@ func run(args []string, stdout, stderr io.Writer) int {
 	global.StringVar(&opt.device, "device", "", "")
 	global.BoolVar(&opt.autoprobe, "autoprobe", false, "")
 	global.BoolVar(&opt.simulate, "simulate", false, "")
+	global.BoolVar(&opt.noDaemon, "no-daemon", false, "")
+	idle := global.Duration("idle", 5*time.Minute, "") // only for __daemon
 	if err := global.Parse(args); err != nil || global.NArg() == 0 {
 		fmt.Fprint(stderr, usage)
 		return exitUsage
 	}
 	command, rest := global.Arg(0), global.Args()[1:]
+	switch command {
+	case "__daemon":
+		return runDaemon(opt, *idle, stderr)
+	case "daemon":
+		return daemonCommand(rest, stdout, stderr)
+	case "flash", "calibrate":
+		var err error
+		if command == "flash" {
+			err = flashCommand(opt, rest, stdout, stderr)
+		} else {
+			err = calibrateCommand(opt, rest, stdout, stderr)
+		}
+		return report(err, stderr)
+	}
 
 	client, closeDevice, err := connect(opt, stderr)
 	if err != nil {
@@ -84,6 +107,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 	client.OnPending = func() { fmt.Fprintln(stderr, hint) }
 
 	err = dispatch(client, command, rest, stdout, stderr, func(h string) { hint = h })
+	return report(err, stderr)
+}
+
+// report prints an error and returns the exit code for it.
+func report(err error, stderr io.Writer) int {
 	switch {
 	case err == nil:
 		return exitOK
@@ -105,6 +133,25 @@ func usageError(format string, args ...any) error {
 	return fmt.Errorf("%w: %s", errUsage, fmt.Sprintf(format, args...))
 }
 
+// devicePath resolves which serial port to use ("" means: probe).
+func devicePath(opt options, cfg config) (string, error) {
+	path := firstNonEmpty(opt.device, os.Getenv("TRUSTCTL_DEVICE"), cfg.device)
+	if path == "" && !opt.autoprobe && !cfg.autoprobe {
+		return "", errors.New("no device given: use --device PATH, TRUSTCTL_DEVICE, \"device = PATH\" in " + configPath() + ", or --autoprobe")
+	}
+	return path, nil
+}
+
+func openDevice(path string, probe bool) (*serialdev.Device, error) {
+	if path != "" {
+		return serialdev.Open(path, 3*time.Second)
+	}
+	if probe {
+		return serialdev.Probe()
+	}
+	return nil, errors.New("no device")
+}
+
 func connect(opt options, stderr io.Writer) (*protocol.Client, func(), error) {
 	if opt.simulate || os.Getenv("TRUSTCTL_SIMULATE") != "" {
 		fmt.Fprintln(stderr, "(simulated device, every confirmation is accepted)")
@@ -116,21 +163,112 @@ func connect(opt options, stderr io.Writer) (*protocol.Client, func(), error) {
 		return client, func() { conn.Close() }, nil
 	}
 	cfg := loadConfig()
-	path := firstNonEmpty(opt.device, os.Getenv("TRUSTCTL_DEVICE"), cfg.device)
-	var dev *serialdev.Device
-	var err error
-	switch {
-	case path != "":
-		dev, err = serialdev.Open(path, 3*time.Second)
-	case opt.autoprobe || cfg.autoprobe:
-		dev, err = serialdev.Probe()
-	default:
-		return nil, nil, errors.New("no device given: use --device PATH, TRUSTCTL_DEVICE, \"device = PATH\" in " + configPath() + ", or --autoprobe")
-	}
+	path, err := devicePath(opt, cfg)
 	if err != nil {
 		return nil, nil, err
 	}
-	return dev.Client, func() { dev.Close() }, nil
+	probe := opt.autoprobe || cfg.autoprobe
+	if opt.noDaemon || cfg.noDaemon || os.Getenv("TRUSTCTL_NO_DAEMON") != "" {
+		dev, err := openDevice(path, probe)
+		if err != nil {
+			return nil, nil, err
+		}
+		return dev.Client, func() { dev.Close() }, nil
+	}
+	return connectDaemon(path, probe, cfg)
+}
+
+// connectDaemon talks to the background daemon and starts it if it is not running.
+func connectDaemon(path string, probe bool, cfg config) (*protocol.Client, func(), error) {
+	conn, err := daemon.Dial()
+	if err != nil {
+		args := []string{"--idle", cfg.idleTimeout.String()}
+		if path != "" {
+			args = append(args, "--device", path)
+		} else if probe {
+			args = append(args, "--autoprobe")
+		}
+		if conn, err = daemon.Start(args); err != nil {
+			return nil, nil, err
+		}
+	}
+	client := protocol.NewClient(conn)
+	if _, err := client.WaitBanner(3 * time.Second); err != nil {
+		conn.Close()
+		return nil, nil, fmt.Errorf("the daemon does not answer: %w", err)
+	}
+	if path != "" { // a running daemon may hold a different device
+		var status string
+		client.Raw("!STATUS", func(l string) { status = l })
+		if running := statusDevice(status); running != "" && running != path {
+			conn.Close()
+			return nil, nil, fmt.Errorf("the daemon already holds %s, not %s: stop it first with: trustctl daemon stop", running, path)
+		}
+	}
+	return client, func() { conn.Close() }, nil
+}
+
+// statusDevice picks the device path out of a daemon status line.
+func statusDevice(status string) string {
+	for _, field := range strings.Fields(status) {
+		if path, ok := strings.CutPrefix(field, "device="); ok {
+			return path
+		}
+	}
+	return ""
+}
+
+func runDaemon(opt options, idle time.Duration, stderr io.Writer) int {
+	path, probe := opt.device, opt.autoprobe
+	dev, err := openDevice(path, probe)
+	if err != nil {
+		fmt.Fprintln(stderr, "trustctl daemon:", err)
+		return exitNoDevice
+	}
+	defer dev.Close()
+	socket, err := daemon.SocketPath()
+	if err != nil {
+		fmt.Fprintln(stderr, "trustctl daemon:", err)
+		return exitFailure
+	}
+	logf := func(format string, args ...any) {
+		fmt.Fprintf(stderr, time.Now().Format("15:04:05 ")+format+"\n", args...)
+	}
+	logf("serving %s on %s", dev.Path, socket)
+	reason, err := daemon.Run(dev.Client, daemon.Options{
+		SocketPath: socket, Idle: idle, Banner: dev.Banner, DevicePath: dev.Path, Logf: logf,
+	})
+	if err != nil {
+		fmt.Fprintln(stderr, "trustctl daemon:", err)
+		return exitFailure
+	}
+	logf("ended: %s", reason)
+	return exitOK
+}
+
+func daemonCommand(args []string, stdout, stderr io.Writer) int {
+	action := "status"
+	if len(args) > 0 {
+		action = args[0]
+	}
+	conn, err := daemon.Dial()
+	if err != nil {
+		fmt.Fprintln(stdout, "no daemon is running")
+		return exitOK
+	}
+	defer conn.Close()
+	client := protocol.NewClient(conn)
+	if _, err := client.WaitBanner(2 * time.Second); err != nil {
+		fmt.Fprintln(stderr, "trustctl:", err)
+		return exitFailure
+	}
+	command := map[string]string{"status": "!STATUS", "stop": "!STOP"}[action]
+	if command == "" {
+		fmt.Fprint(stderr, usage)
+		return exitUsage
+	}
+	client.Raw(command, func(l string) { fmt.Fprintln(stdout, l) })
+	return exitOK
 }
 
 func firstNonEmpty(values ...string) string {

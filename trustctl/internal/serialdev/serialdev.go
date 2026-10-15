@@ -103,3 +103,54 @@ func Probe() (*Device, error) {
 	}
 	return nil, fmt.Errorf("no Trust Issues device found among %d serial ports", len(candidates))
 }
+
+// OpenCalibration connects to the calibration firmware (it is not the app and
+// does not speak the key protocol, only the display commands).
+func OpenCalibration(path string) (*Device, error) {
+	disableHangup(path)
+	port, err := serial.Open(path, &serial.Mode{BaudRate: Baud, DataBits: 8, Parity: serial.NoParity, StopBits: serial.OneStopBit})
+	if err != nil {
+		return nil, fmt.Errorf("cannot open %s: %w", path, err)
+	}
+	client := protocol.NewClient(port)
+	client.ReplyTimeout = time.Second
+	var banner string
+	deadline := time.Now().Add(4 * time.Second)
+	for {
+		banner, err = client.Hello()
+		if err == nil || time.Now().After(deadline) {
+			break
+		}
+	}
+	if err != nil || !strings.HasPrefix(banner, "TrustIssue-Calibration") {
+		port.Close()
+		if err == nil {
+			err = fmt.Errorf("it says %q", banner)
+		}
+		return nil, fmt.Errorf("%s is not running the calibration firmware (flash firmware/calibration first): %w", path, err)
+	}
+	client.ReplyTimeout = 3 * time.Second
+	client.Settle(100 * time.Millisecond)
+	return &Device{Path: path, Banner: banner, Client: client, port: port}, nil
+}
+
+// OpenBootloaderPort opens the port at the bootloader's speed and resets the
+// device with a DTR pulse. Whether the bootloader opens depends on the button:
+// it must be held while the reset happens.
+func OpenBootloaderPort(path string) (serial.Port, error) {
+	disableHangup(path)
+	port, err := serial.Open(path, &serial.Mode{BaudRate: 115200, DataBits: 8, Parity: serial.NoParity, StopBits: serial.OneStopBit})
+	if err != nil {
+		return nil, fmt.Errorf("cannot open %s: %w", path, err)
+	}
+	return port, nil
+}
+
+// Reset pulses DTR, which resets an Arduino.
+func Reset(port serial.Port) error {
+	if err := port.SetDTR(false); err != nil {
+		return err
+	}
+	time.Sleep(100 * time.Millisecond)
+	return port.SetDTR(true)
+}

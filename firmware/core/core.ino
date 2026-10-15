@@ -14,14 +14,13 @@
 #include <tc_totp.h>
 
 #include "core_types.h"
-#include "font_default.h"
+#include "params_default.h"
 
 // ---------------------------------------------------------------- settings
 
 static const char VERSION[] PROGMEM = "0.1.0";
 static const uint8_t BUTTON_PIN = 2;
 static const uint8_t DISPLAY_ADDRESS = 0x3C;
-static const uint8_t CONTRAST_FULL = 0x20;
 static const uint8_t DEFAULT_CONFIG = 0;
 
 static const uint16_t DEBOUNCE_MS = 25;
@@ -30,8 +29,23 @@ static const uint16_t ACCEPT_MAX_MS = 2000;
 static const uint16_t WIPE_MIN_MS = 5000;
 static const uint16_t WIPE_MAX_MS = 6000;
 static const uint32_t REQUEST_TIMEOUT_MS = 30000;
-static const uint32_t IDLE_OFF_MS = 10000;
+static const uint32_t IDLE_WAIT_MS = 10000;   // the idle screen stays this long
+static const uint32_t LOGO_FULL_MS = 30000;   // then the logo at full contrast ...
+static const uint32_t LOGO_DIM_MS = 120000;   // ... then dimmed, then the display turns off
 static const uint16_t RESULT_SHOW_MS = 1200;
+
+// ---------------------------------------------------------------- device parameters
+
+// The block PARAMS (params_default.h) sits at flash address 0x7000 and is
+// patched by `trustctl flash`: contrast values, the font and the idle logo.
+static const uint16_t PARAM_FLAGS = 5;  // bit0 font valid, bit1 logo valid
+static const uint16_t PARAM_CONTRAST_FULL = 6;
+static const uint16_t PARAM_CONTRAST_DIM = 7;
+static const uint16_t PARAM_FONT = 0x10;
+static const uint16_t PARAM_LOGO = 0x314;
+
+static uint8_t param(uint16_t offset) { return pgm_read_byte(&PARAMS[offset]); }
+static bool logoAvailable() { return param(PARAM_FLAGS) & 0x02; }
 
 // ---------------------------------------------------------------- EEPROM
 
@@ -60,7 +74,7 @@ static void drawTile(uint8_t column, uint8_t row) {
   uint8_t glyph = (c >= 32 && c < 128) ? c - 32 : '?' - 32;
   uint8_t inverted = tileFill(column);
   for (uint8_t i = 0; i < 8; i++) {
-    tile[i] = pgm_read_byte(&FONT_DEFAULT[4 + glyph * 8 + i]);
+    tile[i] = param(PARAM_FONT + 4 + glyph * 8 + i);
     if (i < inverted) tile[i] = ~tile[i];
   }
   oled.drawTile(column, row, 1, tile);
@@ -123,18 +137,34 @@ static void applyConfig(uint8_t config) {
   sendDisplayCommand(config & TC_CFG_INVERT ? 0xA7 : 0xA6);
 }
 
+enum IdlePhase : uint8_t { IDLE_SCREEN, IDLE_LOGO_FULL, IDLE_LOGO_DIM, IDLE_OFF };
+static IdlePhase idlePhase = IDLE_SCREEN;
+
 static void wakeDisplay() {
   lastActivity = millis();
-  if (displayOn) return;
-  oled.setPowerSave(0);
+  if (idlePhase == IDLE_SCREEN && displayOn) return;
+  idlePhase = IDLE_SCREEN;
+  oled.setContrast(param(PARAM_CONTRAST_FULL));
+  if (!displayOn) oled.setPowerSave(0);
   displayOn = true;
-  dirtyRows = 0x0F;
+  dirtyRows = 0x0F;  // the screen shows the text grid again, not the logo
   render();
 }
 
 static void sleepDisplay() {
   oled.setPowerSave(1);
   displayOn = false;
+  idlePhase = IDLE_OFF;
+}
+
+// The 512 byte logo of the parameter block, drawn tile by tile.
+static void showLogo(uint8_t contrast) {
+  uint8_t tile[8];
+  for (uint8_t index = 0; index < 64; index++) {
+    for (uint8_t i = 0; i < 8; i++) tile[i] = param(PARAM_LOGO + index * 8 + i);
+    oled.drawTile(index % 16, index / 16, 1, tile);
+  }
+  oled.setContrast(contrast);
 }
 
 static void showIdle() {
@@ -484,10 +514,26 @@ static void serviceIdle(ButtonEvent event) {
     showIdle();
   }
   if (event == BUTTON_PRESSED) {
-    bool wasOff = !displayOn;
+    bool wasIdleScreen = idlePhase == IDLE_SCREEN && displayOn;
     wakeDisplay();
-    if (wasOff) showIdle();  // a press that only wakes the display does nothing else
-  } else if (displayOn && now - lastActivity > IDLE_OFF_MS) {
+    if (!wasIdleScreen) showIdle();  // a press that only wakes the display does nothing else
+    return;
+  }
+  // idle sequence: the screen, then (with the logo option) the logo at full
+  // contrast, the logo dimmed, and finally the display off
+  uint32_t quiet = now - lastActivity;
+  bool logo = (tc_store_config() & TC_CFG_LOGO) && logoAvailable();
+  if (idlePhase == IDLE_SCREEN && quiet > IDLE_WAIT_MS) {
+    if (logo) {
+      idlePhase = IDLE_LOGO_FULL;
+      showLogo(param(PARAM_CONTRAST_FULL));
+    } else {
+      sleepDisplay();
+    }
+  } else if (idlePhase == IDLE_LOGO_FULL && quiet > IDLE_WAIT_MS + LOGO_FULL_MS) {
+    idlePhase = IDLE_LOGO_DIM;
+    oled.setContrast(param(PARAM_CONTRAST_DIM));
+  } else if (idlePhase == IDLE_LOGO_DIM && quiet > IDLE_WAIT_MS + LOGO_FULL_MS + LOGO_DIM_MS) {
     sleepDisplay();
   }
 }
@@ -499,7 +545,7 @@ void setup() {
   tc_store_begin(&EEPROM_OPS, DEFAULT_CONFIG);
   oled.begin();
   oled.setBusClock(400000);
-  oled.setContrast(CONTRAST_FULL);
+  oled.setContrast(param(PARAM_CONTRAST_FULL));
   applyConfig(tc_store_config());
   showIdle();
   lastActivity = millis();

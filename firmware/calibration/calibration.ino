@@ -16,6 +16,8 @@
 //   FONT <n>                   select candidate font n and draw a lookalike sample
 //   LOGO <offset> <32 hex>     16 bitmap bytes at byte offset (multiple of 16)
 //   RAW <hex bytes>            raw controller command bytes (max 24)
+//   FONTDATA <offset> <32 hex> 16 bytes of a font (772 bytes, U8x8 format) into RAM
+//   FONTTEXT <row> <text>      text with the uploaded font, row 0..3, 16 characters
 
 #include <Arduino.h>
 #include <U8x8lib.h>
@@ -35,6 +37,10 @@ static const uint8_t *const fonts[] = {
     u8x8_font_victoriamedium8_r, u8x8_font_5x8_r,
 };
 static const uint8_t FONT_COUNT = sizeof(fonts) / sizeof(fonts[0]);
+
+// A font uploaded by trustctl, for trying it out before it is flashed into the
+// device parameter block (see tools/gen_params.py). 49 chunks of 16 bytes.
+static uint8_t fontRam[784];
 
 static char line[96];
 static uint8_t lineLength;
@@ -76,7 +82,7 @@ static void handleLine(char *text) {
   }
 
   if (!strcmp_P(text, PSTR("HELLO"))) {
-    reply(F("TrustIssue-Calibration 0.1 display 128x32"));
+    reply(F("TrustIssue-Calibration 0.2 display 128x32"));
   } else if (!strcmp_P(text, PSTR("CLEAR"))) {
     display.clear();
     reply(F("OK"));
@@ -147,6 +153,35 @@ static void handleLine(char *text) {
     uint16_t tile = offset / 8;  // 16 tiles per row, a chunk is 2 tiles
     display.drawTile(tile % 16, tile / 16, 2, chunk);
     reply(F("OK"));
+  } else if (!strcmp_P(text, PSTR("FONTDATA"))) {
+    char *data = strchr(args, ' ');
+    long offset = atol(args);
+    if (!data || offset < 0 || offset + 16 > (long)sizeof(fontRam) || (offset & 15)) {
+      reply(F("ERR badarg"));
+      return;
+    }
+    data++;
+    if (strlen(data) != 32 || !parseHexBytes(data, fontRam + offset, 16)) {
+      reply(F("ERR badhex"));
+      return;
+    }
+    reply(F("OK"));
+  } else if (!strcmp_P(text, PSTR("FONTTEXT"))) {
+    int row = atoi(args);
+    char *message = strchr(args, ' ');
+    if (!message || row < 0 || row > 3 || fontRam[0] != 32 || fontRam[1] != 127 ||
+        fontRam[2] != 1 || fontRam[3] != 1) {
+      reply(F("ERR nofont"));
+      return;
+    }
+    message++;
+    uint8_t length = strlen(message);
+    for (uint8_t column = 0; column < 16; column++) {
+      char c = column < length ? message[column] : ' ';
+      uint8_t glyph = (c >= 32 && c < 128) ? c - 32 : '?' - 32;
+      display.drawTile(column, row, 1, fontRam + 4 + glyph * 8);
+    }
+    reply(F("OK"));
   } else if (!strcmp_P(text, PSTR("RAW"))) {
     uint8_t length = strlen(args);
     uint8_t bytes[24];
@@ -168,7 +203,7 @@ void setup() {
   display.setFont(u8x8_font_chroma48medium8_r);
   display.drawString(0, 0, "Trust Issues");
   display.drawString(0, 1, "calibration");
-  Serial.println(F("TrustIssue-Calibration 0.1 display 128x32"));
+  Serial.println(F("TrustIssue-Calibration 0.2 display 128x32"));
 }
 
 void loop() {

@@ -11,8 +11,8 @@ LDFLAGS = -nostartfiles -Wl,--gc-sections -Wl,--section-start=.text=$(BOOT_START
 
 all: boot.hex
 
-boot_font.h: boot.c gen_font.py victoriamedium8.bin
-	python3 -I gen_font.py boot.c victoriamedium8.bin $@
+boot_font.h: boot.c gen_font.py ../fonts/victoriamedium8.bin
+	python3 -I gen_font.py boot.c ../fonts/victoriamedium8.bin $@
 
 boot.elf: boot.c boot_font.h
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ boot.c

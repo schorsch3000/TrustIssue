@@ -82,6 +82,7 @@ def totp(unix, digits=6, period=30):
     return str((struct.unpack(">I", mac[offset:offset + 4])[0] & 0x7FFFFFFF) % 10 ** digits).zfill(digits)
 
 
+trustctl("daemon", "stop")  # start from a clean state: the first command starts a new daemon
 code, out, err, prompts = trustctl("list")
 check(code == 0 and out == "", "list on an empty device", f"{code} {out!r} {err}")
 
@@ -139,5 +140,10 @@ code, out, err, prompts = trustctl("list")
 check(out == "", "no keys after the wipe", out)
 
 trustctl("tz", "set", "+0")
+code, out, err, prompts = trustctl("daemon", "status")
+check(out.startswith("OK device=" + args.device), "the daemon is running and holds the device", out)
+trustctl("daemon", "stop")
+code, out, err, prompts = trustctl("daemon", "status")
+check("no daemon" in out, "daemon stop works", out)
 print("ALL PASSED" if not failures else f"{failures} FAILED")
 sys.exit(1 if failures else 0)

@@ -5,13 +5,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // config is the optional ~/.config/trustctl/config file: lines "key = value",
-// "#" starts a comment. Keys: device (serial port path), autoprobe (true/false).
+// "#" starts a comment. Keys: device (serial port path), autoprobe (true/false), daemon (false disables
+// the background daemon), idle_timeout (daemon lifetime without a command, default 5m).
 type config struct {
-	device    string
-	autoprobe bool
+	device      string
+	autoprobe   bool
+	noDaemon    bool          // "daemon = false"
+	idleTimeout time.Duration // "idle_timeout = 5m": the daemon exits after this long without a command
 }
 
 func configPath() string {
@@ -27,7 +31,7 @@ func configPath() string {
 }
 
 func loadConfig() config {
-	var c config
+	c := config{idleTimeout: 5 * time.Minute}
 	f, err := os.Open(configPath())
 	if err != nil {
 		return c
@@ -46,6 +50,12 @@ func loadConfig() config {
 			c.device = value
 		case "autoprobe":
 			c.autoprobe = value == "true" || value == "yes" || value == "1"
+		case "daemon":
+			c.noDaemon = value == "false" || value == "no" || value == "0"
+		case "idle_timeout":
+			if d, err := time.ParseDuration(value); err == nil {
+				c.idleTimeout = d
+			}
 		}
 	}
 	return c

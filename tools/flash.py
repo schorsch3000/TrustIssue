@@ -112,7 +112,10 @@ def open_gate_and_sync(args, rig=None):
         for n in range(5, 0, -1):
             print(f"  {n}...", flush=True)
             time.sleep(1)
-    port = serial.Serial(args.port, args.baud, timeout=0.2)  # opening resets the device
+    port = serial.Serial(args.port, args.baud, timeout=0.2)
+    port.dtr = False  # a DTR pulse resets the device (opening alone may not: DTR can stay up between runs)
+    time.sleep(0.1)
+    port.dtr = True
     pressing = None
     if rig:
         time.sleep(0.6)

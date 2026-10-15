@@ -23,6 +23,7 @@ type Key struct {
 type Client struct {
 	w     io.Writer
 	lines chan lineOrError
+	done  chan struct{}
 	mu    sync.Mutex
 
 	// OnPending is called when the device waits for the button.
@@ -43,6 +44,7 @@ func NewClient(rw io.ReadWriter) *Client {
 	c := &Client{
 		w:              rw,
 		lines:          make(chan lineOrError, 256),
+		done:           make(chan struct{}),
 		ReplyTimeout:   3 * time.Second,
 		ConfirmTimeout: 40 * time.Second,
 	}
@@ -56,6 +58,7 @@ func NewClient(rw io.ReadWriter) *Client {
 			if err != nil {
 				c.lines <- lineOrError{err: err}
 				close(c.lines)
+				close(c.done)
 				return
 			}
 		}
@@ -64,6 +67,9 @@ func NewClient(rw io.ReadWriter) *Client {
 }
 
 var errClosed = errors.New("the connection to the device was closed")
+
+// Done is closed when the connection to the device has ended.
+func (c *Client) Done() <-chan struct{} { return c.done }
 
 func (c *Client) readLine(timeout time.Duration) (string, error) {
 	timer := time.NewTimer(timeout)
@@ -169,7 +175,7 @@ func (c *Client) request(command string) (string, error) {
 	if rest, ok := strings.CutPrefix(line, "OK "); ok {
 		return rest, nil
 	}
-	if strings.HasPrefix(line, "TrustIssue ") {
+	if strings.HasPrefix(line, "TrustIssue") { // "TrustIssue 0.1.0 ..." or "TrustIssue-Calibration ..."
 		if command == "HELLO" {
 			return line, nil
 		}
@@ -277,4 +283,42 @@ func (c *Client) Token(id int, unixTime int64) (string, error) {
 func (c *Client) Wipe() error {
 	_, err := c.request("WIPE")
 	return err
+}
+
+// Raw sends one protocol line and passes every reply line to onLine as it
+// arrives (PENDING, then the final line; or the KEY lines up to END for LIST).
+// Device errors are just reply lines here; the returned error means that the
+// transport failed or the device did not answer.
+func (c *Client) Raw(command string, onLine func(string)) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.drain()
+	if err := c.send(command); err != nil {
+		return err
+	}
+	line, err := c.readLine(c.ReplyTimeout)
+	if err != nil {
+		return err
+	}
+	if command == "LIST" {
+		for line != "END" {
+			onLine(line)
+			if !strings.HasPrefix(line, "KEY ") {
+				return nil // an error line instead of a list
+			}
+			if line, err = c.readLine(c.ReplyTimeout); err != nil {
+				return err
+			}
+		}
+		onLine(line)
+		return nil
+	}
+	if line == "PENDING" {
+		onLine(line)
+		if line, err = c.readLine(c.ConfirmTimeout); err != nil {
+			return err
+		}
+	}
+	onLine(line)
+	return nil
 }

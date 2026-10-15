@@ -282,11 +282,41 @@ static void showPending() {
   render();
 }
 
+// Doubles each of the 4 bits of a nibble: bit k becomes bits 2k and 2k+1.
+static uint8_t doubleBits(uint8_t nibble) {
+  uint8_t out = 0;
+  for (uint8_t k = 0; k < 4; k++) {
+    if (nibble & (1 << k)) out |= 3 << (2 * k);
+  }
+  return out;
+}
+
+// One character at twice the size (16x16 pixels, 4 tiles) at tile column/row.
+static void drawBigChar(uint8_t column, uint8_t row, char c) {
+  uint8_t glyph = (c >= 32 && c < 128) ? c - 32 : '?' - 32;
+  uint8_t tile[2][2][8];  // [vertical][horizontal][pixel column]
+  for (uint8_t i = 0; i < 8; i++) {
+    uint8_t bits = param(PARAM_FONT + 4 + glyph * 8 + i);
+    uint8_t x = (2 * i) % 8, half = (2 * i) / 8;  // every source column becomes two
+    tile[0][half][x] = tile[0][half][x + 1] = doubleBits(bits & 0x0F);
+    tile[1][half][x] = tile[1][half][x + 1] = doubleBits(bits >> 4);
+  }
+  for (uint8_t v = 0; v < 2; v++)
+    for (uint8_t h = 0; h < 2; h++) oled.drawTile(column + h, row + v, 1, tile[v][h]);
+}
+
+// A short word in large letters, centered on tile rows 1 and 2 (at most 8 characters).
+static void showBig(const char *text) {
+  uint8_t length = strlen(text);
+  uint8_t start = (16 - 2 * length) / 2;
+  for (uint8_t i = 0; i < length; i++) drawBigChar(start + 2 * i, 1, text[i]);
+}
+
 static void showResult(const char *text) {
   clearScreen();
-  setRow(1, text);
   wakeDisplay();
-  render();
+  render();  // the grid is blank now; the word is drawn over it, outside the grid
+  showBig(text);
   resultUntil = millis() + RESULT_SHOW_MS;
 }
 
@@ -323,7 +353,7 @@ static void finishPending(Outcome outcome) {
     if (pending.type == TC_CMD_SETCFG) applyConfig(tc_store_config());  // undo the preview
     bool timedOut = outcome == OUTCOME_TIMEOUT;
     Serial.println(timedOut ? F("ERR TIMEOUT") : F("ERR DENIED"));
-    showResult(timedOut ? "Timed out" : "Denied");
+    showResult(timedOut ? "Timeout" : "Denied");
   } else {
     switch (pending.type) {
       case TC_CMD_TOKEN: {
@@ -594,13 +624,13 @@ static void autoRestartGesture() {
 static void serviceAutoWipe(ButtonEvent event, uint32_t held) {
   uint32_t now = millis();
   if (now - autoStart > AUTO_TOTAL_MS) {
-    autoFinish("Cancelled");
+    autoFinish("Cancel");
     return;
   }
   switch (autoPhase) {
     case AW_COUNTDOWN:
       if (buttonStableDown || event == BUTTON_PRESSED) {  // a press aborts
-        autoFinish("Cancelled");
+        autoFinish("Cancel");
       } else if (now - autoStart >= AUTO_COUNTDOWN_MS) {
         autoGestureScreen();
         autoRestartGesture();

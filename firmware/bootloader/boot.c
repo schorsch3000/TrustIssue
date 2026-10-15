@@ -12,7 +12,7 @@
 //   3. Gesture: tap, tap, then press again and hold for 2 s; the bottom row
 //      lights up one step per press.
 //   4. Update mode: a minimal STK500v1 programmer (as used by avrdude -c arduino
-//      and by tools/flash.py). Flash only: the EEPROM is neither readable nor
+//      and by tools/build/flash.py). Flash only: the EEPROM is neither readable nor
 //      writable, and the bootloader's own section is protected.
 // Every timeout or mistake ends in a reset, which starts the application.
 // A missing or dead display fails closed: the update mode never opens.

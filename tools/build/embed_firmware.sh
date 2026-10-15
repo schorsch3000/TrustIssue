@@ -5,7 +5,7 @@
 # firmware changes, and commit the result: trustctl and the firmware are
 # released together.
 set -e
-root=$(cd "$(dirname "$0")/.." && pwd)
+root=$(cd "$(dirname "$0")/../.." && pwd)
 target="$root/trustctl/internal/firmware"
 "$root/firmware/core/build.sh"
 "$root/firmware/calibration/build.sh"

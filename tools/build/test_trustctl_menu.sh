@@ -1,7 +1,7 @@
 #!/bin/sh
-# Tests tools/trustctl-menu with fake trustctl, chooser, xdotool, xclip, ... in a temporary PATH.
+# Tests tools/user/trustctl-menu with fake trustctl, chooser, xdotool, xclip, ... in a temporary PATH.
 cd "$(dirname "$0")" || exit 1
-script=$PWD/trustctl-menu
+script=$PWD/../user/trustctl-menu
 work=$(mktemp -d) || exit 1
 trap 'rm -rf "$work"' EXIT
 fails=0

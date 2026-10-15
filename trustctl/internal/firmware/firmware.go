@@ -2,7 +2,7 @@
 // trustctl. trustctl and the firmware are released together, so a user flashes
 // a device with nothing but the trustctl binary.
 //
-// The files are produced by tools/embed_firmware.sh from firmware/core and
+// The files are produced by tools/build/embed_firmware.sh from firmware/core and
 // firmware/calibration; a test checks that the version matches the source.
 package firmware
 

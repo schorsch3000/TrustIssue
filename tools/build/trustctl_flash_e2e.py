@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """End-to-end test of `trustctl flash` and `trustctl calibrate` on the real device.
 
-  tools/trustctl_flash_e2e.py [--bin trustctl/bin/trustctl] [--device /dev/ttyUSB0] [--rig /dev/ttyUSB1]
+  tools/build/trustctl_flash_e2e.py [--bin trustctl/bin/trustctl] [--device /dev/ttyUSB0] [--rig /dev/ttyUSB1]
 
 It flashes the calibration firmware, tries contrast, logo and font on it, then
 flashes the core firmware with those settings patched in. The Uno rig performs

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Flashes an Intel HEX file through the Trust Issues bootloader (STK500v1, flash only).
 
-  tools/flash.py firmware.hex [--port /dev/ttyUSB0] [--rig /dev/ttyUSB1] [--baud 115200]
+  tools/build/flash.py firmware.hex [--port /dev/ttyUSB0] [--rig /dev/ttyUSB1] [--baud 115200]
 
 The bootloader only opens after a physical gate: hold the button while the device
 resets, release when told to, wait for the bar to drain, then tap, tap, and press

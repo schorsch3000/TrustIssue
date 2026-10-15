@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Security tests of the button-gated bootloader, with the Uno rig as the finger.
 
-  tools/boot_test.py [nano_port] [uno_port]
+  tools/build/boot_test.py [nano_port] [uno_port]
 
 Needs the bootloader on the Nano (firmware/bootloader) with the core firmware flashed.
 """

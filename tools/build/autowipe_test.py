@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests the autonomous wipe (no host involved) with the Uno rig as the finger.
 
-  tools/autowipe_test.py [nano_port] [uno_port]
+  tools/build/autowipe_test.py [nano_port] [uno_port]
 
 The Nano must run firmware/core built with the autonomous wipe (the default of build.sh)
 and hold no keys. The test adds keys over serial, and wipes them with the button only.

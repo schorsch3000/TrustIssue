@@ -2,8 +2,8 @@
 """Extracts a U8x8 font array from U8g2's u8x8_fonts.c and writes it as raw bytes
 or as a C header (PROGMEM array).
 
-  tools/extract_u8x8_font.py <u8x8_fonts.c> <font name> bin  <out.bin>
-  tools/extract_u8x8_font.py <u8x8_fonts.c> <font name> hdr  <out.h>
+  tools/build/extract_u8x8_font.py <u8x8_fonts.c> <font name> bin  <out.bin>
+  tools/build/extract_u8x8_font.py <u8x8_fonts.c> <font name> hdr  <out.h>
 """
 import re
 import sys

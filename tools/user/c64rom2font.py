@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Convert a C64 character ROM into Trust Issues font files (772 bytes, U8x8 format).
 
-  tools/c64rom2font.py ROMFILE [--set upper|lower] [--outdir DIR]
+  tools/user/c64rom2font.py ROMFILE [--set upper|lower] [--outdir DIR]
 
 A character ROM holds 8 bytes per character (one byte per pixel row, the most
 significant bit is the left pixel), 256 characters per character set, in

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Turn a Trust Issues font file (772 bytes, U8x8 format) into a PNG sheet.
 
-  tools/font2png.py font.bin sheet.png [--scale N]
+  tools/user/font2png.py font.bin sheet.png [--scale N]
 
 The sheet has 16 glyphs per row and 6 rows (characters 32 to 127, row by row),
 8x8 pixels each: 128x48 pixels at scale 1. White is lit. --scale N enlarges

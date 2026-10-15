@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """End-to-end test of trustctl against the real device, with the Uno rig as the finger.
 
-  tools/trustctl_e2e.py [--bin trustctl/bin/trustctl] [--device /dev/ttyUSB0] [--rig /dev/ttyUSB1]
+  tools/build/trustctl_e2e.py [--bin trustctl/bin/trustctl] [--device /dev/ttyUSB0] [--rig /dev/ttyUSB1]
 
 The device must run firmware/core (with the bootloader) and hold no keys.
 """

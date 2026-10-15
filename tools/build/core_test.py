@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """End-to-end test of the core firmware: protocol over serial, button via the Uno rig.
 
-  tools/core_test.py [nano_port] [uno_port] [--slow]
+  tools/build/core_test.py [nano_port] [uno_port] [--slow]
 
 The Nano must run firmware/core and hold no keys (the test adds and removes its own).
 --slow also runs the 30 s request timeout test.

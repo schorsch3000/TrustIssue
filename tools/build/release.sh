@@ -3,13 +3,13 @@
 # and the calibration firmware built from this very checkout, so "trustctl flash"
 # works without any other file.
 #
-#   tools/release.sh           rebuild the firmware, then build all platforms
-#   tools/release.sh --quick   use the firmware images that are already embedded
+#   tools/build/release.sh           rebuild the firmware, then build all platforms
+#   tools/build/release.sh --quick   use the firmware images that are already embedded
 #
 # Commit the changed trustctl/internal/firmware/ files together with the code.
 set -e
-root=$(cd "$(dirname "$0")/.." && pwd)
-[ "$1" = --quick ] || "$root/tools/embed_firmware.sh"
+root=$(cd "$(dirname "$0")/../.." && pwd)
+[ "$1" = --quick ] || "$root/tools/build/embed_firmware.sh"
 export GOPATH="${GOPATH_RELEASE:-$HOME/go}" CGO_ENABLED=0
 firmware=$(cat "$root/trustctl/internal/firmware/VERSION")
 describe=$(git -C "$root" describe --tags --always --dirty 2>/dev/null || echo unknown)

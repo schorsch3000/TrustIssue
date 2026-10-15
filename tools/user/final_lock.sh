@@ -2,7 +2,7 @@
 # Sets the final lock bits of a finished device. This is NOT reversible except by a
 # chip erase over ISP (which also wipes the flash and the EEPROM, so the keys).
 #
-#   tools/final_lock.sh <uno-with-ArduinoISP-port> --yes
+#   tools/user/final_lock.sh <uno-with-ArduinoISP-port> --yes
 #
 # Lock byte 0xCC:
 #   LB   = 00  mode 3: no reading or programming of flash and EEPROM over ISP

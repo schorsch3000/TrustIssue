@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Extracts the fonts that trustctl carries from U8g2 into trustctl/internal/fonts.
 
-  tools/embed_fonts.py [path/to/u8x8_fonts.c]
+  tools/build/embed_fonts.py [path/to/u8x8_fonts.c]
 
 Only fonts whose license allows redistribution are listed (see FONTS and
 trustctl/internal/fonts/README.md). Fonts with 95 glyphs (characters 32 to 126)
@@ -42,7 +42,7 @@ def normalize(name, data):
 
 def main():
     source = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_SOURCE
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "trustctl", "internal", "fonts")
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "trustctl", "internal", "fonts")
     for name, u8name in FONTS.items():
         data = normalize(name, extract(source, "u8x8_font_" + u8name))
         assert len(data) == 772

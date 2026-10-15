@@ -39,7 +39,7 @@ static const uint8_t *const fonts[] = {
 static const uint8_t FONT_COUNT = sizeof(fonts) / sizeof(fonts[0]);
 
 // A font uploaded by trustctl, for trying it out before it is flashed into the
-// device parameter block (see tools/gen_params.py). 49 chunks of 16 bytes.
+// device parameter block (see tools/build/gen_params.py). 49 chunks of 16 bytes.
 static uint8_t fontRam[784];
 
 static char line[96];

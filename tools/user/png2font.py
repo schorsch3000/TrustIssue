@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Turn a PNG sheet (as written by font2png.py) into a Trust Issues font file.
 
-  tools/png2font.py sheet.png font.bin [--scale N]
+  tools/user/png2font.py sheet.png font.bin [--scale N]
 
 The sheet must be 128x48 pixels (times N): 16 glyphs per row, 6 rows,
 characters 32 to 127 row by row, 8x8 pixels per glyph. Exactly black is off,

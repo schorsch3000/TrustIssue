@@ -74,7 +74,7 @@ static void drawTile(uint8_t column, uint8_t row) {
   char c = grid[row][column];
   bool highlight = c & 0x80;  // bit 7 of a grid character: shown inverted
   c &= 0x7F;
-  uint8_t glyph = (c >= 32 && c < 128) ? c - 32 : '?' - 32;
+  uint8_t glyph = c >= 32 ? c - 32 : '?' - 32;
   for (uint8_t i = 0; i < 8; i++) {
     uint8_t x = column * 8 + i;
     tile[i] = param(PARAM_FONT + 4 + glyph * 8 + i);
@@ -337,7 +337,7 @@ static void bigTile(uint8_t column, uint8_t half, const char *text, uint8_t star
   memset(tile, 0, 8);
   if (column < start || column >= start + 2 * length) return;
   char c = text[(column - start) / 2];
-  uint8_t glyph = (c >= 32 && c < 128) ? c - 32 : '?' - 32;
+  uint8_t glyph = c >= 32 ? c - 32 : '?' - 32;
   uint8_t side = (column - start) % 2;
   for (uint8_t i = 0; i < 8; i++) {
     uint8_t bits = param(PARAM_FONT + 4 + glyph * 8 + side * 4 + i / 2);  // every source column becomes two

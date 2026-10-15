@@ -29,6 +29,7 @@ static const uint16_t ACCEPT_MAX_MS = 2000;
 static const uint16_t WIPE_MIN_MS = 5000;
 static const uint16_t WIPE_MAX_MS = 6000;
 static const uint32_t REQUEST_TIMEOUT_MS = 30000;
+static const uint32_t BOOT_LOGO_MS = 5000;    // after power-up the logo shows this long (with the logo option)
 static const uint32_t IDLE_WAIT_MS = 10000;   // the idle screen stays this long
 static const uint32_t LOGO_FULL_MS = 30000;   // then the logo at full contrast ...
 static const uint32_t LOGO_DIM_MS = 120000;   // ... then dimmed, then the display turns off
@@ -142,7 +143,7 @@ static void applyConfig(uint8_t config) {
   sendDisplayCommand(config & TC_CFG_INVERT ? 0xA7 : 0xA6);
 }
 
-enum IdlePhase : uint8_t { IDLE_SCREEN, IDLE_LOGO_FULL, IDLE_LOGO_DIM, IDLE_OFF };
+enum IdlePhase : uint8_t { IDLE_SCREEN, IDLE_BOOT_LOGO, IDLE_LOGO_FULL, IDLE_LOGO_DIM, IDLE_OFF };
 static IdlePhase idlePhase = IDLE_SCREEN;
 
 static void wakeDisplay() {
@@ -715,7 +716,13 @@ static void serviceIdle(ButtonEvent event, uint32_t held) {
   // contrast, the logo dimmed, and finally the display off
   uint32_t quiet = now - lastActivity;
   bool logo = (tc_store_config() & TC_CFG_LOGO) && logoAvailable();
-  if (idlePhase == IDLE_SCREEN && quiet > IDLE_WAIT_MS) {
+  if (idlePhase == IDLE_BOOT_LOGO) {  // the logo after power-up, then the idle screen
+    if (quiet > BOOT_LOGO_MS) {
+      idlePhase = IDLE_SCREEN;
+      showIdle();
+      lastActivity = now;
+    }
+  } else if (idlePhase == IDLE_SCREEN && quiet > IDLE_WAIT_MS) {
     if (logo) {
       idlePhase = IDLE_LOGO_FULL;
       showLogo(param(PARAM_CONTRAST_FULL));
@@ -741,6 +748,10 @@ void setup() {
   applyConfig(tc_store_config());
   showIdle();
   lastActivity = millis();
+  if ((tc_store_config() & TC_CFG_LOGO) && logoAvailable()) {  // power-up: logo first
+    idlePhase = IDLE_BOOT_LOGO;
+    showLogo(param(PARAM_CONTRAST_FULL));
+  }
   printBanner();
 }
 

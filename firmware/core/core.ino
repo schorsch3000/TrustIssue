@@ -63,19 +63,24 @@ static uint8_t fillPixels; // progress bar: this many columns from the left are 
 static bool displayOn = true;
 static uint32_t lastActivity;
 
-static uint8_t tileFill(uint8_t column) {
-  int16_t pixels = (int16_t)fillPixels - column * 8;
-  return pixels <= 0 ? 0 : pixels >= 8 ? 8 : pixels;
-}
+// Where the accept window starts on the progress bar, in pixel columns: the
+// bar is solid (inverted) before it and a checkerboard inside it.
+static uint8_t windowStart = 128;
 
 static void drawTile(uint8_t column, uint8_t row) {
   uint8_t tile[8];
   char c = grid[row][column];
   uint8_t glyph = (c >= 32 && c < 128) ? c - 32 : '?' - 32;
-  uint8_t inverted = tileFill(column);
   for (uint8_t i = 0; i < 8; i++) {
+    uint8_t x = column * 8 + i;
     tile[i] = param(PARAM_FONT + 4 + glyph * 8 + i);
-    if (i < inverted) tile[i] = ~tile[i];
+    if (x < fillPixels) {
+      if (x < windowStart) {
+        tile[i] = ~tile[i];  // before the window: the bar is solid
+      } else {
+        tile[i] ^= (x & 1) ? 0x55 : 0xAA;  // inside the window: a checkerboard
+      }
+    }
   }
   oled.drawTile(column, row, 1, tile);
 }
@@ -358,6 +363,7 @@ static void finishPending(Outcome outcome) {
         Serial.println(F("OK"));
         break;
       case TC_CMD_WIPE:
+        windowStart = 128;  // the wipe's own progress is a plain bar
         tc_store_wipe(wipeProgress, NULL);
         Serial.println(F("OK"));
         break;
@@ -375,6 +381,7 @@ static void startPending() {
   bool wipe = pending.type == TC_CMD_WIPE;
   pendingMinMs = wipe ? WIPE_MIN_MS : ACCEPT_MIN_MS;
   pendingMaxMs = wipe ? WIPE_MAX_MS : ACCEPT_MAX_MS;
+  windowStart = pendingMinMs * 128UL / pendingMaxMs;  // the bar spans 0 to the end of the window
   state = STATE_PENDING;
   Serial.println(F("PENDING"));
   showPending();

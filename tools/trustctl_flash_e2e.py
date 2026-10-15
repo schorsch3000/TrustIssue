@@ -25,6 +25,7 @@ parser.add_argument("--device", default="/dev/ttyUSB0")
 parser.add_argument("--rig", default="/dev/ttyUSB1")
 parser.add_argument("--calibration-hex", default="firmware/calibration/build/calibration.ino.hex")
 parser.add_argument("--core-hex", default="firmware/core/build/core.ino.hex")
+parser.add_argument("--flash-only", action="store_true", help="only flash the core firmware, patched with ~/.config/trustctl/device.json")
 args = parser.parse_args()
 failures = 0
 rig = flash.Rig(args.rig)
@@ -72,6 +73,11 @@ def run(*cmd, gate=False, stdin=None):
 
 
 run("daemon", "stop")
+
+if "--flash-only" in sys.argv:  # just flash the core firmware with the real profile
+    code, out, err = run("flash", args.core_hex, "--countdown", "1", gate=True)
+    print(out or err[-3:])
+    sys.exit(code)
 
 print("-- flash the calibration firmware")
 code, out, err = run("flash", args.calibration_hex, "--no-patch", "--countdown", "1", gate=True)

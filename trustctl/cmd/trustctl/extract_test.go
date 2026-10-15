@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"trustissues/trustctl/internal/fonts"
 	"trustissues/trustctl/internal/params"
 )
 
@@ -20,7 +21,7 @@ func TestExtractFontAndLogo(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, _ := os.ReadFile(fontFile)
-	if !bytes.Equal(got, params.DefaultFont) || params.ValidateFont(got) != nil {
+	if !bytes.Equal(got, defaultFont()) || params.ValidateFont(got) != nil {
 		t.Error("the built-in font was not written intact")
 	}
 	if err := extractCommand("logo", []string{"extract", filepath.Join(dir, "l.png"), "--profile", profilePath}, &out, &errOut); err == nil {
@@ -28,7 +29,7 @@ func TestExtractFontAndLogo(t *testing.T) {
 	}
 
 	// a profile font wins
-	custom := append([]byte{}, params.DefaultFont...)
+	custom := append([]byte{}, defaultFont()...)
 	custom[10] ^= 0xFF
 	customFile := filepath.Join(dir, "custom.bin")
 	os.WriteFile(customFile, custom, 0o644)
@@ -43,5 +44,21 @@ func TestExtractFontAndLogo(t *testing.T) {
 
 	if err := extractCommand("font", []string{"extract"}, &out, &errOut); err == nil {
 		t.Error("missing file name accepted")
+	}
+
+	// a built-in font by name, and the list
+	if err := extractCommand("font", []string{"extract", fontFile, "--name", "5x8"}, &out, &errOut); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = os.ReadFile(fontFile)
+	if want, _ := fonts.Get("5x8"); !bytes.Equal(got, want) {
+		t.Error("--name 5x8 did not write that font")
+	}
+	if err := extractCommand("font", []string{"extract", fontFile, "--name", "nope"}, &out, &errOut); err == nil {
+		t.Error("an unknown built-in name was accepted")
+	}
+	out.Reset()
+	if err := extractCommand("font", []string{"list"}, &out, &errOut); err != nil || !bytes.Contains(out.Bytes(), []byte("victoriabold8")) {
+		t.Errorf("font list: %v %q", err, out.String())
 	}
 }

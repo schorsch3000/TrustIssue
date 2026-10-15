@@ -48,8 +48,9 @@ commands:
   flash [core|calibration]  program the firmware that is built into trustctl through the bootloader
                             (needs the button gesture); core is the default
   flash FILE.hex            the same with a firmware file of your own (for development)
-        --no-patch --profile PATH --wait 90s --countdown 4
-  font extract FILE.bin     write the current font to a file to work on (--from FILE.hex: the one in a firmware)
+        --no-patch --profile PATH --font NAME|FILE.bin --wait 90s --countdown 4
+  font list                 the fonts built into trustctl
+  font extract FILE.bin     write the current font to a file to work on (--from FILE.hex, or --name NAME)
   logo extract FILE.png     write the current logo as a 128x32 PNG to work on
   calibrate ...             try out contrast, logo and font on the calibration firmware (see: trustctl calibrate)
 

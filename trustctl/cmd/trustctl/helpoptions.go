@@ -46,6 +46,7 @@ var commandOptions = []struct {
 	{"flash FILE.hex", []option{
 		{"--no-patch", "", "", "off", "Flash the firmware as it is, without the font, logo and contrast of the profile."},
 		{"--profile PATH", "", "", "the device profile (see below)", "The profile file to patch into the firmware."},
+		{"--font NAME|FILE.bin", "", "", "the profile's font, else the built-in default", "Patch this font in instead (a built-in name from \"trustctl font list\", or a font file)."},
 		{"--wait DURATION", "", "", "90s", "How long to wait for the bootloader to open (the button gesture)."},
 		{"--countdown N", "", "", "4", "Seconds between \"hold the button\" and the reset of the device."},
 	}},
@@ -53,6 +54,7 @@ var commandOptions = []struct {
 		{"--invert", "", "", "off", "Swap lit and dark pixels, including the margin around a smaller image."},
 	}},
 	{"font extract / logo extract", []option{
+		{"--name NAME", "", "", "", "font extract only: write this built-in font (see \"trustctl font list\")."},
 		{"--from FILE.hex", "", "", "the profile, else the built-in font", "Take the font or logo from the parameter block of a firmware file."},
 		{"--profile PATH", "", "", "the device profile (see below)", "The profile file the current font or logo is read from."},
 	}},

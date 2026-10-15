@@ -9,12 +9,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"trustissues/trustctl/internal/fonts"
 	"trustissues/trustctl/internal/logo"
 	"trustissues/trustctl/internal/params"
 )
 
 // Profile is stored as ~/.config/trustctl/device.json. Paths of the logo and
-// the font should be absolute.
+// the font should be absolute; a built-in font is written "builtin:NAME".
 type Profile struct {
 	ContrastFull *int   `json:"contrast_full,omitempty"`
 	ContrastDim  *int   `json:"contrast_dim,omitempty"`
@@ -97,7 +98,7 @@ func (p Profile) Patch() (params.Patch, error) {
 		}
 	}
 	if p.Font != "" {
-		if patch.Font, err = os.ReadFile(p.Font); err != nil {
+		if patch.Font, err = fonts.Load(p.Font); err != nil {
 			return patch, fmt.Errorf("font: %w", err)
 		}
 		if err := params.ValidateFont(patch.Font); err != nil {

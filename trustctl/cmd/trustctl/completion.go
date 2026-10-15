@@ -106,7 +106,7 @@ _trustctl() {
   local sub="" npos=0
   for ((i = cmdpos + 1; i < COMP_CWORD; i++)); do
     case "${COMP_WORDS[i]}" in
-      --profile|--from|--digits|--period|--wait|--countdown|--device) ((i++)) ;;
+      --profile|--from|--name|--font|--digits|--period|--wait|--countdown|--device) ((i++)) ;;
       -*) ;;
       *) [ -z "$sub" ] && sub="${COMP_WORDS[i]}"; ((npos++)) ;;
     esac
@@ -130,8 +130,11 @@ _trustctl() {
     flash)
       if [ "$prev" = "--profile" ]; then
         _trustctl_files "$cur" json
+      elif [ "$prev" = "--font" ]; then
+        COMPREPLY=($(compgen -W "$(trustctl font list 2>/dev/null | cut -d' ' -f1)" -- "$cur"))
+        _trustctl_files "$cur" bin
       elif [[ "$cur" == -* ]]; then
-        COMPREPLY=($(compgen -W "--no-patch --profile --wait --countdown" -- "$cur"))
+        COMPREPLY=($(compgen -W "--no-patch --profile --font --wait --countdown" -- "$cur"))
       elif [ "$npos" -eq 0 ]; then
         COMPREPLY=($(compgen -W "core calibration" -- "$cur"))
         _trustctl_files "$cur" hex
@@ -139,10 +142,12 @@ _trustctl() {
     font|logo)
       if [ "$prev" = "--profile" ] || [ "$prev" = "--from" ]; then
         _trustctl_files "$cur" "$([ "$prev" = "--from" ] && echo hex || echo json)"
+      elif [ "$prev" = "--name" ]; then
+        COMPREPLY=($(compgen -W "$(trustctl font list 2>/dev/null | cut -d' ' -f1)" -- "$cur"))
       elif [[ "$cur" == -* ]]; then
-        COMPREPLY=($(compgen -W "--from --profile" -- "$cur"))
+        COMPREPLY=($(compgen -W "--from --profile $([ "$cmd" = font ] && echo --name)" -- "$cur"))
       elif [ "$npos" -eq 0 ]; then
-        COMPREPLY=($(compgen -W "extract" -- "$cur"))
+        COMPREPLY=($(compgen -W "$([ "$cmd" = font ] && echo list) extract" -- "$cur"))
       elif [ "$npos" -eq 1 ]; then
         _trustctl_files "$cur" "$([ "$cmd" = font ] && echo bin || echo png)"
       fi ;;
@@ -157,7 +162,7 @@ _trustctl() {
         case "$sub" in
           contrast) COMPREPLY=($(compgen -W "full dim" -- "$cur")) ;;
           logo) _trustctl_files "$cur" png ;;
-          font) _trustctl_files "$cur" bin ;;
+          font) COMPREPLY=($(compgen -W "$(trustctl font list 2>/dev/null | cut -d' ' -f1)" -- "$cur")); _trustctl_files "$cur" bin ;;
           forget) COMPREPLY=($(compgen -W "logo font contrast" -- "$cur")) ;;
         esac
       fi ;;
@@ -227,15 +232,16 @@ _trustctl() {
           _arguments \
             '--no-patch[flash the file as it is]' \
             '--profile[settings to patch in]:profile:_files -g "*.json"' \
+            '--font[font to patch in]:font:_alternative "builtin:built-in font:($(trustctl font list 2>/dev/null | cut -d" " -f1))" "files:font file:_files -g \"*.bin\""' \
             '--wait[how long to wait for the bootloader]:duration:' \
             '--countdown[seconds before the device is reset]:seconds:' \
             '1:what to flash:_alternative "builtin:built-in firmware:(core calibration)" "files:hex file:_files -g \"*.hex\""'
           ;;
         font|logo)
           if (( CURRENT == 2 )); then
-            _values 'what' extract
+            _values 'what' list extract
           else
-            _arguments '--from[firmware hex file]:hex file:_files -g "*.hex"' '--profile[profile file]:profile:_files -g "*.json"' '*:output file:_files'
+            _arguments '--from[firmware hex file]:hex file:_files -g "*.hex"' '--name[built-in font]:font:($(trustctl font list 2>/dev/null | cut -d" " -f1))' '--profile[profile file]:profile:_files -g "*.json"' '*:output file:_files'
           fi
           ;;
         calibrate)
@@ -245,7 +251,7 @@ _trustctl() {
             case $words[2] in
               contrast) (( CURRENT == 3 )) && _values 'which' full dim ;;
               logo) _arguments '--invert[swap light and dark]' '--profile[profile file]:profile:_files -g "*.json"' '*:png file:_files -g "*.png"' ;;
-              font) _arguments '--profile[profile file]:profile:_files -g "*.json"' '*:font file:_files -g "*.bin"' ;;
+              font) _arguments '--profile[profile file]:profile:_files -g "*.json"' '*:font:_alternative "builtin:built-in font:($(trustctl font list 2>/dev/null | cut -d" " -f1))" "files:font file:_files -g \"*.bin\""' ;;
               forget) (( CURRENT == 3 )) && _values 'what' logo font contrast ;;
             esac
           fi
@@ -360,13 +366,16 @@ complete -c trustctl -n '__trustctl_is config 1; and test (__trustctl_args)[1] =
 complete -c trustctl -n '__trustctl_is daemon 0' -a 'status stop'
 complete -c trustctl -n '__trustctl_is flash' -l no-patch -d 'flash the file as it is'
 complete -c trustctl -n '__trustctl_is flash' -l profile -r -d 'settings to patch in'
+complete -c trustctl -n '__trustctl_is flash' -l font -r -a '(trustctl font list 2>/dev/null | string split -f1 " ")' -d 'font to patch in'
 complete -c trustctl -n '__trustctl_is flash' -l wait -x -d 'how long to wait for the bootloader'
 complete -c trustctl -n '__trustctl_is flash' -l countdown -x -d 'seconds before the device is reset'
 complete -c trustctl -n '__trustctl_is flash 0' -a 'core calibration' -d 'built-in firmware'
 complete -c trustctl -n '__trustctl_is flash 0' -F
 complete -c trustctl -n '__trustctl_is font; or __trustctl_is logo' -l from -r -d 'firmware hex file'
 complete -c trustctl -n '__trustctl_is font; or __trustctl_is logo' -l profile -r -d 'profile file'
-complete -c trustctl -n '__trustctl_is font 0; or __trustctl_is logo 0' -a extract
+complete -c trustctl -n '__trustctl_is font; or __trustctl_is logo' -l name -x -a '(trustctl font list 2>/dev/null | string split -f1 " ")' -d 'built-in font'
+complete -c trustctl -n '__trustctl_is font 0' -a 'list extract'
+complete -c trustctl -n '__trustctl_is logo 0' -a extract
 complete -c trustctl -n '__trustctl_is font 1; or __trustctl_is logo 1' -F
 complete -c trustctl -n '__trustctl_is calibrate' -l profile -r -d 'profile file'
 complete -c trustctl -n '__trustctl_is calibrate' -l invert -d 'swap light and dark (logo)'

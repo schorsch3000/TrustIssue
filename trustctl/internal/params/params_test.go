@@ -2,7 +2,6 @@ package params_test
 
 import (
 	"bytes"
-	"os"
 	"strings"
 	"testing"
 
@@ -80,18 +79,5 @@ func TestApplyErrors(t *testing.T) {
 	}
 	if err := params.Apply(img, params.Patch{Logo: make([]byte, 10)}); err == nil {
 		t.Error("a short logo was accepted")
-	}
-}
-
-func TestDefaultFontIsTheFirmwareFont(t *testing.T) {
-	data, err := os.ReadFile("../../../firmware/fonts/victoriamedium8.bin")
-	if err != nil {
-		t.Skip(err)
-	}
-	if !bytes.Equal(data, params.DefaultFont) {
-		t.Error("the embedded font differs from firmware/fonts/victoriamedium8.bin; copy it over")
-	}
-	if err := params.ValidateFont(params.DefaultFont); err != nil {
-		t.Error(err)
 	}
 }

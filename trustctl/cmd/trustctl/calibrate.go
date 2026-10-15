@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"trustissues/trustctl/internal/fonts"
 	"trustissues/trustctl/internal/logo"
 	"trustissues/trustctl/internal/params"
 	"trustissues/trustctl/internal/profile"
@@ -18,7 +19,7 @@ import (
 const calibrateUsage = `calibrate commands (the device must run the calibration firmware, firmware/calibration):
   calibrate contrast full|dim VALUE   try a contrast (0-255, or 0x..) and remember it for "flash"
   calibrate logo FILE.png [--invert]  show the logo on the display and remember it for "flash"
-  calibrate font FILE.bin             show a sample with a font (772 bytes, U8x8 format) and remember it
+  calibrate font NAME|FILE.bin        show a sample with a built-in font (see: font list) or a font file and remember it
   calibrate show                      what "flash" will patch into the firmware
   calibrate forget logo|font|contrast drop a remembered setting
 The settings are kept in ~/.config/trustctl/device.json (--profile PATH to use another file).
@@ -169,9 +170,9 @@ func calibrateCommand(opt options, args []string, stdout, stderr io.Writer) erro
 		fmt.Fprintln(stderr, "The logo is on the display and remembered for flashing.")
 	case "font":
 		if len(rest) != 1 {
-			return usageError("calibrate font FILE.bin")
+			return usageError("calibrate font NAME|FILE.bin")
 		}
-		data, err := os.ReadFile(rest[0])
+		data, err := fonts.Load(rest[0])
 		if err != nil {
 			return err
 		}
@@ -181,7 +182,7 @@ func calibrateCommand(opt options, args []string, stdout, stderr io.Writer) erro
 		if err := c.font(data); err != nil {
 			return err
 		}
-		if p.Font, err = filepath.Abs(rest[0]); err != nil {
+		if p.Font, err = fonts.Canonical(rest[0], filepath.Abs); err != nil {
 			return err
 		}
 		fmt.Fprintln(stderr, "The sample is on the display and the font is remembered for flashing.")

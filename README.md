@@ -44,13 +44,18 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
 4. **Look and feel (optional).** Flash the built-in calibration firmware the same way
    (`trustctl flash calibration`), then
    `trustctl calibrate contrast full 0x20`, `calibrate contrast dim 0`, `calibrate logo logo.png`,
-   `calibrate font firmware/fonts/victoriamedium8.bin` (the options like `--device` may stand before or after
+   `calibrate font victoriabold8` (the options like `--device` may stand before or after
    the command), and flash the core firmware again; the settings are
    patched in from `~/.config/trustctl/device.json`.
 5. `trustctl config set logo=on` for the idle logo.
 
 Put `device = /dev/ttyUSB0` into `~/.config/trustctl/config` to leave out `--device`. `trustctl help-options` lists every
 option with its `--argument`, environment variable and config file syntax, and the defaults.
+
+Seven fonts are built into `trustctl` (`trustctl font list`; sources and licenses in `trustctl/internal/fonts/README.md`).
+`trustctl calibrate font NAME` previews one on the calibration firmware and remembers it, `trustctl flash --font NAME`
+patches one in for a single flash, and `trustctl font extract FILE.bin --name NAME` writes one out as a starting point.
+A font file of your own works wherever a name does.
 
 To start from what the device uses now, `trustctl font extract font.bin` writes the current font (the profile's, else the
 built-in one) and `trustctl logo extract logo.png` writes the current logo as a 128x32 PNG (white = lit). The device itself

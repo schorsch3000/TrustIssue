@@ -11,6 +11,7 @@ import (
 	"trustissues/trustctl/internal/daemon"
 	"trustissues/trustctl/internal/firmware"
 	"trustissues/trustctl/internal/flasher"
+	"trustissues/trustctl/internal/fonts"
 	"trustissues/trustctl/internal/hexfile"
 	"trustissues/trustctl/internal/params"
 	"trustissues/trustctl/internal/profile"
@@ -46,6 +47,7 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 	noPatch := set.Bool("no-patch", false, "")
 	wait := set.Duration("wait", 90*time.Second, "")
 	countdown := set.Int("countdown", 4, "")
+	fontSpec := set.String("font", "", "")
 	// what to flash comes first: trustctl flash [core|calibration|FILE.hex] --no-patch;
 	// without it the built-in core firmware is flashed
 	what := firmware.Core
@@ -84,6 +86,9 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 	if img.Highest() >= flasher.BootStart {
 		return fmt.Errorf("%s writes into the bootloader's section (from %#x)", what, flasher.BootStart)
 	}
+	if *noPatch && *fontSpec != "" {
+		return usageError("flash: --font and --no-patch exclude each other")
+	}
 	if !*noPatch {
 		p, err := profile.Load(*profilePath)
 		if err != nil {
@@ -92,6 +97,14 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 		patch, err := p.Patch()
 		if err != nil {
 			return err
+		}
+		if *fontSpec != "" {
+			if patch.Font, err = fonts.Load(*fontSpec); err != nil {
+				return err
+			}
+			if err := params.ValidateFont(patch.Font); err != nil {
+				return fmt.Errorf("font %s: %w", *fontSpec, err)
+			}
 		}
 		if !patch.Empty() {
 			if err := params.Apply(img, patch); err != nil {

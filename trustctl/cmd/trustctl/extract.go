@@ -6,13 +6,20 @@ import (
 	"io"
 	"os"
 
+	"trustissues/trustctl/internal/fonts"
 	"trustissues/trustctl/internal/hexfile"
 	"trustissues/trustctl/internal/logo"
 	"trustissues/trustctl/internal/params"
 	"trustissues/trustctl/internal/profile"
 )
 
-const extractUsage = `  font extract FILE.bin [--from FILE.hex]   write the current font (772 bytes, U8x8 format) to work on
+func defaultFont() []byte {
+	data, _ := fonts.Get(fonts.Default)
+	return data
+}
+
+const extractUsage = `  font list                                 the built-in fonts
+  font extract FILE.bin [--from FILE.hex | --name NAME]   write the current (or a built-in) font to work on
   logo extract FILE.png [--from FILE.hex]   write the current logo (128x32 PNG, white = lit) to work on
         --profile PATH
 `
@@ -23,15 +30,28 @@ const extractUsage = `  font extract FILE.bin [--from FILE.hex]   write the curr
 // stored in a firmware hex file. Without a profile font the built-in font is
 // written; without a logo there is nothing to extract.
 func extractCommand(kind string, args []string, stdout, stderr io.Writer) error {
+	if kind == "font" && len(args) == 1 && args[0] == "list" {
+		for _, name := range fonts.Names() {
+			marker := ""
+			if name == fonts.Default {
+				marker = "  (the firmware's default)"
+			}
+			fmt.Fprintln(stdout, name+marker)
+		}
+		return nil
+	}
 	if len(args) < 2 || args[0] != "extract" {
 		return usageError("usage:\n%s", extractUsage)
 	}
 	target := args[1]
-	profilePath, from := profile.DefaultPath(), ""
+	profilePath, from, name := profile.DefaultPath(), "", ""
 	for i := 2; i < len(args); i++ {
 		switch {
 		case args[i] == "--profile" && i+1 < len(args):
 			profilePath = args[i+1]
+			i++
+		case args[i] == "--name" && i+1 < len(args) && kind == "font":
+			name = args[i+1]
 			i++
 		case args[i] == "--from" && i+1 < len(args):
 			from = args[i+1]
@@ -43,7 +63,13 @@ func extractCommand(kind string, args []string, stdout, stderr io.Writer) error 
 
 	var data []byte
 	var source string
-	if from != "" {
+	if name != "" {
+		var ok bool
+		if data, ok = fonts.Get(name); !ok {
+			return fmt.Errorf("there is no built-in font %q (try: trustctl font list)", name)
+		}
+		source = "the built-in font " + name
+	} else if from != "" {
 		f, err := os.Open(from)
 		if err != nil {
 			return err
@@ -60,7 +86,7 @@ func extractCommand(kind string, args []string, stdout, stderr io.Writer) error 
 		if kind == "font" {
 			data, source = font, "the font in "+from
 			if data == nil {
-				data, source = params.DefaultFont, "the built-in font (the firmware in "+from+" does not carry its own)"
+				data, source = defaultFont(), "the built-in font (the firmware in "+from+" does not carry its own)"
 			}
 		} else {
 			data, source = bitmap, "the logo in "+from
@@ -71,7 +97,7 @@ func extractCommand(kind string, args []string, stdout, stderr io.Writer) error 
 			return err
 		}
 		if kind == "font" {
-			data, source = params.DefaultFont, "the built-in font (no font in the profile)"
+			data, source = defaultFont(), "the built-in font (no font in the profile)"
 			if p.Font != "" {
 				patch, err := p.Patch()
 				if err != nil {

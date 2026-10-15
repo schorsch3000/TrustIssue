@@ -41,9 +41,11 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
    `trustctl --device /dev/ttyUSB0 flash firmware/core/build/core.ino.hex`. It tells you what to do on
    the device: hold the button while it resets, release when the display says so, wait for the bar,
    then tap, tap, press a third time and hold until the bar is full.
-4. **Look and feel (optional).** Flash `firmware/calibration` the same way, then
+4. **Look and feel (optional).** Build `firmware/calibration/build.sh` and flash it the same way
+   (`trustctl flash firmware/calibration/build/calibration.ino.hex --no-patch`), then
    `trustctl calibrate contrast full 0x20`, `calibrate contrast dim 0`, `calibrate logo logo.png`,
-   `calibrate font firmware/fonts/victoriamedium8.bin`, and flash the core firmware again; the settings are
+   `calibrate font firmware/fonts/victoriamedium8.bin` (the options like `--device` may stand before or after
+   the command), and flash the core firmware again; the settings are
    patched in from `~/.config/trustctl/device.json`.
 5. `trustctl config set logo=on` for the idle logo.
 

@@ -103,7 +103,7 @@ _trustctl() {
   local sub="" npos=0
   for ((i = cmdpos + 1; i < COMP_CWORD; i++)); do
     case "${COMP_WORDS[i]}" in
-      --profile|--digits|--period|--wait|--countdown) ((i++)) ;;
+      --profile|--digits|--period|--wait|--countdown|--device) ((i++)) ;;
       -*) ;;
       *) [ -z "$sub" ] && sub="${COMP_WORDS[i]}"; ((npos++)) ;;
     esac
@@ -293,7 +293,7 @@ function __trustctl_args
             continue
         end
         switch $t
-            case --profile --digits --period --wait --countdown
+            case --profile --digits --period --wait --countdown --device
                 set skip 1
             case '-*'
             case '*'

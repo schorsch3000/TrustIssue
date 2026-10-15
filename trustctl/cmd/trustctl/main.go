@@ -46,7 +46,7 @@ commands:
 
 NAME is a key name (any case), its slot number, or a unique beginning of a name.
 
-options:
+options (before or after the command):
   --device PATH             serial port of the device (or TRUSTCTL_DEVICE, or "device =" in the config file)
   --autoprobe               try all serial ports; this resets every board it opens
   --simulate                use a simulated device that confirms everything
@@ -87,6 +87,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return exitUsage
 	}
 	command, rest := global.Arg(0), global.Args()[1:]
+	rest = takeGlobalOptions(rest, &opt) // they may also stand after the command
 	switch command {
 	case "help":
 		fmt.Fprint(stdout, usage)
@@ -172,6 +173,36 @@ var errUsage = errors.New("usage")
 
 func usageError(format string, args ...any) error {
 	return fmt.Errorf("%w: %s", errUsage, fmt.Sprintf(format, args...))
+}
+
+// takeGlobalOptions moves the global options (--device PATH, --device=PATH, --autoprobe,
+// --simulate, --no-daemon, with one or two dashes) out of the arguments that follow the
+// command into opt, so that "trustctl calibrate --device /dev/ttyUSB0 logo x.png" works
+// as well as "trustctl --device /dev/ttyUSB0 calibrate logo x.png".
+func takeGlobalOptions(args []string, opt *options) []string {
+	var rest []string
+	for i := 0; i < len(args); i++ {
+		name := strings.TrimLeft(args[i], "-")
+		dashes := len(args[i]) - len(name)
+		switch {
+		case dashes < 1 || dashes > 2:
+			rest = append(rest, args[i])
+		case name == "autoprobe":
+			opt.autoprobe = true
+		case name == "simulate":
+			opt.simulate = true
+		case name == "no-daemon":
+			opt.noDaemon = true
+		case name == "device" && i+1 < len(args):
+			opt.device = args[i+1]
+			i++
+		case strings.HasPrefix(name, "device="):
+			opt.device = strings.TrimPrefix(name, "device=")
+		default:
+			rest = append(rest, args[i])
+		}
+	}
+	return rest
 }
 
 // devicePath resolves which serial port to use ("" means: probe).

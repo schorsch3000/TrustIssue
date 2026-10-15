@@ -107,3 +107,32 @@ func TestHelpOptionsLinesFitATerminal(t *testing.T) {
 		t.Errorf("wrap: %q", got)
 	}
 }
+
+func TestGlobalOptionsMayFollowTheCommand(t *testing.T) {
+	cases := []struct {
+		args []string
+		want options
+		rest []string
+	}{
+		{[]string{"--device", "/dev/x", "logo", "a.png"}, options{device: "/dev/x"}, []string{"logo", "a.png"}},
+		{[]string{"logo", "--device=/dev/y", "a.png"}, options{device: "/dev/y"}, []string{"logo", "a.png"}},
+		{[]string{"-device", "/dev/z", "--autoprobe", "--simulate", "--no-daemon", "x"}, options{device: "/dev/z", autoprobe: true, simulate: true, noDaemon: true}, []string{"x"}},
+		{[]string{"NAME", "--digits", "8"}, options{}, []string{"NAME", "--digits", "8"}},
+		{[]string{"x", "--device"}, options{}, []string{"x", "--device"}}, // no value: left alone
+		{[]string{"-x", "---device", "y"}, options{}, []string{"-x", "---device", "y"}},
+	}
+	for _, c := range cases {
+		var opt options
+		rest := takeGlobalOptions(c.args, &opt)
+		if opt != c.want || strings.Join(rest, "|") != strings.Join(c.rest, "|") {
+			t.Errorf("%q: got %+v %q, want %+v %q", c.args, opt, rest, c.want, c.rest)
+		}
+	}
+	var out, errOut bytes.Buffer
+	if code := run([]string{"hello", "--simulate"}, &out, &errOut); code != exitOK || !strings.Contains(out.String(), "TrustIssue") {
+		t.Errorf("--simulate after the command: exit %d %s", code, errOut.String())
+	}
+	if code := run([]string{"calibrate", "--device", "/dev/null", "show"}, &out, &errOut); code != exitOK {
+		t.Errorf("calibrate --device ... show: exit %d %s", code, errOut.String())
+	}
+}

@@ -3,3 +3,4 @@ __pycache__/
 firmware/bootloader/boot.elf
 firmware/bootloader/boot.hex
 firmware/bootloader/boot_font.h
+trustctl/bin/

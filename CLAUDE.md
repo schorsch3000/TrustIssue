@@ -270,6 +270,18 @@ Old Arduinos are being collected as the development setup (the original Nano has
 - Steps to bring up a board: (1) ISP-flash the calibration firmware plus the patched bootloader, (2) identify the display controller and calibrate, (3) flash the core firmware through the bootloader gate with `trustctl flash`, (4) final lock bits.
 - Everything in `trustctl` and the protocol can be developed first against a simulated device (a fake serial endpoint implementing the protocol), which needs no hardware.
 
+### trustctl status (Go, in `trustctl/`)
+
+Implemented and tested: the CLI without the daemon.
+
+- Layout: `internal/protocol` (line protocol client with `PENDING` handling, name/secret/otpauth validation, errors you can test with `errors.Is`), `internal/sim` (a simulated device that mirrors the firmware's validation and replies, the button is a callback), `internal/serialdev` (`go.bug.st/serial`, banner handshake plus a settle time because opening the port can reset the device twice, autoprobe), `cmd/trustctl` (commands, name resolution, timezone sync, config file).
+- Commands: `list`, `token NAME`, `add NAME` (secret or `otpauth://` URI from stdin, hidden on a terminal, never from the command line), `del NAME`, `tz [get|sync|set +H[:MM]]`, `config [get|set FLAG=on|off]`, `wipe`, `hello`. `NAME` is a name (any case), a slot number, or a unique prefix; a name beats a slot number. `token` first syncs the device's timezone offset to the host's (with a confirmation on the device if it differs). `--simulate` uses the simulator. Exit codes: 0 ok, 1 failure, 2 denied or timed out on the device, 64 usage, 69 no device.
+- Device selection: `--device PATH`, `TRUSTCTL_DEVICE`, or `device =` in `~/.config/trustctl/config` (also `autoprobe = true`); no implicit probing.
+- Tests: `go test ./...` in `trustctl/` (protocol against the simulator, name resolution), and `tools/trustctl_e2e.py` against the real device with the Uno rig pressing the button (17 checks: add, duplicate, bad name, list, tz sync, token matching the host's TOTP, tap denies, config, del, wipe window); all pass.
+- Build: `cd trustctl && GOPATH=$HOME/go go build -o bin/trustctl ./cmd/trustctl`. Note: this machine's shell sets `GOPATH` to a read-only system directory, so override it; the `go.mod` pulls a newer Go toolchain automatically (it needs network the first time).
+- Portability: `CGO_ENABLED=0 go build` works for linux (amd64, arm64, arm, 386), windows (amd64, arm64), darwin (amd64, arm64), freebsd and openbsd. NetBSD does not build because `go.bug.st/serial` has no NetBSD support (only checked that it compiles; only Linux amd64 has run against the device).
+- Not done yet: the daemon (first invocation forks, Unix socket in `XDG_RUNTIME_DIR`, it can simply proxy the line protocol and cache `LIST`), `flash` (port of `tools/flash.py`, with hex patching of the device parameters), `calibrate` (logo/font/contrast preview, PNG conversion), packaging and cross-compilation checks for Windows, macOS and the BSDs.
+
 ## Tooling and environment
 
 - `arduino-cli` (with `arduino:avr`), `avrdude`, and PlatformIO are installed; the user is in the `dialout` group.

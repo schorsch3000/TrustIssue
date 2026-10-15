@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"strings"
 	"time"
@@ -90,21 +92,9 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 		return usageError("flash: --font and --no-patch exclude each other")
 	}
 	if !*noPatch {
-		p, err := profile.Load(*profilePath)
+		patch, p, err := flashPatch(*profilePath, *fontSpec)
 		if err != nil {
 			return err
-		}
-		patch, err := p.Patch()
-		if err != nil {
-			return err
-		}
-		if *fontSpec != "" {
-			if patch.Font, err = fonts.Load(*fontSpec); err != nil {
-				return err
-			}
-			if err := params.ValidateFont(patch.Font); err != nil {
-				return fmt.Errorf("font %s: %w", *fontSpec, err)
-			}
 		}
 		if !patch.Empty() {
 			if err := params.Apply(img, patch); err != nil {
@@ -176,4 +166,34 @@ func describe(p profile.Profile) string {
 		text += ", " + part
 	}
 	return text
+}
+
+// flashPatch reads the profile and builds what "flash" patches into the firmware. A font given
+// with --font replaces the profile's, which then need not even exist. The returned profile only
+// serves for the message that says what was patched.
+func flashPatch(profilePath, fontSpec string) (params.Patch, profile.Profile, error) {
+	p, err := profile.Load(profilePath)
+	if err != nil {
+		return params.Patch{}, p, err
+	}
+	if fontSpec != "" {
+		p.Font = ""
+	}
+	patch, err := p.Patch()
+	if err != nil {
+		if p.Font != "" && errors.Is(err, fs.ErrNotExist) {
+			err = fmt.Errorf("%w\n(the profile %s names this font; use --font to flash another one, or \"trustctl calibrate forget font\")", err, profilePath)
+		}
+		return patch, p, err
+	}
+	if fontSpec != "" {
+		if patch.Font, err = fonts.Load(fontSpec); err != nil {
+			return patch, p, err
+		}
+		if err := params.ValidateFont(patch.Font); err != nil {
+			return patch, p, fmt.Errorf("font %s: %w", fontSpec, err)
+		}
+		p.Font = fontSpec
+	}
+	return patch, p, nil
 }

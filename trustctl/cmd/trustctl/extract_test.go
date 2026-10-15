@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"trustissues/trustctl/internal/fonts"
@@ -60,5 +61,28 @@ func TestExtractFontAndLogo(t *testing.T) {
 	out.Reset()
 	if err := extractCommand("font", []string{"list"}, &out, &errOut); err != nil || !bytes.Contains(out.Bytes(), []byte("victoriabold8")) {
 		t.Errorf("font list: %v %q", err, out.String())
+	}
+}
+
+// A font given to flash replaces the profile's, which may name a file that is gone.
+func TestFlashFontOverridesMissingProfileFont(t *testing.T) {
+	dir := t.TempDir()
+	profilePath := filepath.Join(dir, "device.json")
+	os.WriteFile(profilePath, []byte(`{"font": "`+filepath.Join(dir, "gone.bin")+`"}`), 0o644)
+
+	_, _, err := flashPatch(profilePath, "")
+	if err == nil || !strings.Contains(err.Error(), "forget font") {
+		t.Errorf("a missing profile font should say how to get out: %v", err)
+	}
+	patch, p, err := flashPatch(profilePath, "victoriabold8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ := fonts.Get("victoriabold8")
+	if !bytes.Equal(patch.Font, want) || p.Font != "victoriabold8" {
+		t.Error("the --font font was not used")
+	}
+	if _, _, err := flashPatch(profilePath, "nonsense"); err == nil {
+		t.Error("an unknown font name was accepted")
 	}
 }

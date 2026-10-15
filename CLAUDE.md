@@ -294,6 +294,8 @@ Implemented and tested: the CLI without the daemon.
 
 - `tools/dummy-keys.html`: a single-file page (no network, no dependencies; its own SHA-1/HMAC, checked against the RFC vectors in node and driven once in headless Chromium) to make up dummy TOTP keys, stored unencrypted in localStorage, so that real keys never go onto the open dev device. It shows the live codes with a countdown, applies the device's name rules, offers "Copy add command" (`echo SECRET | trustctl add NAME --digits N --period S`), the secret and an otpauth URI, and checks a code typed from the device (current, previous or next window).
 
+- `tools/trustctl-menu` (POSIX sh, Linux/BSD): a launcher front end for tokens. Parameters `chooser=PROGRAM` (a name or path; default the first of rofi, dmenu, wofi, bemenu, fuzzel; rofi gets `-dmenu`, wofi and fuzzel `--dmenu`), `target=stdout|type|copy`, for `type` `delay=MS` and `enter` (or `enter=1`), for `copy` `clipboard=clipboard|primary|secondary`; everything after `--` goes to the chooser. It takes the names from `trustctl list` (slot numbers cut off), runs `trustctl token NAME`, notifies via `notify-send` that the device waits for the button, and delivers the code through stdin only (`xdotool type --file -`, `wtype -`, `xclip`/`xsel`/`wl-copy`). Exit status 0, 1 nothing chosen, 2 error (also shown as a notification). `tools/test_trustctl_menu.sh` tests all of it with fake `trustctl`, launchers and typing/clipboard tools in a private PATH (40 checks; `shellcheck` is clean for the script); it has not been run against a real rofi, xdotool or clipboard.
+
 ## Tooling and environment
 
 - `arduino-cli` (with `arduino:avr`), `avrdude`, and PlatformIO are installed; the user is in the `dialout` group.

@@ -76,6 +76,22 @@ first).
 
 To try it with fake keys, open `tools/dummy-keys.html` in a browser.
 
+### A menu for Linux and BSD
+
+`tools/trustctl-menu` is a small POSIX shell script: it lists the keys in a dmenu-like launcher, asks the
+device for the code of the one you pick (hold the button) and hands it over.
+
+```
+trustctl-menu                                        # first launcher found: rofi, dmenu, wofi, bemenu, fuzzel
+trustctl-menu chooser=rofi target=copy               # into the clipboard
+trustctl-menu chooser=/bin/rofi target=copy clipboard=primary
+trustctl-menu target=type delay=300 enter            # type it into the focused window (xdotool, or wtype on Wayland)
+trustctl-menu chooser=rofi -- -p token -theme-str 'window {width: 20%;}'   # after -- the launcher's own arguments
+```
+It needs `trustctl` in the `PATH` (with the device known to it, see above) and shows a notification if
+`notify-send` exists, so you know the device is waiting for the button. Bind it to a key in your window manager.
+The code never appears on a command line: it goes to `xdotool`, `wtype`, `xclip`, `xsel` or `wl-copy` through stdin.
+
 ## Security model in short
 
 - A compromised host is the threat; physical access to the device is out of scope.

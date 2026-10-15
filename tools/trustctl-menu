@@ -1,0 +1,138 @@
+#!/bin/sh
+# trustctl-menu: pick a key by name in a dmenu-like launcher and get its code.
+#
+#   trustctl-menu [chooser=PROGRAM] [target=stdout|type|copy] [delay=MS] [enter] \
+#                 [clipboard=clipboard|primary|secondary] [-- CHOOSER-ARGUMENTS...]
+#
+#   chooser=PROGRAM    dmenu, or a drop-in such as rofi, wofi, bemenu, fuzzel; a name from the
+#                      PATH or a full path (chooser=/bin/rofi). Without it the first of rofi,
+#                      dmenu, wofi, bemenu, fuzzel that is installed is used.
+#   target=stdout      print the code (the default)
+#   target=type        type the code into the focused window with xdotool (wtype on Wayland)
+#     delay=MS           wait this many milliseconds before typing (time to let go of the hotkey)
+#     enter              press Return after the code (also enter=1; enter=0 turns it off)
+#   target=copy        put the code into a clipboard with xclip, xsel or wl-copy
+#     clipboard=NAME     clipboard (the default), primary or secondary
+#   --                 everything after it is given to the chooser, for example:
+#                      trustctl-menu chooser=rofi -- -p token -theme-str 'window {width: 20%;}'
+#
+# trustctl must be in the PATH (and know the device: --device in its config file, or
+# TRUSTCTL_DEVICE). The device asks for the button: a notification says so if notify-send exists.
+# Exit status: 0 done, 1 nothing chosen, 2 an error.
+set -u
+
+usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; }
+
+notify() { # notify TEXT: a desktop notification, if there is a way to show one
+  command -v notify-send >/dev/null 2>&1 && notify-send -a trustctl -t 8000 "trustctl" "$1" >/dev/null 2>&1
+  return 0
+}
+
+die() {
+  printf 'trustctl-menu: %s\n' "$1" >&2
+  notify "$1"
+  exit 2
+}
+
+chooser=""
+target=stdout
+delay=0
+enter=0
+clipboard=clipboard
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --) shift; break ;;
+    chooser=*) chooser=${1#chooser=} ;;
+    target=*) target=${1#target=} ;;
+    delay=*) delay=${1#delay=} ;;
+    enter) enter=1 ;;
+    enter=*)
+      case ${1#enter=} in
+        0|no|false|off|"") enter=0 ;;
+        *) enter=1 ;;
+      esac ;;
+    clipboard=*) clipboard=${1#clipboard=} ;;
+    -h|--help|help) usage; exit 0 ;;
+    *) printf 'trustctl-menu: unknown parameter "%s" (see --help)\n' "$1" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+case $target in stdout|type|copy) ;; *) die "target must be stdout, type or copy, not \"$target\"" ;; esac
+case $delay in ''|*[!0-9]*) die "delay must be a number of milliseconds, not \"$delay\"" ;; esac
+case $clipboard in clipboard|primary|secondary) ;; *) die "clipboard must be clipboard, primary or secondary, not \"$clipboard\"" ;; esac
+command -v trustctl >/dev/null 2>&1 || die "trustctl is not in the PATH"
+
+# ---- the chooser
+if [ -n "$chooser" ]; then
+  chooser_path=$(command -v "$chooser" 2>/dev/null) || die "chooser \"$chooser\" was not found"
+else
+  chooser_path=""
+  for candidate in rofi dmenu wofi bemenu fuzzel; do
+    if chooser_path=$(command -v "$candidate" 2>/dev/null); then break; fi
+    chooser_path=""
+  done
+  [ -n "$chooser_path" ] || die "no chooser found: install rofi, dmenu, wofi, bemenu or fuzzel, or give chooser=PROGRAM"
+fi
+case $(basename "$chooser_path") in
+  rofi) chooser_flag=-dmenu ;;                # rofi needs to be told to read the list from stdin
+  wofi|fuzzel) chooser_flag=--dmenu ;;
+  *) chooser_flag="" ;;                       # dmenu, bemenu and most others
+esac
+
+# ---- the key names (the list prints "SLOT  NAME")
+names=$(trustctl list 2>&1) || die "trustctl list failed: $names"
+names=$(printf '%s\n' "$names" | sed 's/^ *[0-9][0-9]*  //')
+[ -n "$names" ] || die "there are no keys on the device"
+
+if [ -n "$chooser_flag" ]; then
+  choice=$(printf '%s\n' "$names" | "$chooser_path" "$chooser_flag" "$@")
+else
+  choice=$(printf '%s\n' "$names" | "$chooser_path" "$@")
+fi
+[ -n "$choice" ] || exit 1
+
+# ---- the code (the device waits for the button)
+err=$(mktemp) || die "cannot make a temporary file"
+trap 'rm -f "$err"' EXIT INT TERM
+notify "Hold the button on the device for 1 to 2 seconds to get the code for $choice"
+if ! code=$(trustctl token "$choice" 2>"$err"); then
+  die "$(tail -n 1 "$err")"
+fi
+[ -n "$code" ] || die "trustctl returned no code"
+
+# ---- hand it over; the code goes through stdin, not through a command line others can read
+sleep_ms() { sleep "$(awk "BEGIN { printf \"%.3f\", $1 / 1000 }")"; }
+
+case $target in
+  stdout)
+    printf '%s\n' "$code"
+    ;;
+  type)
+    if [ "$delay" -gt 0 ]; then sleep_ms "$delay"; fi
+    if [ -n "${DISPLAY:-}" ] && command -v xdotool >/dev/null 2>&1; then
+      printf '%s' "$code" | xdotool type --clearmodifiers --file - || die "xdotool failed"
+      if [ "$enter" = 1 ]; then xdotool key --clearmodifiers Return; fi
+    elif command -v wtype >/dev/null 2>&1; then
+      printf '%s' "$code" | wtype - || die "wtype failed"
+      if [ "$enter" = 1 ]; then wtype -k Return; fi
+    else
+      die "type needs xdotool (X11) or wtype (Wayland), and none is usable"
+    fi
+    ;;
+  copy)
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null 2>&1; then
+      case $clipboard in
+        clipboard) printf '%s' "$code" | wl-copy ;;
+        primary) printf '%s' "$code" | wl-copy --primary ;;
+        secondary) die "Wayland has no secondary selection" ;;
+      esac
+    elif command -v xclip >/dev/null 2>&1; then
+      printf '%s' "$code" | xclip -selection "$clipboard" -in >/dev/null 2>&1
+    elif command -v xsel >/dev/null 2>&1; then
+      printf '%s' "$code" | xsel "--$clipboard" --input
+    else
+      die "copy needs xclip, xsel or wl-copy, and none is installed"
+    fi
+    ;;
+esac

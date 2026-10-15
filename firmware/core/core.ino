@@ -58,7 +58,7 @@ static const TcEeprom EEPROM_OPS = {eepromRead, eepromWrite};
 
 U8X8_SSD1306_128X32_UNIVISION_HW_I2C oled(U8X8_PIN_NONE);
 
-static char grid[4][16];   // what the screen shows, 4 rows of 16 characters
+static char grid[4][16];   // what the screen shows, 4 rows of 16 characters (bit 7: inverted)
 static uint8_t dirtyRows;  // rows whose tiles must be redrawn
 static uint8_t fillPixels; // progress bar: this many columns from the left are inverted
 static bool displayOn = true;
@@ -71,10 +71,13 @@ static uint8_t windowStart = 128;
 static void drawTile(uint8_t column, uint8_t row) {
   uint8_t tile[8];
   char c = grid[row][column];
+  bool highlight = c & 0x80;  // bit 7 of a grid character: shown inverted
+  c &= 0x7F;
   uint8_t glyph = (c >= 32 && c < 128) ? c - 32 : '?' - 32;
   for (uint8_t i = 0; i < 8; i++) {
     uint8_t x = column * 8 + i;
     tile[i] = param(PARAM_FONT + 4 + glyph * 8 + i);
+    if (highlight) tile[i] = ~tile[i];
     if (x < fillPixels) {
       if (x < windowStart) {
         tile[i] = ~tile[i];  // before the window: the bar is solid
@@ -247,6 +250,29 @@ static void showTokenHeader() {
   setRow(0, text);
 }
 
+// A row with two settings ("Rot:off Inv:on"); those that this request changes are inverted.
+static void settingsRow(uint8_t row, PGM_P labelA, uint8_t bitA, PGM_P labelB, uint8_t bitB) {
+  PGM_P labels[2] = {labelA, labelB};
+  uint8_t bits[2] = {bitA, bitB};
+  uint8_t changed = pending.config ^ tc_store_config();
+  uint8_t start[2], end[2], position = 0;
+  char text[20];
+  for (uint8_t i = 0; i < 2; i++) {
+    if (i) text[position++] = ' ';
+    start[i] = position;
+    strcpy_P(text + position, labels[i]);
+    position += strlen(text + position);
+    strcpy_P(text + position, pending.config & bits[i] ? PSTR("on") : PSTR("off"));
+    position += strlen(text + position);
+    end[i] = position;
+  }
+  setRow(row, text);
+  for (uint8_t i = 0; i < 2; i++) {
+    if (!(changed & bits[i])) continue;
+    for (uint8_t column = start[i]; column < end[i] && column < 16; column++) grid[row][column] |= 0x80;
+  }
+}
+
 static void showPending() {
   clearScreen();
   char text[20];
@@ -276,14 +302,8 @@ static void showPending() {
       break;
     case TC_CMD_SETCFG:
       setRowP(0, PSTR("SETTINGS"));
-      snprintf_P(text, sizeof(text), PSTR("Rot:%s Inv:%s"),
-                 pending.config & TC_CFG_ROTATE ? "on" : "off",
-                 pending.config & TC_CFG_INVERT ? "on" : "off");
-      setRow(1, text);
-      snprintf_P(text, sizeof(text), PSTR("Logo:%s Wipe:%s"),
-                 pending.config & TC_CFG_LOGO ? "on" : "off",
-                 pending.config & TC_CFG_AUTOWIPE ? "on" : "off");
-      setRow(2, text);
+      settingsRow(1, PSTR("Rot:"), TC_CFG_ROTATE, PSTR("Inv:"), TC_CFG_INVERT);
+      settingsRow(2, PSTR("Logo:"), TC_CFG_LOGO, PSTR("Wp:"), TC_CFG_AUTOWIPE);
       setRowP(3, PSTR("Hold 1-2 s"));
       break;
     case TC_CMD_WIPE:

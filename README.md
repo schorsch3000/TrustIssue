@@ -90,7 +90,8 @@ trustctl-menu target=type delay=300 enter            # type it into the focused 
 trustctl-menu chooser=rofi -- -p token -theme-str 'window {width: 20%;}'   # after -- the launcher's own arguments
 ```
 It needs `trustctl` in the `PATH` (with the device known to it, see above) and shows a notification if
-`notify-send` exists, so you know the device is waiting for the button. Bind it to a key in your window manager.
+`notify-send` exists, so you know the device is waiting for the button; the notice is closed again as soon as you have
+confirmed, refused or the device timed out. Bind it to a key in your window manager.
 The code never appears on a command line: it goes to `xdotool`, `wtype`, `xclip`, `xsel` or `wl-copy` through stdin.
 
 ## Security model in short

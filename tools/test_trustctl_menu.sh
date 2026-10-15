@@ -40,7 +40,14 @@ fi
 FAKE
 chmod +x "$fakes/xdotool"
 fake xclip ':' stdin; fake xsel ':' stdin; fake wl-copy ':' stdin; fake wtype ':' stdin
-fake notify-send ':'
+cat > "$fakes/notify-send" <<FAKE
+#!/bin/sh
+echo "\$*" >> "$work/notify-send.log"
+for a in "\$@"; do [ "\$a" = -p ] && [ -z "\${NO_ID-}" ] && echo 42; done
+exit 0
+FAKE
+chmod +x "$fakes/notify-send"
+fake gdbus ':'
 cat > "$fakes/trustctl" <<FAKE
 #!/bin/sh
 case "\$1" in
@@ -53,7 +60,7 @@ FAKE
 chmod +x "$fakes/trustctl"
 
 run() { # run [VAR=value...] -- arguments: runs the script with the fakes; sets $out and $status
-  rm -f "$work"/*.args "$work"/*.in "$work"/*.name "$work"/*.time "$work"/*.keys
+  rm -f "$work"/*.args "$work"/*.in "$work"/*.name "$work"/*.time "$work"/*.keys "$work"/*.log
   envs=""
   while [ "$1" != -- ]; do envs="$envs $1"; shift; done
   shift
@@ -119,7 +126,19 @@ run FAIL=1 -- chooser=dmenu
 check "a refusal on the device: exit status 2" test $status = 2
 check "a refusal prints nothing on stdout" test -z "$out"
 check "the reason reaches the user" grep -q "nobody confirmed" "$work/stderr"
-check "and a notification" test -e "$work/notify-send.args"
+check "and a notification" grep -q "nobody confirmed" "$work/notify-send.log"
+
+run -- chooser=dmenu
+check "the waiting notice is posted with an id and a timeout" grep -q -e '-t 30000 -p trustctl Hold the button' "$work/notify-send.log"
+check "and closed through D-Bus when the code is there" grep -q 'CloseNotification 42' "$work/gdbus.args"
+run FAIL=1 -- chooser=dmenu
+check "the waiting notice is closed also when the device refused" grep -q 'CloseNotification 42' "$work/gdbus.args"
+rm "$fakes/gdbus"
+run -- chooser=dmenu
+check "without gdbus and busctl it is replaced by a notice that vanishes" grep -q -e '-r 42 -t 1' "$work/notify-send.log"
+run NO_ID=1 -- chooser=dmenu
+check "an old notify-send without -p: no close attempt, the code still comes" test "$out" = 123456 -a "$(grep -c -e '-r ' "$work/notify-send.log")" = 0
+fake gdbus ':'
 
 run NOKEYS=1 -- chooser=dmenu
 check "no keys: exit status 2" test $status = 2

@@ -17,7 +17,8 @@
 #                      trustctl-menu chooser=rofi -- -p token -theme-str 'window {width: 20%;}'
 #
 # trustctl must be in the PATH (and know the device: --device in its config file, or
-# TRUSTCTL_DEVICE). The device asks for the button: a notification says so if notify-send exists.
+# TRUSTCTL_DEVICE). The device asks for the button: a notification says so if notify-send exists
+# and is closed again as soon as the device has been dealt with (accepted, refused or timed out).
 # Exit status: 0 done, 1 nothing chosen, 2 an error.
 set -u
 
@@ -25,6 +26,30 @@ usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; }
 
 notify() { # notify TEXT: a desktop notification, if there is a way to show one
   command -v notify-send >/dev/null 2>&1 && notify-send -a trustctl -t 8000 "trustctl" "$1" >/dev/null 2>&1
+  return 0
+}
+
+# The "hold the button" notice stays until the device has been dealt with: it is closed as soon as
+# trustctl returns, and expires on its own after 30 s (the device gives up then) if closing is impossible.
+notice_id=""
+notify_wait() {
+  command -v notify-send >/dev/null 2>&1 || return 0
+  notice_id=$(notify-send -a trustctl -t 30000 -p "trustctl" "$1" 2>/dev/null) || notice_id=""
+  case $notice_id in ''|*[!0-9]*) notice_id="" ;; esac  # an old notify-send has no -p: no id
+  return 0
+}
+notify_close() {
+  [ -n "$notice_id" ] || return 0
+  if command -v gdbus >/dev/null 2>&1; then
+    gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications \
+      --method org.freedesktop.Notifications.CloseNotification "$notice_id" >/dev/null 2>&1
+  elif command -v busctl >/dev/null 2>&1; then
+    busctl --user call org.freedesktop.Notifications /org/freedesktop/Notifications \
+      org.freedesktop.Notifications CloseNotification u "$notice_id" >/dev/null 2>&1
+  else # replace it by a notice that vanishes at once
+    notify-send -a trustctl -r "$notice_id" -t 1 "trustctl" " " >/dev/null 2>&1
+  fi
+  notice_id=""
   return 0
 }
 
@@ -94,9 +119,13 @@ fi
 
 # ---- the code (the device waits for the button)
 err=$(mktemp) || die "cannot make a temporary file"
-trap 'rm -f "$err"' EXIT INT TERM
-notify "Hold the button on the device for 1 to 2 seconds to get the code for $choice"
-if ! code=$(trustctl token "$choice" 2>"$err"); then
+trap 'notify_close; rm -f "$err"' EXIT
+trap 'exit 1' INT TERM
+notify_wait "Hold the button on the device for 1 to 2 seconds to get the code for $choice"
+if code=$(trustctl token "$choice" 2>"$err"); then
+  notify_close  # the user has dealt with the device
+else
+  notify_close
   die "$(tail -n 1 "$err")"
 fi
 [ -n "$code" ] || die "trustctl returned no code"

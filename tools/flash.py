@@ -7,7 +7,7 @@ The bootloader only opens after a physical gate: hold the button while the devic
 resets, release when told to, wait for the bar to drain, then tap, tap, and press
 again and hold for 2 seconds. Without --rig you do that yourself: hold the button BEFORE the
 tool resets the device (it counts down first). With --rig the Uno test rig presses
-the button for you (tools/rig.py wiring).
+the button for you (the rig wiring in CLAUDE.md).
 
 This is the prototype of `trustctl flash`.
 """

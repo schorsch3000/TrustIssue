@@ -18,7 +18,7 @@ the device either: the bootloader only opens after a gesture on the button.
 | `firmware/trustcore` | portable C++ core (SHA-1, HMAC, TOTP, Base32, EEPROM storage, protocol parser, time) with host tests in `firmware/test` |
 | `firmware/bootloader` | the button-gated bootloader (2 KB, from scratch) |
 | `firmware/calibration` | tiny firmware to try out contrast, logo and font on the display |
-| `firmware/rig`, `firmware/button_test` | the Uno test rig that presses the button and resets the Nano |
+| `firmware/rig` | the Uno test rig that presses the button and resets the Nano |
 | `trustctl` | the host tool in Go: `list`, `token`, `add`, `del`, `tz`, `config`, `wipe`, `flash`, `calibrate`, `font extract`, `logo extract`, `daemon` |
 | `tools` | end-to-end tests, the Python prototypes, `dummy-keys.html` (fake keys to try the device with) |
 
@@ -43,7 +43,7 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
    then tap, tap, press a third time and hold until the bar is full.
 4. **Look and feel (optional).** Flash the built-in calibration firmware the same way
    (`trustctl flash calibration`), then
-   `trustctl calibrate contrast full 0x20`, `calibrate contrast dim 0`, `calibrate logo logo.png`,
+   `trustctl calibrate contrast full 0x20`, `calibrate contrast dim 0`, `calibrate logo Demo-Logos/trust_issue_01.png`,
    `calibrate font victoriabold8` (the options like `--device` may stand before or after
    the command), and flash the core firmware again; the settings are
    patched in from `~/.config/trustctl/device.json`.

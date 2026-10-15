@@ -57,6 +57,11 @@ Seven fonts are built into `trustctl` (`trustctl font list`; sources and license
 patches one in for a single flash, and `trustctl font extract FILE.bin --name NAME` writes one out as a starting point.
 A font file of your own works wherever a name does.
 
+`tools/c64rom2font.py ROM [--set upper|lower] [--outdir DIR]` makes fonts from a C64 character ROM: a 4096 byte ROM gives
+`NAME_upper.EXT` (capitals and graphics) and `NAME_lower.EXT` (lower case), a 2048 byte one gives `NAME_font.EXT`. Only the
+ASCII range is taken (screen codes mapped to ASCII, a few characters like `\\` or `_` are approximated or blank). Then
+`trustctl calibrate font NAME_lower.bin`. Mind the license of the ROM you convert; the original Commodore ROM is not ours to ship.
+
 To start from what the device uses now, `trustctl font extract font.bin` writes the current font (the profile's, else the
 built-in one) and `trustctl logo extract logo.png` writes the current logo as a 128x32 PNG (white = lit). The device itself
 cannot be read back, so "current" means what `flash` would patch in; `--from firmware.hex` takes it from the parameter block

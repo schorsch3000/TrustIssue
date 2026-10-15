@@ -430,19 +430,27 @@ func add(c *protocol.Client, args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-// readSecret reads the secret from stdin without echo on a terminal. It is
-// never taken from the command line, where other users could see it.
+// readSecret reads the secret from stdin. On a terminal it is a masked input
+// field (a star for every character, with the usual line editing keys); the
+// secret is never taken from the command line, where other users could see it.
 func readSecret(stderr io.Writer) (string, error) {
+	in := int(os.Stdin.Fd())
 	var line string
-	if term.IsTerminal(int(os.Stdin.Fd())) {
+	switch {
+	case term.IsTerminal(in) && term.IsTerminal(int(os.Stderr.Fd())):
+		var err error
+		if line, err = readMasked(in, "Secret (Base32) or otpauth:// URI: "); err != nil {
+			return "", err
+		}
+	case term.IsTerminal(in): // no terminal to draw the stars on: type blind
 		fmt.Fprint(stderr, "Secret (Base32) or otpauth:// URI, input is hidden: ")
-		b, err := term.ReadPassword(int(os.Stdin.Fd()))
+		b, err := term.ReadPassword(in)
 		fmt.Fprintln(stderr)
 		if err != nil {
 			return "", err
 		}
 		line = string(b)
-	} else {
+	default:
 		l, err := bufio.NewReader(os.Stdin).ReadString('\n')
 		if err != nil && l == "" {
 			return "", fmt.Errorf("no secret on stdin")
@@ -454,6 +462,41 @@ func readSecret(stderr io.Writer) (string, error) {
 		return "", fmt.Errorf("the secret is empty")
 	}
 	return line, nil
+}
+
+// readMasked runs the masked line editor on the terminal at fd (drawing on stderr).
+func readMasked(fd int, prompt string) (string, error) {
+	state, err := term.MakeRaw(fd)
+	if err != nil {
+		return "", err
+	}
+	defer term.Restore(fd, state)
+	width, _, err := term.GetSize(int(os.Stderr.Fd()))
+	if err != nil || width < 20 {
+		width = 80
+	}
+	m := &maskedLine{prompt: prompt, width: width, out: os.Stderr}
+	m.render()
+	buf := make([]byte, 512)
+	for {
+		n, err := os.Stdin.Read(buf)
+		if n > 0 {
+			done, aborted := m.handle(buf[:n])
+			m.render()
+			if aborted {
+				fmt.Fprint(os.Stderr, "\r\n")
+				return "", fmt.Errorf("cancelled")
+			}
+			if done {
+				fmt.Fprint(os.Stderr, "\r\n")
+				return m.text(), nil
+			}
+		}
+		if err != nil {
+			fmt.Fprint(os.Stderr, "\r\n")
+			return "", err
+		}
+	}
 }
 
 // ---------------------------------------------------------------- timezone

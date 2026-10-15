@@ -34,6 +34,7 @@ static const uint32_t IDLE_WAIT_MS = 10000;   // the idle screen stays this long
 static const uint32_t LOGO_FULL_MS = 30000;   // then the logo at full contrast ...
 static const uint32_t LOGO_DIM_MS = 120000;   // ... then dimmed, then the display turns off
 static const uint16_t RESULT_SHOW_MS = 1200;
+static const uint16_t TOKEN_SHOW_MS = 5000;  // "Done" and the code, so it can be read off the device
 
 // ---------------------------------------------------------------- device parameters
 
@@ -328,37 +329,47 @@ static uint8_t doubleBits(uint8_t nibble) {
   return out;
 }
 
-// One tile of a short word in large letters (the 8x8 font doubled to 16x16), centered on tile
-// rows 1 and 2; every other tile is blank. It is computed tile by tile so that the whole screen
-// can be replaced in one pass: from the progress bar straight to the word, with no blank screen
-// or flicker in between.
-static void resultTile(uint8_t column, uint8_t row, const char *text, uint8_t start, uint8_t length, uint8_t *tile) {
+// One tile of a short word in large letters (the 8x8 font doubled to 16x16): half 0 is the upper
+// and half 1 the lower tile row of the word. Computed tile by tile so that the whole screen can be
+// replaced in one pass: from the progress bar straight to the word, with no blank screen or
+// flicker in between.
+static void bigTile(uint8_t column, uint8_t half, const char *text, uint8_t start, uint8_t length, uint8_t *tile) {
   memset(tile, 0, 8);
-  if (row < 1 || row > 2 || column < start || column >= start + 2 * length) return;
+  if (column < start || column >= start + 2 * length) return;
   char c = text[(column - start) / 2];
   uint8_t glyph = (c >= 32 && c < 128) ? c - 32 : '?' - 32;
-  uint8_t half = (column - start) % 2;
+  uint8_t side = (column - start) % 2;
   for (uint8_t i = 0; i < 8; i++) {
-    uint8_t bits = param(PARAM_FONT + 4 + glyph * 8 + half * 4 + i / 2);  // every source column becomes two
-    tile[i] = doubleBits(row == 1 ? bits & 0x0F : bits >> 4);
+    uint8_t bits = param(PARAM_FONT + 4 + glyph * 8 + side * 4 + i / 2);  // every source column becomes two
+    tile[i] = doubleBits(half == 0 ? bits & 0x0F : bits >> 4);
   }
 }
 
-// A word in large letters (at most 8 characters) replaces whatever is on the display.
-static void showResult(const char *text) {
+// Large letters (at most 8 characters per line) replace whatever is on the display, for showMs.
+// One word is centered on tile rows 1 and 2; with a second line the words fill rows 0-1 and 2-3.
+static void showResult(const char *text, const char *second = NULL, uint16_t showMs = RESULT_SHOW_MS) {
   clearScreen();  // the text grid is blank now, nothing is drawn yet
   wakeDisplay();  // only draws if the display was off or showed the logo
   uint8_t length = strlen(text);
   uint8_t start = (16 - 2 * length) / 2;
+  uint8_t secondLength = second ? strlen(second) : 0;
+  uint8_t secondStart = (16 - 2 * secondLength) / 2;
   uint8_t tile[8];
   for (uint8_t row = 0; row < 4; row++) {
     for (uint8_t column = 0; column < 16; column++) {
-      resultTile(column, row, text, start, length, tile);
+      if (second) {
+        if (row < 2) bigTile(column, row, text, start, length, tile);
+        else bigTile(column, row - 2, second, secondStart, secondLength, tile);
+      } else if (row == 1 || row == 2) {
+        bigTile(column, row - 1, text, start, length, tile);
+      } else {
+        memset(tile, 0, 8);
+      }
       oled.drawTile(column, row, 1, tile);
     }
   }
   dirtyRows = 0;
-  resultUntil = millis() + RESULT_SHOW_MS;
+  resultUntil = millis() + showMs;
 }
 
 static const __FlashStringHelper *statusText(TcStatus status) {
@@ -396,6 +407,7 @@ static void finishPending(Outcome outcome) {
     Serial.println(timedOut ? F("ERR TIMEOUT") : F("ERR DENIED"));  // too long counts as denied
     showResult(timedOut ? "Timeout" : outcome == OUTCOME_TOO_LONG ? "Too long" : "Denied");
   } else {
+    char shownCode[10] = "";
     switch (pending.type) {
       case TC_CMD_TOKEN: {
         TcKey key;
@@ -409,6 +421,7 @@ static void finishPending(Outcome outcome) {
         memset(key.secret, 0, sizeof(key.secret));
         Serial.print(F("OK "));
         Serial.println(code);
+        strcpy(shownCode, code);
         break;
       }
       case TC_CMD_ADD: {
@@ -443,7 +456,9 @@ static void finishPending(Outcome outcome) {
       default:
         break;
     }
-    showResult("Done");
+    if (shownCode[0]) showResult("Done", shownCode, TOKEN_SHOW_MS);
+    else showResult("Done");
+    memset(shownCode, 0, sizeof(shownCode));
   }
   memset(&pending, 0, sizeof(pending));  // no secret stays in RAM
   state = STATE_IDLE;

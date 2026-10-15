@@ -44,13 +44,14 @@ type key struct {
 type Device struct {
 	decide Decider
 
-	mu      sync.Mutex
-	keys    [20]*key
-	tz      int
-	config  uint8
-	pending bool
-	out     io.Writer
-	counts  map[string]int
+	mu       sync.Mutex
+	keys     [20]*key
+	tz       int
+	config   uint8
+	pending  bool
+	out      io.Writer
+	counts   map[string]int
+	unlocked bool
 }
 
 // New returns the host side of a connection to a fresh simulated device.
@@ -59,6 +60,20 @@ func New(decide Decider) (io.ReadWriteCloser, *Device) {
 	d := &Device{decide: decide, out: dev, counts: map[string]int{}}
 	go d.serve(dev)
 	return host, d
+}
+
+// SetUnlocked makes the device say, like a development unit, that its lock bits are not set.
+func (d *Device) SetUnlocked(unlocked bool) {
+	d.mu.Lock()
+	d.unlocked = unlocked
+	d.mu.Unlock()
+}
+
+func (d *Device) banner() string {
+	if d.unlocked {
+		return "TrustIssue 0.1.0 proto 1 unlocked"
+	}
+	return "TrustIssue 0.1.0 proto 1"
 }
 
 // Keys returns the names of the stored keys by slot (empty string: free).
@@ -86,7 +101,9 @@ func (d *Device) say(format string, args ...any) {
 }
 
 func (d *Device) serve(conn net.Conn) {
-	d.say("TrustIssue 0.1.0 proto 1")
+	d.mu.Lock()
+	d.say("%s", d.banner())
+	d.mu.Unlock()
 	r := bufio.NewReader(conn)
 	for {
 		line, err := r.ReadString('\n')
@@ -148,7 +165,7 @@ func (d *Device) handle(line string) {
 	d.counts[word]++
 	switch word {
 	case "HELLO":
-		d.say("TrustIssue 0.1.0 proto 1")
+		d.say("%s", d.banner())
 	case "LIST":
 		for i, k := range d.keys {
 			if k != nil {

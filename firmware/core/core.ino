@@ -5,6 +5,7 @@
 // parameters (contrast, font, logo); those use compile-time constants for now.
 
 #include <Arduino.h>
+#include <avr/boot.h>
 #include <EEPROM.h>
 #include <U8x8lib.h>
 #include <Wire.h>
@@ -33,6 +34,18 @@ static const uint32_t BOOT_LOGO_MS = 5000;    // after power-up the logo shows t
 static const uint32_t IDLE_WAIT_MS = 10000;   // the idle screen stays this long
 static const uint32_t LOGO_FULL_MS = 30000;   // then the logo at full contrast ...
 static const uint32_t LOGO_DIM_MS = 120000;   // ... then dimmed, then the display turns off
+// A finished device has the lock bits of tools/user/final_lock.sh (0xCC) and the fuses the
+// design wants: BOOTRST set, 2 KB boot section, EESAVE unprogrammed (high fuse bits 3..0 = 1010).
+// Anything else is a development unit, and the idle screen and HELLO say so.
+static const uint8_t FINAL_LOCK_BITS = 0xCC;
+static bool deviceUnlocked;
+
+static void checkLock() {
+  uint8_t lock = boot_lock_fuse_bits_get(GET_LOCK_BITS);
+  uint8_t high = boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS);
+  deviceUnlocked = lock != FINAL_LOCK_BITS || (high & 0x0F) != 0x0A;
+}
+
 static const uint16_t RESULT_SHOW_MS = 1200;
 static const uint16_t TOKEN_SHOW_MS = 5000;  // "Done" and the code, so it can be read off the device
 
@@ -183,6 +196,10 @@ static void showIdle() {
   char count[17];
   snprintf_P(count, sizeof(count), PSTR("%u keys"), tc_store_count());
   setRow(2, count);
+  if (deviceUnlocked) {  // inverted, so it cannot pass for a normal idle screen
+    setRowP(3, PSTR(" NOT LOCKED     "));
+    for (uint8_t column = 0; column < 16; column++) grid[3][column] |= 0x80;
+  }
   render();
 }
 
@@ -484,6 +501,7 @@ static void printBanner() {
 #ifdef AUTONOMOUS_WIPE
   Serial.print(F(" caps=autowipe"));
 #endif
+  if (deviceUnlocked) Serial.print(F(" unlocked"));
   Serial.println();
 }
 
@@ -851,6 +869,7 @@ void setup() {
   Serial.begin(9600);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   buttonStableDown = buttonLastRaw = !digitalRead(BUTTON_PIN);
+  checkLock();
   tc_store_begin(&EEPROM_OPS, DEFAULT_CONFIG);
   oled.begin();
   oled.setBusClock(400000);

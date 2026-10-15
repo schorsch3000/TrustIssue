@@ -373,6 +373,7 @@ func dispatch(c *protocol.Client, command string, args []string, stdout, stderr 
 		line, err := c.Hello()
 		if err == nil {
 			fmt.Fprintln(stdout, line)
+			warnIfUnlocked(line, stderr)
 		}
 		return err
 	case "list":
@@ -490,7 +491,24 @@ func planAdd(args []string, input string) (addPlan, error) {
 	return plan, nil
 }
 
+// unlockedWarning is printed when the device says it is a development unit.
+const unlockedWarning = "WARNING: this device is not locked (its lock bits or fuses are not those of a finished device).\n" +
+	"Anyone with physical access can read the keys out of it. Fine for a dev device, not for real keys.\n" +
+	"(tools/user/final_lock.sh locks a finished device; this cannot be undone except by erasing it)"
+
+func warnIfUnlocked(helloLine string, stderr io.Writer) {
+	for _, word := range strings.Fields(helloLine) {
+		if word == "unlocked" {
+			fmt.Fprintln(stderr, unlockedWarning)
+			return
+		}
+	}
+}
+
 func add(c *protocol.Client, args []string, stdout, stderr io.Writer) error {
+	if line, err := c.Hello(); err == nil { // before real keys go in, say if the device is a dev unit
+		warnIfUnlocked(line, stderr)
+	}
 	input, err := readSecret(stderr)
 	if err != nil {
 		return err

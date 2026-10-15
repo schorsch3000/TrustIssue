@@ -123,7 +123,7 @@ The code never appears on a command line: it goes to `xdotool`, `wtype`, `xclip`
   token need the button, with the name or value on the display.
 - The bootloader only opens after a physical gesture and refuses to touch the EEPROM or itself.
   A held button at reset (the bait and switch) never opens it.
-- When a device is finished, set the read-out lock bits with `tools/user/final_lock.sh`.
+- When a device is finished, set the read-out lock bits with `tools/user/final_lock.sh`. Until then the idle screen shows an inverted `NOT LOCKED` and `trustctl hello` and `add` warn.
 
 ## Tests
 

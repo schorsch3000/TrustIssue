@@ -64,6 +64,19 @@ func TestExtractFontAndLogo(t *testing.T) {
 	}
 }
 
+// A device that says it is unlocked is called out by hello and add.
+func TestUnlockedWarning(t *testing.T) {
+	var out bytes.Buffer
+	warnIfUnlocked("TrustIssue 0.1.0 proto 1 caps=autowipe", &out)
+	if out.Len() != 0 {
+		t.Errorf("a locked device was warned about: %q", out.String())
+	}
+	warnIfUnlocked("TrustIssue 0.1.0 proto 1 caps=autowipe unlocked", &out)
+	if !strings.Contains(out.String(), "not locked") {
+		t.Errorf("no warning: %q", out.String())
+	}
+}
+
 // A font given to flash replaces the profile's, which may name a file that is gone.
 func TestFlashFontOverridesMissingProfileFont(t *testing.T) {
 	dir := t.TempDir()

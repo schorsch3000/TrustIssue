@@ -57,6 +57,10 @@ built-in one) and `trustctl logo extract logo.png` writes the current logo as a 
 cannot be read back, so "current" means what `flash` would patch in; `--from firmware.hex` takes it from the parameter block
 of a firmware file instead.
 
+To edit a font as a picture, `tools/font2png.py font.bin sheet.png [--scale 8]` writes a sheet of 16 x 6 glyphs
+(characters 32 to 127, 8x8 pixels each, white = lit) and `tools/png2font.py sheet.png font.bin [--scale 8]` turns the
+edited sheet back into a font file (both need Pillow; the scale must match). Then `trustctl calibrate font font.bin`.
+
 Tab completion (commands, options, key names asked from the device, file names for `flash` and `calibrate`):
 
 ```

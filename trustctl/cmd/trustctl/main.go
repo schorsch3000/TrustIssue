@@ -26,7 +26,9 @@ const usage = `usage: trustctl [options] <command> [arguments]
 commands:
   list                      show the keys on the device
   token NAME                print the current code (confirm on the device)
-  add NAME                  store a key; the secret or an otpauth:// URI is read from stdin
+  add [NAME]                store a key; the secret or an otpauth:// URI is read from stdin.
+                            A URI supplies the name if none is given (issuer and account, e-mail
+                            characters the device cannot show become "-")
         --digits N --period S   only if the secret is given as plain Base32 (default 6, 30)
   del NAME                  delete a key (confirm on the device)
   tz [get|sync|set +H[:MM]] show or change the device's timezone offset
@@ -349,42 +351,78 @@ func find(c *protocol.Client, arg string) (protocol.Key, error) {
 
 // ---------------------------------------------------------------- add
 
-func add(c *protocol.Client, args []string, stdout, stderr io.Writer) error {
+// addPlan is what `trustctl add` is going to send to the device.
+type addPlan struct {
+	name, secret    string
+	digits, period  int
+	derivedFromURI  bool // the name came from the otpauth label
+	nameWasAdjusted bool // and some characters had to be replaced
+}
+
+// planAdd works out the key to add from the arguments (an optional NAME and
+// --digits/--period) and the text read from stdin: a Base32 secret or an
+// otpauth:// URI. Without a NAME, a URI supplies it.
+func planAdd(args []string, input string) (addPlan, error) {
+	var plan addPlan
 	set := flag.NewFlagSet("add", flag.ContinueOnError)
 	set.SetOutput(io.Discard)
 	digits := set.Int("digits", 6, "")
 	period := set.Int("period", 30, "")
-	// the name comes first: trustctl add "Work VPN" --digits 8
-	if len(args) == 0 {
-		return usageError("add needs a NAME")
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		plan.name, args = args[0], args[1:]
 	}
-	name := args[0]
-	if err := set.Parse(args[1:]); err != nil || set.NArg() != 0 {
-		return usageError("add: bad options")
+	if err := set.Parse(args); err != nil || set.NArg() != 0 {
+		return plan, usageError("add: bad options")
 	}
-	if err := protocol.ValidateName(name); err != nil {
-		return err
+	plan.secret, plan.digits, plan.period = input, *digits, *period
+	var uri *protocol.OTPAuth
+	if strings.HasPrefix(strings.ToLower(input), "otpauth:") {
+		var err error
+		if uri, err = protocol.ParseOTPAuth(input); err != nil {
+			return plan, err
+		}
+		plan.secret, plan.digits, plan.period = uri.Secret, uri.Digits, uri.Period
 	}
-	text, err := readSecret(stderr)
+	if plan.name == "" {
+		if uri == nil {
+			return plan, usageError("add needs a NAME, unless it is given an otpauth:// URI that carries one")
+		}
+		var err error
+		if plan.name, plan.nameWasAdjusted, err = uri.DeriveName(); err != nil {
+			return plan, fmt.Errorf("%w; give one: trustctl add NAME", err)
+		}
+		plan.derivedFromURI = true
+	}
+	if err := protocol.ValidateName(plan.name); err != nil {
+		return plan, err
+	}
+	if plan.digits < 6 || plan.digits > 8 {
+		return plan, fmt.Errorf("the device supports 6 to 8 digits, not %d", plan.digits)
+	}
+	if plan.period != 30 && plan.period != 60 {
+		return plan, fmt.Errorf("the device supports a period of 30 or 60 seconds, not %d", plan.period)
+	}
+	return plan, nil
+}
+
+func add(c *protocol.Client, args []string, stdout, stderr io.Writer) error {
+	input, err := readSecret(stderr)
 	if err != nil {
 		return err
 	}
-	secret := text
-	if strings.HasPrefix(strings.ToLower(text), "otpauth:") {
-		uri, err := protocol.ParseOTPAuth(text)
-		if err != nil {
-			return err
+	plan, err := planAdd(args, input)
+	if err != nil {
+		return err
+	}
+	if plan.derivedFromURI {
+		note := ""
+		if plan.nameWasAdjusted {
+			note = " (characters the device does not accept were replaced by \"-\")"
 		}
-		secret, *digits, *period = uri.Secret, uri.Digits, uri.Period
+		fmt.Fprintf(stderr, "Using the name %q from the URI%s.\n", plan.name, note)
 	}
-	if *digits < 6 || *digits > 8 {
-		return fmt.Errorf("the device supports 6 to 8 digits, not %d", *digits)
-	}
-	if *period != 30 && *period != 60 {
-		return fmt.Errorf("the device supports a period of 30 or 60 seconds, not %d", *period)
-	}
-	fmt.Fprintf(stderr, "Adding %q (%d digits, %d s): check the name on the display.\n", name, *digits, *period)
-	id, err := c.Add(name, secret, *digits, *period)
+	fmt.Fprintf(stderr, "Adding %q (%d digits, %d s): check the name on the display.\n", plan.name, plan.digits, plan.period)
+	id, err := c.Add(plan.name, plan.secret, plan.digits, plan.period)
 	if err != nil {
 		return err
 	}

@@ -53,7 +53,8 @@ Put `device = /dev/ttyUSB0` into `~/.config/trustctl/config` to leave out `--dev
 
 ```
 trustctl list
-echo SECRET | trustctl add "GitHub"        # or an otpauth:// URI; confirm on the device
+echo SECRET | trustctl add "GitHub"        # confirm on the device
+echo 'otpauth://totp/...' | trustctl add   # a URI carries its own name (issuer:account)
 trustctl token git                         # prints the code once you hold the button 1-2 s
 trustctl del GitHub
 trustctl wipe                              # hold 5-6 s

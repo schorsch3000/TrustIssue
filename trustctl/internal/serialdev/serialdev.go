@@ -23,23 +23,39 @@ type Device struct {
 	port   serial.Port
 }
 
-// Open connects to the device at path. Opening the port resets the device, so
-// this waits for its start-up banner (and falls back to HELLO).
-func Open(path string, bannerTimeout time.Duration) (*Device, error) {
+// Open connects to the device at path. The first open after plugging in resets
+// the device (DTR); later ones normally do not (see disableHangup). So this asks
+// HELLO instead of just waiting for the start-up banner, and answers to either.
+func Open(path string, timeout time.Duration) (*Device, error) {
+	disableHangup(path)
 	port, err := serial.Open(path, &serial.Mode{BaudRate: Baud, DataBits: 8, Parity: serial.NoParity, StopBits: serial.OneStopBit})
 	if err != nil {
 		return nil, fmt.Errorf("cannot open %s: %w", path, err)
 	}
 	client := protocol.NewClient(port)
-	banner, err := client.WaitBanner(bannerTimeout)
-	if err != nil { // the device may have been running already: ask it
+	client.ReplyTimeout = time.Second
+	var banner string
+	start := time.Now()
+	deadline := start.Add(timeout)
+	attempts := 0
+	for {
+		attempts++
+		// a reset in progress swallows the first HELLOs; the banner it ends with also counts
 		banner, err = client.Hello()
+		if err == nil || time.Now().After(deadline) {
+			break
+		}
 	}
 	if err != nil {
 		port.Close()
 		return nil, fmt.Errorf("%s does not answer like a Trust Issues device: %w", path, err)
 	}
-	client.Settle(800 * time.Millisecond)
+	client.ReplyTimeout = 3 * time.Second
+	if attempts == 1 && time.Since(start) < 120*time.Millisecond {
+		client.Settle(50 * time.Millisecond) // answered at once: the device was running, no reset
+	} else {
+		client.Settle(800 * time.Millisecond) // a reset happened; a second one (RTS/DTR toggling) may still follow
+	}
 	if !strings.Contains(banner, " proto 1") {
 		port.Close()
 		return nil, fmt.Errorf("%s speaks an unsupported protocol version: %q", path, banner)

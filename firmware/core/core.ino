@@ -78,7 +78,7 @@ static void drawTile(uint8_t column, uint8_t row) {
       if (x < windowStart) {
         tile[i] = ~tile[i];  // before the window: the bar is solid
       } else {
-        tile[i] ^= (x & 1) ? 0x55 : 0xAA;  // inside the window: a checkerboard
+        tile[i] ^= (x & 2) ? 0xCC : 0x33;  // inside the window: a checkerboard of 2x2 pixel squares
       }
     }
   }

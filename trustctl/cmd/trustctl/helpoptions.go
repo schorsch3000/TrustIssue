@@ -52,6 +52,10 @@ var commandOptions = []struct {
 	{"calibrate logo FILE.png", []option{
 		{"--invert", "", "", "off", "Swap lit and dark pixels, including the margin around a smaller image."},
 	}},
+	{"font extract / logo extract", []option{
+		{"--from FILE.hex", "", "", "the profile, else the built-in font", "Take the font or logo from the parameter block of a firmware file."},
+		{"--profile PATH", "", "", "the device profile (see below)", "The profile file the current font or logo is read from."},
+	}},
 	{"calibrate ...", []option{
 		{"--profile PATH", "", "", "the device profile (see below)", "The profile file that the settings are remembered in."},
 	}},

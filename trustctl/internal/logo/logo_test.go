@@ -152,3 +152,28 @@ func TestBitLayout(t *testing.T) {
 		t.Errorf("byte %#x, want 0x02", b[128+5])
 	}
 }
+
+func TestToImageRoundTrip(t *testing.T) {
+	bitmap := make([]byte, logo.Bytes)
+	for i := range bitmap {
+		bitmap[i] = byte(i*37 + i/128)
+	}
+	img, err := logo.ToImage(bitmap)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	back, err := logo.Convert(&buf, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(back, bitmap) {
+		t.Error("bitmap changed on the way through a PNG")
+	}
+	if _, err := logo.ToImage(bitmap[:10]); err == nil {
+		t.Error("a short bitmap was accepted")
+	}
+}

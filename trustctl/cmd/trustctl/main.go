@@ -42,6 +42,8 @@ commands:
   autocomplete-fish         the same for fish: trustctl autocomplete-fish | source
   flash FILE.hex            program the firmware through the bootloader (needs the button gesture)
         --no-patch --profile PATH --wait 90s --countdown 4
+  font extract FILE.bin     write the current font to a file to work on (--from FILE.hex: the one in a firmware)
+  logo extract FILE.png     write the current logo as a 128x32 PNG to work on
   calibrate ...             try out contrast, logo and font on the calibration firmware (see: trustctl calibrate)
 
 NAME is a key name (any case), its slot number, or a unique beginning of a name.
@@ -110,6 +112,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runDaemon(opt, *idle, stderr)
 	case "daemon":
 		return daemonCommand(rest, stdout, stderr)
+	case "font", "logo":
+		return report(extractCommand(command, rest, stdout, stderr), stderr)
 	case "flash", "calibrate":
 		var err error
 		if command == "flash" {

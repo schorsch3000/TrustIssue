@@ -18,6 +18,8 @@ var commandTable = []struct{ name, description string }{
 	{"hello", "show what the device says about itself"},
 	{"daemon", "status of the background process, or stop it"},
 	{"flash", "program the firmware through the bootloader"},
+	{"font", "write the current font to a file to work on (font extract FILE.bin)"},
+	{"logo", "write the current logo to a file to work on (logo extract FILE.png)"},
 	{"calibrate", "try out contrast, logo and font on the calibration firmware"},
 	{"help", "show the short usage text"},
 	{"help-options", "every option with its argument, environment variable and config file syntax"},
@@ -103,7 +105,7 @@ _trustctl() {
   local sub="" npos=0
   for ((i = cmdpos + 1; i < COMP_CWORD; i++)); do
     case "${COMP_WORDS[i]}" in
-      --profile|--digits|--period|--wait|--countdown|--device) ((i++)) ;;
+      --profile|--from|--digits|--period|--wait|--countdown|--device) ((i++)) ;;
       -*) ;;
       *) [ -z "$sub" ] && sub="${COMP_WORDS[i]}"; ((npos++)) ;;
     esac
@@ -131,6 +133,16 @@ _trustctl() {
         COMPREPLY=($(compgen -W "--no-patch --profile --wait --countdown" -- "$cur"))
       elif [ "$npos" -eq 0 ]; then
         _trustctl_files "$cur" hex
+      fi ;;
+    font|logo)
+      if [ "$prev" = "--profile" ] || [ "$prev" = "--from" ]; then
+        _trustctl_files "$cur" "$([ "$prev" = "--from" ] && echo hex || echo json)"
+      elif [[ "$cur" == -* ]]; then
+        COMPREPLY=($(compgen -W "--from --profile" -- "$cur"))
+      elif [ "$npos" -eq 0 ]; then
+        COMPREPLY=($(compgen -W "extract" -- "$cur"))
+      elif [ "$npos" -eq 1 ]; then
+        _trustctl_files "$cur" "$([ "$cmd" = font ] && echo bin || echo png)"
       fi ;;
     calibrate)
       if [ "$prev" = "--profile" ]; then
@@ -216,6 +228,13 @@ _trustctl() {
             '--wait[how long to wait for the bootloader]:duration:' \
             '--countdown[seconds before the device is reset]:seconds:' \
             '1:hex file:_files -g "*.hex"'
+          ;;
+        font|logo)
+          if (( CURRENT == 2 )); then
+            _values 'what' extract
+          else
+            _arguments '--from[firmware hex file]:hex file:_files -g "*.hex"' '--profile[profile file]:profile:_files -g "*.json"' '*:output file:_files'
+          fi
           ;;
         calibrate)
           if (( CURRENT == 2 )); then
@@ -342,6 +361,10 @@ complete -c trustctl -n '__trustctl_is flash' -l profile -r -d 'settings to patc
 complete -c trustctl -n '__trustctl_is flash' -l wait -x -d 'how long to wait for the bootloader'
 complete -c trustctl -n '__trustctl_is flash' -l countdown -x -d 'seconds before the device is reset'
 complete -c trustctl -n '__trustctl_is flash 0' -F
+complete -c trustctl -n '__trustctl_is font; or __trustctl_is logo' -l from -r -d 'firmware hex file'
+complete -c trustctl -n '__trustctl_is font; or __trustctl_is logo' -l profile -r -d 'profile file'
+complete -c trustctl -n '__trustctl_is font 0; or __trustctl_is logo 0' -a extract
+complete -c trustctl -n '__trustctl_is font 1; or __trustctl_is logo 1' -F
 complete -c trustctl -n '__trustctl_is calibrate' -l profile -r -d 'profile file'
 complete -c trustctl -n '__trustctl_is calibrate' -l invert -d 'swap light and dark (logo)'
 complete -c trustctl -n '__trustctl_is calibrate 0' -a 'contrast logo font show forget'

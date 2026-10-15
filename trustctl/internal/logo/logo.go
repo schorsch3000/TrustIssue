@@ -80,3 +80,20 @@ func FromImage(img image.Image, invert bool) ([]byte, error) {
 	}
 	return out, nil
 }
+
+// ToImage turns a 512 byte bitmap back into a picture: lit pixels are white,
+// the rest is black. Converting that picture again gives the same bitmap.
+func ToImage(bitmap []byte) (*image.Gray, error) {
+	if len(bitmap) != Bytes {
+		return nil, fmt.Errorf("a logo bitmap has %d bytes, not %d", Bytes, len(bitmap))
+	}
+	img := image.NewGray(image.Rect(0, 0, Width, Height))
+	for y := 0; y < Height; y++ {
+		for x := 0; x < Width; x++ {
+			if bitmap[(y/8)*Width+x]>>(uint(y)%8)&1 != 0 {
+				img.SetGray(x, y, color.Gray{Y: 255})
+			}
+		}
+	}
+	return img, nil
+}

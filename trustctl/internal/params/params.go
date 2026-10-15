@@ -6,6 +6,7 @@ package params
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 
 	"trustissues/trustctl/internal/hexfile"
@@ -92,4 +93,26 @@ func Apply(img *hexfile.Image, p Patch) error {
 	}
 	img.Write(BlockAddress+offFlags, []byte{flags})
 	return nil
+}
+
+// DefaultFont is the font the firmware ships with (Victoria Medium, CC0), the
+// same data as firmware/fonts/victoriamedium8.bin.
+//
+//go:embed victoriamedium8.bin
+var DefaultFont []byte
+
+// Extract returns the font and the logo stored in an image's parameter block.
+// A part that the block does not mark as valid is nil.
+func Extract(img *hexfile.Image) (font, logo []byte, err error) {
+	if !Present(img) {
+		return nil, nil, fmt.Errorf("this firmware has no device parameter block at %#x (not a build of firmware/core?)", BlockAddress)
+	}
+	flags := img.Bytes(BlockAddress+offFlags, 1)[0]
+	if flags&flagFont != 0 {
+		font = img.Bytes(BlockAddress+offFont, FontSize)
+	}
+	if flags&flagLogo != 0 {
+		logo = img.Bytes(BlockAddress+offLogo, LogoSize)
+	}
+	return font, logo, nil
 }

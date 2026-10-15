@@ -19,7 +19,7 @@ the device either: the bootloader only opens after a gesture on the button.
 | `firmware/bootloader` | the button-gated bootloader (2 KB, from scratch) |
 | `firmware/calibration` | tiny firmware to try out contrast, logo and font on the display |
 | `firmware/rig`, `firmware/button_test` | the Uno test rig that presses the button and resets the Nano |
-| `trustctl` | the host tool in Go: `list`, `token`, `add`, `del`, `tz`, `config`, `wipe`, `flash`, `calibrate`, `daemon` |
+| `trustctl` | the host tool in Go: `list`, `token`, `add`, `del`, `tz`, `config`, `wipe`, `flash`, `calibrate`, `font extract`, `logo extract`, `daemon` |
 | `tools` | end-to-end tests, the Python prototypes, `dummy-keys.html` (fake keys to try the device with) |
 
 ## Hardware
@@ -51,6 +51,11 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
 
 Put `device = /dev/ttyUSB0` into `~/.config/trustctl/config` to leave out `--device`. `trustctl help-options` lists every
 option with its `--argument`, environment variable and config file syntax, and the defaults.
+
+To start from what the device uses now, `trustctl font extract font.bin` writes the current font (the profile's, else the
+built-in one) and `trustctl logo extract logo.png` writes the current logo as a 128x32 PNG (white = lit). The device itself
+cannot be read back, so "current" means what `flash` would patch in; `--from firmware.hex` takes it from the parameter block
+of a firmware file instead.
 
 Tab completion (commands, options, key names asked from the device, file names for `flash` and `calibrate`):
 

@@ -388,12 +388,20 @@ static void startPending() {
   if (pending.type == TC_CMD_SETCFG) applyConfig(pending.config);  // preview
 }
 
+static void printBanner() {
+  Serial.print(F("TrustIssue "));
+  Serial.print((const __FlashStringHelper *)VERSION);
+  Serial.print(F(" proto 1"));
+#ifdef AUTONOMOUS_WIPE
+  Serial.print(F(" caps=autowipe"));
+#endif
+  Serial.println();
+}
+
 static void handleCommand() {
   switch (pending.type) {
     case TC_CMD_HELLO:
-      Serial.print(F("TrustIssue "));
-      Serial.print((const __FlashStringHelper *)VERSION);
-      Serial.println(F(" proto 1"));
+      printBanner();
       return;
     case TC_CMD_LIST:
       for (uint8_t id = 0; id < TC_SLOT_COUNT; id++) {
@@ -432,6 +440,14 @@ static void handleCommand() {
         return;
       }
       break;
+    case TC_CMD_SETCFG:
+#ifndef AUTONOMOUS_WIPE
+      if (pending.config & TC_CFG_AUTOWIPE) {  // not built into this firmware
+        Serial.println(F("ERR BADARG"));
+        return;
+      }
+#endif
+      break;
     case TC_CMD_WIPE:
       if (tc_store_count() == 0) {  // nothing to destroy, nothing to confirm
         Serial.println(F("OK"));
@@ -451,7 +467,7 @@ static uint8_t lineLength;
 static bool lineOverflow;
 
 static void processLine() {
-  if (state == STATE_PENDING) {
+  if (state != STATE_IDLE) {
     Serial.println(F("ERR BUSY"));
     return;
   }
@@ -514,7 +530,169 @@ static void servicePending(ButtonEvent event, uint32_t held) {
   }
 }
 
-static void serviceIdle(ButtonEvent event) {
+// ---------------------------------------------------------------- autonomous wipe
+//
+// Without any host (a power bank is enough): with the capability built in
+// (AUTONOMOUS_WIPE, see build.sh) and switched on (config bit), hold the button
+// at idle and release it between 10 and 11 s. Then a countdown bar drains (a
+// press aborts), and the same gesture as the bootloader's follows: tap, tap,
+// press again and hold 2 s. Then the keys are wiped. Any mistake starts the
+// gesture over, 20 s without success cancel everything.
+
+#ifdef AUTONOMOUS_WIPE
+static const uint32_t AUTO_HOLD_MIN_MS = 10000;
+static const uint32_t AUTO_HOLD_MAX_MS = 11000;
+static const uint32_t AUTO_HOLD_SHOW_MS = 2000;  // the bar appears after this long
+static const uint32_t AUTO_COUNTDOWN_MS = 4000;
+static const uint32_t AUTO_TOTAL_MS = 20000;
+static const uint32_t AUTO_TAP_MAX_MS = 600;
+static const uint32_t AUTO_GAP_MAX_MS = 800;
+static const uint32_t AUTO_HOLD_MS = 2000;
+
+enum AutoPhase : uint8_t { AW_COUNTDOWN, AW_TAP, AW_HOLD_WAIT, AW_HOLD };
+static AutoPhase autoPhase;
+static uint8_t autoTaps;
+static uint32_t autoStart, autoLastRelease;
+static bool autoArmed, autoHoldBar;
+
+static bool autoWipeEnabled() { return (tc_store_config() & TC_CFG_AUTOWIPE) && tc_store_count() > 0; }
+
+static void autoGestureScreen() {
+  clearScreen();
+  setRowP(0, PSTR("WIPE ALL KEYS?"));
+  setRowP(1, PSTR("TAP TAP HOLD"));
+  setRowP(2, PSTR("2 SECONDS"));
+  render();
+}
+
+static void startAutoWipe() {
+  state = STATE_AUTOWIPE;
+  autoPhase = AW_COUNTDOWN;
+  autoTaps = 0;
+  autoStart = millis();
+  windowStart = 128;
+  clearScreen();
+  setRowP(0, PSTR("WIPE ALL KEYS?"));
+  setRowP(1, PSTR("WAIT"));
+  render();
+  setFill(128);
+}
+
+static void autoFinish(const char *text) {
+  setFill(0);
+  state = STATE_IDLE;
+  showResult(text);
+}
+
+static void autoRestartGesture() {
+  autoTaps = 0;
+  autoPhase = AW_TAP;
+  setFill(0);
+}
+
+static void serviceAutoWipe(ButtonEvent event, uint32_t held) {
+  uint32_t now = millis();
+  if (now - autoStart > AUTO_TOTAL_MS) {
+    autoFinish("Cancelled");
+    return;
+  }
+  switch (autoPhase) {
+    case AW_COUNTDOWN:
+      if (buttonStableDown || event == BUTTON_PRESSED) {  // a press aborts
+        autoFinish("Cancelled");
+      } else if (now - autoStart >= AUTO_COUNTDOWN_MS) {
+        autoGestureScreen();
+        autoRestartGesture();
+      } else {
+        setFill(128 - (now - autoStart) * 128UL / AUTO_COUNTDOWN_MS);
+      }
+      break;
+    case AW_TAP:
+      if (event == BUTTON_RELEASED) {
+        if (held <= AUTO_TAP_MAX_MS) {
+          autoTaps = 1;
+          autoLastRelease = now;
+          autoPhase = AW_HOLD_WAIT;
+          setFill(43);
+        } else {
+          autoRestartGesture();
+        }
+      }
+      break;
+    case AW_HOLD_WAIT:  // the second tap, then the third press
+      if (event == BUTTON_PRESSED && buttonPressedAt - autoLastRelease > AUTO_GAP_MAX_MS) {
+        autoRestartGesture();
+      } else if (event == BUTTON_PRESSED && autoTaps == 2) {
+        autoPhase = AW_HOLD;
+      } else if (event == BUTTON_RELEASED && autoTaps == 1 && held <= AUTO_TAP_MAX_MS) {
+        autoTaps = 2;
+        autoLastRelease = now;
+        setFill(86);
+      } else if (event == BUTTON_RELEASED) {
+        autoRestartGesture();
+      } else if (!buttonStableDown && now - autoLastRelease > AUTO_GAP_MAX_MS) {
+        autoRestartGesture();
+      }
+      break;
+    case AW_HOLD: {
+      if (event == BUTTON_RELEASED) {
+        autoRestartGesture();
+        break;
+      }
+      uint32_t ms = buttonHeldMs();
+      setFill(86 + min(ms, AUTO_HOLD_MS) * 42UL / AUTO_HOLD_MS);
+      if (ms >= AUTO_HOLD_MS) {
+        clearScreen();
+        setRowP(1, PSTR("WIPING"));
+        render();
+        windowStart = 128;
+        setFill(0);
+        tc_store_wipe(wipeProgress, NULL);
+        autoFinish("Wiped");
+      }
+      break;
+    }
+  }
+}
+
+// At idle: a long hold shows a bar to the end of the 10 to 11 s window.
+static void autoIdleHold(ButtonEvent event, uint32_t held) {
+  if (event == BUTTON_PRESSED) {
+    autoArmed = autoWipeEnabled();
+    autoHoldBar = false;
+    return;
+  }
+  if (!autoArmed) return;
+  if (event == BUTTON_RELEASED) {
+    autoArmed = false;
+    if (autoHoldBar) {
+      autoHoldBar = false;
+      setFill(0);
+      if (held >= AUTO_HOLD_MIN_MS && held <= AUTO_HOLD_MAX_MS) {
+        startAutoWipe();
+      } else {
+        showIdle();
+      }
+    }
+    return;
+  }
+  if (!buttonStableDown) return;
+  uint32_t ms = buttonHeldMs();
+  lastActivity = millis();  // keep the display awake while the button is held
+  if (ms < AUTO_HOLD_SHOW_MS) return;
+  if (!autoHoldBar) {
+    autoHoldBar = true;
+    windowStart = AUTO_HOLD_MIN_MS * 128UL / AUTO_HOLD_MAX_MS;
+    clearScreen();
+    setRowP(0, PSTR("WIPE ALL KEYS?"));
+    setRowP(1, PSTR("HOLD 10 S"));
+    render();
+  }
+  setFill(min(ms, AUTO_HOLD_MAX_MS) * 128UL / AUTO_HOLD_MAX_MS);
+}
+#endif
+
+static void serviceIdle(ButtonEvent event, uint32_t held) {
   uint32_t now = millis();
   if (resultUntil && (int32_t)(now - resultUntil) >= 0) {
     resultUntil = 0;
@@ -524,8 +702,15 @@ static void serviceIdle(ButtonEvent event) {
     bool wasIdleScreen = idlePhase == IDLE_SCREEN && displayOn;
     wakeDisplay();
     if (!wasIdleScreen) showIdle();  // a press that only wakes the display does nothing else
+#ifdef AUTONOMOUS_WIPE
+    autoIdleHold(event, held);
+#endif
     return;
   }
+#ifdef AUTONOMOUS_WIPE
+  autoIdleHold(event, held);
+  if (state == STATE_AUTOWIPE || autoHoldBar) return;  // the hold or the flow owns the display
+#endif
   // idle sequence: the screen, then (with the logo option) the logo at full
   // contrast, the logo dimmed, and finally the display off
   uint32_t quiet = now - lastActivity;
@@ -556,9 +741,7 @@ void setup() {
   applyConfig(tc_store_config());
   showIdle();
   lastActivity = millis();
-  Serial.print(F("TrustIssue "));
-  Serial.print((const __FlashStringHelper *)VERSION);
-  Serial.println(F(" proto 1"));
+  printBanner();
 }
 
 void loop() {
@@ -567,7 +750,11 @@ void loop() {
   ButtonEvent event = pollButton(&held);
   if (state == STATE_PENDING) {
     servicePending(event, held);
+#ifdef AUTONOMOUS_WIPE
+  } else if (state == STATE_AUTOWIPE) {
+    serviceAutoWipe(event, held);
+#endif
   } else {
-    serviceIdle(event);
+    serviceIdle(event, held);
   }
 }

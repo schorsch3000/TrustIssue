@@ -36,6 +36,9 @@ commands:
   wipe                      erase all keys (hold the button 5 to 6 seconds)
   hello                     show what the device says about itself
   daemon [status|stop]      the background process that keeps the port open (started by the first command)
+  autocomplete              print the completion code for bash and sh: source <(trustctl autocomplete)
+  autocomplete-zsh          the same for zsh
+  autocomplete-fish         the same for fish: trustctl autocomplete-fish | source
   flash FILE.hex            program the firmware through the bootloader (needs the button gesture)
         --no-patch --profile PATH --wait 90s --countdown 4
   calibrate ...             try out contrast, logo and font on the calibration firmware (see: trustctl calibrate)
@@ -84,6 +87,17 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	command, rest := global.Arg(0), global.Args()[1:]
 	switch command {
+	case "autocomplete", "autocomplete-bash", "autocomplete-sh":
+		fmt.Fprint(stdout, completionScript("bash"))
+		return exitOK
+	case "autocomplete-zsh":
+		fmt.Fprint(stdout, completionScript("zsh"))
+		return exitOK
+	case "autocomplete-fish":
+		fmt.Fprint(stdout, completionScript("fish"))
+		return exitOK
+	case "__keys": // for the completion scripts: the key names, one per line, never an error
+		return keyNames(opt, stdout)
 	case "__daemon":
 		return runDaemon(opt, *idle, stderr)
 	case "daemon":
@@ -110,6 +124,24 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	err = dispatch(client, command, rest, stdout, stderr, func(h string) { hint = h })
 	return report(err, stderr)
+}
+
+// keyNames prints the names of the keys on the device; every problem is silent,
+// because a completion must not print error messages into the command line.
+func keyNames(opt options, stdout io.Writer) int {
+	client, closeDevice, err := connect(opt, io.Discard)
+	if err != nil {
+		return exitOK
+	}
+	defer closeDevice()
+	keys, err := client.List()
+	if err != nil {
+		return exitOK
+	}
+	for _, k := range keys {
+		fmt.Fprintln(stdout, k.Name)
+	}
+	return exitOK
 }
 
 // report prints an error and returns the exit code for it.

@@ -49,6 +49,14 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
 
 Put `device = /dev/ttyUSB0` into `~/.config/trustctl/config` to leave out `--device`.
 
+Tab completion (commands, options, key names asked from the device, file names for `flash` and `calibrate`):
+
+```
+source <(trustctl autocomplete)             # bash and sh-compatible shells; put it into ~/.bashrc
+source <(trustctl autocomplete-zsh)         # zsh
+trustctl autocomplete-fish | source         # fish
+```
+
 ## Using it
 
 ```

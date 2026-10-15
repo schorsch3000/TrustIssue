@@ -215,6 +215,10 @@ static State state = STATE_IDLE;
 static TcCommand pending;
 static uint32_t pendingStart;
 static uint32_t pendingMinMs, pendingMaxMs;
+// True if the button was already down when the request came: that press does not
+// count, the user has to let go and press again.
+static bool pressIgnored;
+
 static uint32_t resultUntil;
 static uint32_t lastClockCheck;
 static uint8_t shownMinute = 255;
@@ -365,8 +369,8 @@ static void finishPending(Outcome outcome) {
   if (outcome != OUTCOME_ACCEPTED) {
     if (pending.type == TC_CMD_SETCFG) applyConfig(tc_store_config());  // undo the preview
     bool timedOut = outcome == OUTCOME_TIMEOUT;
-    Serial.println(timedOut ? F("ERR TIMEOUT") : F("ERR DENIED"));
-    showResult(timedOut ? "Timeout" : "Denied");
+    Serial.println(timedOut ? F("ERR TIMEOUT") : F("ERR DENIED"));  // too long counts as denied
+    showResult(timedOut ? "Timeout" : outcome == OUTCOME_TOO_LONG ? "Too long" : "Denied");
   } else {
     switch (pending.type) {
       case TC_CMD_TOKEN: {
@@ -427,6 +431,7 @@ static void startPending() {
   pendingMaxMs = wipe ? WIPE_MAX_MS : ACCEPT_MAX_MS;
   windowStart = pendingMinMs * 128UL / pendingMaxMs;  // the bar spans 0 to the end of the window
   state = STATE_PENDING;
+  pressIgnored = buttonStableDown;
   Serial.println(F("PENDING"));
   showPending();
   if (pending.type == TC_CMD_SETCFG) applyConfig(pending.config);  // preview
@@ -549,11 +554,32 @@ static void readSerial() {
 
 // ---------------------------------------------------------------- main loop
 
+// Two quick inversions of the whole display: "you held it too long".
+static void blinkDisplay() {
+  bool inverted = tc_store_config() & TC_CFG_INVERT;
+  for (uint8_t i = 0; i < 2; i++) {
+    sendDisplayCommand(inverted ? 0xA6 : 0xA7);
+    delay(90);
+    sendDisplayCommand(inverted ? 0xA7 : 0xA6);
+    delay(90);
+  }
+}
+
 static void servicePending(ButtonEvent event, uint32_t held) {
   uint32_t now = millis();
   if (now - pendingStart > REQUEST_TIMEOUT_MS) {
     setFill(0);
     finishPending(OUTCOME_TIMEOUT);
+    return;
+  }
+  if (pressIgnored) {
+    if (event == BUTTON_RELEASED) pressIgnored = false;
+    return;
+  }
+  if (buttonStableDown && buttonHeldMs() > pendingMaxMs) {  // past the window: no need to wait for the release
+    setFill(0);
+    blinkDisplay();
+    finishPending(OUTCOME_TOO_LONG);
     return;
   }
   if (event == BUTTON_RELEASED) {
@@ -732,6 +758,13 @@ static void autoIdleHold(ButtonEvent event, uint32_t held) {
   if (!buttonStableDown) return;
   uint32_t ms = buttonHeldMs();
   lastActivity = millis();  // keep the display awake while the button is held
+  if (autoHoldBar && ms > AUTO_HOLD_MAX_MS) {  // past the window: stop here, the release will be ignored
+    autoArmed = autoHoldBar = false;
+    setFill(0);
+    blinkDisplay();
+    showResult("Too long");
+    return;
+  }
   if (ms < AUTO_HOLD_SHOW_MS) return;
   if (!autoHoldBar) {
     autoHoldBar = true;

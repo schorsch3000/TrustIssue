@@ -63,6 +63,11 @@ class Device:
         self.press(hold)
         return self.line()
 
+    def confirmed_pending_press(self, hold):
+        """Presses for a request that is already pending and returns the final reply."""
+        self.press(hold)
+        return self.line()
+
     def lines_until_end(self):
         lines = []
         while True:
@@ -92,6 +97,24 @@ check(d.confirmed("TOKEN 0 1111111090") == "OK 081804", "TOKEN accepted: leading
 check(d.confirmed("TOKEN 0 35", hold="100") == "ERR DENIED", "TOKEN tap is denied")
 check(d.confirmed("TOKEN 0 35", hold="900") == "ERR DENIED", "TOKEN 0.9 s is denied")
 check(d.confirmed("TOKEN 0 35", hold="2300") == "ERR DENIED", "TOKEN 2.3 s is denied")
+
+# past the window the request is denied at once, not only at the release; the press that
+# is still going does not count for the next request
+import threading
+d.send("TOKEN 0 35")
+check(d.line() == "PENDING", "request for the overshoot test")
+started = time.time()
+holder = threading.Thread(target=lambda: d.press("3500"))
+holder.start()
+reply = d.line()
+elapsed = time.time() - started
+check(reply == "ERR DENIED" and elapsed < 2.9, "past the window: denied at the end of the window, not at the release", f"{reply} after {elapsed:.1f} s")
+d.send("TOKEN 0 35")
+check(d.line() == "PENDING", "a new request while the button is still down is not denied by that old press")
+holder.join()
+time.sleep(0.4)
+check(d.confirmed_pending_press("1500") == "OK 287082", "after letting go and pressing again it works")
+
 check(d.confirmed("TOKEN 0 35", hold="1100") == "OK 287082", "TOKEN 1.1 s is accepted")
 check(d.confirmed("TOKEN 0 35", hold="1900") == "OK 287082", "TOKEN 1.9 s is accepted")
 

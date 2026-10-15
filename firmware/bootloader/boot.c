@@ -46,7 +46,6 @@ static const char M_BUTTON[] PROGMEM = "BUTTON";
 static const char M_UPDATE[] PROGMEM = "FIRMWARE UPDATE";
 static const char M_WAIT[] PROGMEM = "WAIT";
 static const char M_TAPS[] PROGMEM = "TAP TAP HOLD";
-static const char M_SECONDS[] PROGMEM = "2 SECONDS";
 static const char M_MODE[] PROGMEM = "UPDATE MODE";
 static const char M_WRITING[] PROGMEM = "WRITING";
 static const char M_NOFW[] PROGMEM = "NO FIRMWARE";
@@ -173,10 +172,21 @@ static void oled_row(uint8_t row, const char *msg, bool invert) {
 }
 
 // The bottom row as a bar: the first `pixels` columns are lit.
+static uint8_t bar_shown __attribute__((section(".noinit")));
 static void oled_bar(uint8_t pixels) {
+  bar_shown = pixels;
   oled_row_begin(3);
   for (uint8_t i = 0; i < 128; i++) twi_write(i < pixels ? 0xFF : 0x00);
   twi_stop();
+}
+
+// Moves the bar to a new length in quick steps of 3 columns (a jump looks rough).
+static void oled_bar_to(uint8_t target) {
+  while (bar_shown != target) {
+    uint8_t distance = bar_shown < target ? target - bar_shown : bar_shown - target;
+    if (distance > 3) distance = 3;
+    oled_bar(bar_shown < target ? bar_shown + distance : bar_shown - distance);
+  }
 }
 
 static void show(const char *r0, const char *r1, const char *r2, const char *r3,
@@ -239,7 +249,7 @@ static bool gate(void) {
     if (wait_level(true, 3) > 0) return false;  // pressed: mashing aborts
   }
 
-  show(M_UPDATE, M_TAPS, M_SECONDS, 0, false);
+  show(M_UPDATE, M_TAPS, 0, 0, false);
   for (;;) {  // tap, tap, then press and hold 2 s; every mistake starts over
     uint8_t taps = 0;
     while (taps < 2) {
@@ -251,10 +261,10 @@ static bool gate(void) {
         if (wait_level(false, LONG_WAIT) < 0) return false;
         break;
       }
-      oled_bar(++taps * 43);
+      oled_bar_to(++taps * 43);
     }
     if (taps < 2 || wait_level(true, 80) < 0) {
-      oled_bar(0);
+      oled_bar_to(0);
       continue;
     }
     bool early = false;  // the bar fills up while the third press is held (about 1.9 s)
@@ -263,7 +273,7 @@ static bool gate(void) {
       early = wait_level(false, 4) >= 0;  // released too early
     }
     if (!early) return release_first();
-    oled_bar(0);
+    oled_bar_to(0);
   }
 }
 
@@ -314,18 +324,16 @@ static void update_mode(void) {
 
   for (;;) {
     uint8_t reply = STK_OK;
-    switch (getch()) {
+    uint8_t command = getch();
+    switch (command) {
       case 0x41:  // get parameter
         skip(1);
         verify_space();
         putch(0x03);
         break;
-      case 0x42:  // set device
-        skip(20);
-        verify_space();
-        break;
-      case 0x45:  // set device ext
-        skip(5);
+      case 0x42:  // set device (20 bytes) and set device ext (5 bytes)
+      case 0x45:
+        skip(command == 0x42 ? 20 : 5);
         verify_space();
         break;
       case 0x55: {  // load address (word address)

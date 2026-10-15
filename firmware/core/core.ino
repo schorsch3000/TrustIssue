@@ -622,6 +622,15 @@ static void startAutoWipe() {
   setFill(128);
 }
 
+// Moves the progress bar to a new length in quick steps of 4 columns instead of jumping.
+static void sweepFill(uint8_t target) {
+  while (fillPixels != target) {
+    uint8_t distance = fillPixels < target ? target - fillPixels : fillPixels - target;
+    if (distance > 4) distance = 4;
+    setFill(fillPixels < target ? fillPixels + distance : fillPixels - distance);
+  }
+}
+
 static void autoFinish(const char *text) {
   setFill(0);
   state = STATE_IDLE;
@@ -631,7 +640,7 @@ static void autoFinish(const char *text) {
 static void autoRestartGesture() {
   autoTaps = 0;
   autoPhase = AW_TAP;
-  setFill(0);
+  sweepFill(0);
 }
 
 static void serviceAutoWipe(ButtonEvent event, uint32_t held) {
@@ -657,7 +666,7 @@ static void serviceAutoWipe(ButtonEvent event, uint32_t held) {
           autoTaps = 1;
           autoLastRelease = now;
           autoPhase = AW_HOLD_WAIT;
-          setFill(43);
+          sweepFill(43);
         } else {
           autoRestartGesture();
         }
@@ -671,7 +680,7 @@ static void serviceAutoWipe(ButtonEvent event, uint32_t held) {
       } else if (event == BUTTON_RELEASED && autoTaps == 1 && held <= AUTO_TAP_MAX_MS) {
         autoTaps = 2;
         autoLastRelease = now;
-        setFill(86);
+        sweepFill(86);
       } else if (event == BUTTON_RELEASED) {
         autoRestartGesture();
       } else if (!buttonStableDown && now - autoLastRelease > AUTO_GAP_MAX_MS) {

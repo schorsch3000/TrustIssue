@@ -63,7 +63,7 @@ func bashComplete(t *testing.T, words ...string) []string {
 		t.Skip("no bash")
 	}
 	dir := t.TempDir()
-	fake := "#!/bin/sh\n[ \"$1\" = __keys ] && printf 'GitHub\\nGitLab work\\nAWS\\n'\n"
+	fake := "#!/bin/sh\n[ \"$1\" = __keys ] && printf 'GitHub\\nGitLab work\\nAWS\\n'\n[ \"$1\" = font ] && printf '5x8\\nvictoriabold8\\nvictoriamedium8  (the firmware default)\\n'\n"
 	if err := os.WriteFile(filepath.Join(dir, "trustctl"), []byte(fake), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -129,8 +129,11 @@ func TestBashCompletion(t *testing.T) {
 		{[]string{"config", "set", "rot"}, []string{"rotate=on", "rotate=off"}},
 		{[]string{"daemon", "s"}, []string{"status", "stop"}},
 		{[]string{"add", "--"}, []string{"--digits", "--period"}},
-		{[]string{"flash", ""}, []string{"firmware.hex", "sub"}},
+		{[]string{"flash", ""}, []string{"core", "calibration", "firmware.hex", "sub"}},
+		{[]string{"--device", "/dev/ttyUSB0", "flash", ""}, []string{"core", "calibration", "firmware.hex", "sub"}},
+		{[]string{"flash", "ca"}, []string{"calibration"}},
 		{[]string{"flash", "--"}, []string{"--no-patch", "--profile", "--font", "--wait", "--countdown"}},
+		{[]string{"flash", "--font", "5"}, []string{"5x8"}},
 		{[]string{"flash", "--profile", ""}, []string{"profile.json", "sub"}},
 		{[]string{"font", ""}, []string{"list", "extract"}},
 		{[]string{"logo", ""}, []string{"extract"}},
@@ -140,7 +143,7 @@ func TestBashCompletion(t *testing.T) {
 		{[]string{"calibrate", ""}, []string{"contrast", "logo", "font", "show", "forget"}},
 		{[]string{"calibrate", "contrast", ""}, []string{"full", "dim"}},
 		{[]string{"calibrate", "logo", ""}, []string{"logo.png", "sub"}},
-		{[]string{"calibrate", "font", ""}, []string{"font.bin", "sub"}},
+		{[]string{"calibrate", "font", ""}, []string{"5x8", "victoriabold8", "victoriamedium8", "font.bin", "sub"}},
 		{[]string{"calibrate", "forget", ""}, []string{"logo", "font", "contrast"}},
 	}
 	for _, c := range cases {

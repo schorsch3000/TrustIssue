@@ -55,7 +55,6 @@ const bashTemplate = `# bash completion for trustctl. Load it into the current s
 _trustctl_files() {
   local cur="$1" ext="$2" f
   local IFS=$'\n'
-  COMPREPLY=()
   compopt -o filenames 2>/dev/null
   for f in $(compgen -f -- "$cur"); do
     if [ -d "$f" ] || [ -z "$ext" ] || [ "${f##*.}" = "$ext" ]; then

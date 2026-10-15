@@ -61,19 +61,16 @@ void tc_format_offset(int8_t offsetQuarterHours, bool withPrefix, char *out) {
   *out = '\0';
 }
 
-void tc_format_local(const TcDateTime &time, int8_t offsetQuarterHours, char *out) {
-  char text[20];
-  char *p = text;
+void tc_format_local(const TcDateTime &time, char *out) {
+  char *p = out;
   p = putNumber(p, time.day, 2);
   *p++ = '.';
   p = putNumber(p, time.month, 2);
+  *p++ = '.';
+  p = putNumber(p, time.year, 4);
   *p++ = ' ';
   p = putNumber(p, time.hour, 2);
   *p++ = ':';
   p = putNumber(p, time.minute, 2);
-  char offset[12];
-  tc_format_offset(offsetQuarterHours, false, offset);
-  if (p - text + 1 + strlen(offset) <= 16) *p++ = ' ';
-  strcpy(p, offset);
-  strcpy(out, text);
+  *p = '\0';
 }

@@ -225,9 +225,22 @@ static void showTokenTime() {
   int8_t zone = tc_store_timezone();
   TcDateTime now = tc_local_time(unixNow(), zone);
   char text[20];
-  tc_format_local(now, zone, text);
+  tc_format_local(now, text);
   setRow(3, text);
   shownMinute = now.minute;
+}
+
+// "TOKEN" on the left of the first row, the timezone offset ("UTC+2") on the right.
+static void showTokenHeader() {
+  char text[17];
+  memset(text, ' ', 16);
+  memcpy(text, "TOKEN", 5);
+  char offset[12];
+  tc_format_offset(tc_store_timezone(), true, offset);
+  uint8_t length = strlen(offset);
+  memcpy(text + 16 - length, offset, length);
+  text[16] = '\0';
+  setRow(0, text);
 }
 
 static void showPending() {
@@ -235,7 +248,7 @@ static void showPending() {
   char text[20];
   switch (pending.type) {
     case TC_CMD_TOKEN:
-      setRowP(0, PSTR("TOKEN"));
+      showTokenHeader();
       showName(pending.key.name);
       showTokenTime();
       break;

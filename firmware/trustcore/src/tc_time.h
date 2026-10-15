@@ -20,8 +20,7 @@ TcDateTime tc_local_time(uint32_t unixTime, int8_t offsetQuarterHours);
 // withPrefix is false, or "UTC+2" when it is true. out needs 12 bytes.
 void tc_format_offset(int8_t offsetQuarterHours, bool withPrefix, char *out);
 
-// "DD.MM HH:MM +2" (at most 16 characters, the space before the offset is
-// dropped if it would not fit). out needs 20 bytes.
-void tc_format_local(const TcDateTime &time, int8_t offsetQuarterHours, char *out);
+// "DD.MM.YYYY HH:MM" (exactly 16 characters for years 1000 to 9999). out needs 20 bytes.
+void tc_format_local(const TcDateTime &time, char *out);
 
 #endif

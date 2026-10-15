@@ -157,7 +157,7 @@ A tiny separate firmware (replaces the I2C scanner as the first thing to flash) 
 - No clock on the device: the host sends the unix time (uint32, good until 2106) with each token request, and the user checks the displayed local date and time against their own clock.
 - The timezone offset is stored on the device and changed only via a confirmed command. It must never come from the same request as the timestamp: otherwise malware could send T+2h with offset -2h and the display would look correct.
 - The device cannot handle daylight saving. `trustctl` reads the offset (`GETTZ`) before token requests, compares it with the host's current offset, and sets it (`SETTZ`, which needs a button confirm) if it differs (DST change, travel).
-- Every token screen shows the offset next to the time (e.g. "15.10 09:41 +2") so a wrongly set offset is visible, and the `SETTZ` confirm shows it prominently. The `SETTZ` confirm is the one place where the user must know the correct offset.
+- Every token screen shows the offset ("UTC+2", right aligned on the first row next to "TOKEN") and the date and time with a 4 digit year on the last row ("15.10.2026 09:41"), so a wrongly set offset is visible, and the `SETTZ` confirm shows it prominently. The `SETTZ` confirm is the one place where the user must know the correct offset.
 
 ## Bootloader design (the key security decision)
 

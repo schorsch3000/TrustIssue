@@ -15,7 +15,7 @@ static void check(bool ok, const char *what) {
 
 static void expectLocal(uint32_t unixTime, int8_t offset, const char *expected) {
   char text[24];
-  tc_format_local(tc_local_time(unixTime, offset), offset, text);
+  tc_format_local(tc_local_time(unixTime, offset), text);
   if (strcmp(text, expected)) {
     failures++;
     printf("FAIL  %u %d: got \"%s\", expected \"%s\"\n", unixTime, offset, text, expected);
@@ -39,13 +39,15 @@ int main() {
   t = tc_local_time(0, -4);  // UTC-1 at the epoch: still 1969
   check(t.year == 1969 && t.month == 12 && t.day == 31 && t.hour == 23, "before the epoch");
 
-  expectLocal(1700000000, 0, "14.11 22:13 +0");
-  expectLocal(1700000000, 4, "14.11 23:13 +1");   // CET
-  expectLocal(1700000000, 8, "15.11 00:13 +2");   // CEST crosses midnight
-  expectLocal(1700000000, 23, "15.11 03:58+5:45");  // Nepal: the space is dropped (16 chars)
-  expectLocal(1700000000, -38, "14.11 12:43-9:30");  // the space is dropped (16 chars)
-  expectLocal(1700000000, -48, "14.11 10:13 -12");
-  expectLocal(1700000000, 56, "15.11 12:13 +14");
+  expectLocal(1700000000, 0, "14.11.2023 22:13");
+  expectLocal(1700000000, 4, "14.11.2023 23:13");   // CET
+  expectLocal(1700000000, 8, "15.11.2023 00:13");   // CEST crosses midnight
+  expectLocal(1700000000, 23, "15.11.2023 03:58");  // Nepal
+  expectLocal(1700000000, -38, "14.11.2023 12:43"); // -9:30
+  expectLocal(951782400, 0, "29.02.2000 00:00");
+  expectLocal(0, 0, "01.01.1970 00:00");
+  expectLocal(4294967295U, 0, "07.02.2106 06:28");
+  check(strlen("14.11.2023 22:13") == 16, "the date and time fit one row of the display");
 
   char text[16];
   tc_format_offset(8, true, text);

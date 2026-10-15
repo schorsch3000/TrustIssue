@@ -33,9 +33,10 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
 ## Setting up a device
 
 1. **Bootloader (once, over ISP).** Put the `ArduinoISP` example sketch on the Uno, then
-   `make -C firmware/bootloader` and
-   `avrdude -c stk500v1 -p m328p -P <uno> -b 19200 -e -U flash:w:firmware/bootloader/boot.hex:i -U lock:w:0xCF:m`.
-   The fuses of a stock Nano (`hfuse 0xDA`) are right already.
+   `tools/user/flash_bootloader.sh <uno port> --yes`. It builds the bootloader, sets the fuses and the
+   development lock bits and verifies them. The burn starts with a chip erase, so the keys are gone, unless you add
+   `--keep-eeprom`. `tools/user/unlock.sh <uno port> --yes` is the way back from the final lock bits
+   (`final_lock.sh`): a chip erase that destroys flash and EEPROM, followed by `flash_bootloader.sh`.
 2. **Host tool.** `cd trustctl && go build -o bin/trustctl ./cmd/trustctl` (a static binary; Go 1.25+, which
    the module fetches by itself).
 3. **Firmware.** `trustctl --device /dev/ttyUSB0 flash` (the core firmware is built into the `trustctl` binary;
@@ -123,7 +124,7 @@ The code never appears on a command line: it goes to `xdotool`, `wtype`, `xclip`
   token need the button, with the name or value on the display.
 - The bootloader only opens after a physical gesture and refuses to touch the EEPROM or itself.
   A held button at reset (the bait and switch) never opens it.
-- When a device is finished, set the read-out lock bits with `tools/user/final_lock.sh`. Until then the idle screen shows an inverted `NOT LOCKED` and `trustctl hello` and `add` warn.
+- When a device is finished, set the read-out lock bits with `tools/user/final_lock.sh` (undo: `tools/user/unlock.sh`, which erases everything). Until then the idle screen shows an inverted `NOT LOCKED` and `trustctl hello` and `add` warn.
 
 ## Tests
 

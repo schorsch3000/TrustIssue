@@ -50,6 +50,7 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
    the command), and flash the core firmware again; the settings are
    patched in from `~/.config/trustctl/device.json`.
 5. `trustctl config set logo=on` for the idle logo.
+6. Optional: `trustctl flash --set-pin` adds an update PIN (see Security model). From then on every `flash` asks for it after the gesture; `flash --clear-pin` removes it, `flash pin --set-pin` changes only the PIN.
 
 Put `device = /dev/ttyUSB0` into `~/.config/trustctl/config` to leave out `--device`. `trustctl help-options` lists every
 option with its `--argument`, environment variable and config file syntax, and the defaults.
@@ -124,6 +125,7 @@ The code never appears on a command line: it goes to `xdotool`, `wtype`, `xclip`
   token need the button, with the name or value on the display.
 - The bootloader only opens after a physical gesture and refuses to touch the EEPROM or itself.
   A held button at reset (the bait and switch) never opens it.
+- **Evil maid:** whoever holds the device briefly can do the button gesture and flash a firmware that copies the keys, then restore everything, and nothing would show. Set an update PIN (`trustctl flash --set-pin`, 4 to 15 characters) and the bootloader asks for it after the gesture; a wrong one starts the application after a wait of about 7 s, so each guess costs the whole gate plus that wait (a 4 digit PIN takes about 21 hours on average). The PIN is only needed to flash; the device works without it. Details in `CLAUDE.md`. It only counts together with the final lock bits.
 - When a device is finished, set the read-out lock bits with `tools/user/final_lock.sh` (undo: `tools/user/unlock.sh`, which erases everything). Until then the idle screen shows an inverted `NOT LOCKED` and `trustctl hello` and `add` warn.
 
 ## Tests

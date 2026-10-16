@@ -2,6 +2,9 @@
 """Flashes an Intel HEX file through the Trust Issues bootloader (STK500v1, flash only).
 
   tools/build/flash.py firmware.hex [--port /dev/ttyUSB0] [--rig /dev/ttyUSB1] [--baud 115200]
+                       [--pin PIN] [--set-pin NEWPIN | --clear-pin]
+
+--pin answers the device's update PIN question, --set-pin and --clear-pin add the PIN page to the flash.
 
 The bootloader only opens after a physical gate: hold the button while the device
 resets, release when told to, wait for the bar to drain, then tap, tap, and press
@@ -22,6 +25,7 @@ PAGE = 128
 FLASH_END = 0x7800  # the bootloader's own section starts here
 
 INSYNC, OK = 0x14, 0x10
+PIN_PAGE = 0x7780  # the update PIN: up to 15 characters, then 0xFF
 
 
 def read_hex(path):
@@ -47,8 +51,8 @@ def read_hex(path):
             break
     if not data:
         raise SystemExit(f"{path}: no data")
-    if max(data) >= FLASH_END:
-        raise SystemExit(f"{path}: data beyond {FLASH_END:#x}, that is the bootloader's section")
+    if max(data) >= PIN_PAGE:
+        raise SystemExit(f"{path}: data beyond {PIN_PAGE:#x}: the update PIN page and the bootloader section are not for firmware")
     return data
 
 
@@ -79,6 +83,10 @@ class Rig:
         return thread
 
 
+class WrongPin(Exception):
+    """The device took the PIN and started the application instead of the update mode."""
+
+
 class Programmer:
     def __init__(self, port):
         self.port = port
@@ -95,12 +103,9 @@ class Programmer:
         self.exchange([0x55, word & 0xFF, word >> 8, 0x20], 2)
 
     def write_page(self, byte_address, data):
+        """The bootloader wants the sum of the page after it, and verifies what it wrote."""
         self.load_address(byte_address)
-        self.exchange([0x64, len(data) >> 8, len(data) & 0xFF, ord("F")] + list(data) + [0x20], 2)
-
-    def read_page(self, byte_address, length):
-        self.load_address(byte_address)
-        return self.exchange([0x74, length >> 8, length & 0xFF, ord("F"), 0x20], 2 + length)
+        self.exchange([0x64, len(data) >> 8, len(data) & 0xFF, ord("F")] + list(data) + [sum(data) & 0xFF, 0x20], 2)
 
 
 def open_gate_and_sync(args, rig=None):
@@ -125,13 +130,25 @@ def open_gate_and_sync(args, rig=None):
     else:
         print("Follow the display: release the button, wait for the bar to drain, then tap, tap, and press again and hold for 2 s.")
     deadline = time.time() + args.wait
+    answered = False
     while time.time() < deadline:
+        if answered and b"TrustIssue" in port.read(port.in_waiting):
+            args.verdict = time.time()
+            raise WrongPin()
         port.reset_input_buffer()
         port.write(b"\x30\x20")
-        if port.read(2) == bytes([INSYNC, OK]):
+        reply = port.read(2)
+        if reply == bytes([INSYNC, OK]):
             if pressing:
                 pressing.join()
+            args.verdict = time.time()
             return port
+        if b"?" in reply and getattr(args, "pin", None) is not None:  # the device asks for its PIN
+            port.write(b"\x02" + args.pin.encode() + b"\n")
+            args.pin_sent = time.time()  # for the tests: how long the device takes to decide
+            time.sleep(5)  # it decides after about 7 s; polls would only pile up
+            args.pin, answered = None, True
+            continue
         time.sleep(0.2)
     raise SystemExit("the bootloader did not open (gate not passed?)")
 
@@ -143,22 +160,23 @@ def main():
     parser.add_argument("--rig")
     parser.add_argument("--baud", type=int, default=115200)
     parser.add_argument("--wait", type=float, default=60, help="seconds to wait for the gate")
+    parser.add_argument("--pin", help="the device's update PIN, if one is set")
+    parser.add_argument("--set-pin", help="write this update PIN with the flash")
+    parser.add_argument("--clear-pin", action="store_true", help="remove the update PIN with the flash")
     args = parser.parse_args()
 
     pages = pages_of(read_hex(args.hexfile))
+    if args.set_pin or args.clear_pin:
+        page = bytearray([0xFF] * PAGE)
+        page[: len(args.set_pin or "")] = (args.set_pin or "").encode()
+        pages.append((PIN_PAGE, page))
     print(f"{len(pages)} pages, {sum(len(p) for _, p in pages)} bytes")
     port = open_gate_and_sync(args)
     port.timeout = 2
     programmer = Programmer(port)
-    programmer.exchange([0x42] + [0] * 20 + [0x20], 2)
-    programmer.exchange([0x45] + [0] * 5 + [0x20], 2)
     programmer.exchange([0x50, 0x20], 2)
     for address, data in pages:
         programmer.write_page(address, data)
-    print("written, verifying")
-    for address, data in pages:
-        if programmer.read_page(address, PAGE) != bytes(data):
-            raise SystemExit(f"verify failed at {address:#06x}")
     programmer.exchange([0x51, 0x20], 2)
     print("done, the device restarts into the new firmware")
 

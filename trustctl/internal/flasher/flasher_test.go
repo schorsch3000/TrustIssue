@@ -2,6 +2,7 @@ package flasher_test
 
 import (
 	"bytes"
+	"errors"
 	"net"
 	"strings"
 	"testing"
@@ -30,10 +31,15 @@ func (p pipePort) Read(b []byte) (int, error) {
 // fakeBootloader implements the bootloader's STK500 subset like firmware/bootloader does:
 // flash only, nothing at or above 0x7800.
 type fakeBootloader struct {
-	flash   [32768]byte
-	opened  time.Time // answers only from this moment on, like the gate
-	address int
-	left    bool
+	flash    [32768]byte
+	opened   time.Time // answers only from this moment on, like the gate
+	address  int
+	left     bool
+	corrupt  int // the next pages that fail the checksum
+	refused  int
+	pin      string // the update PIN; empty: none
+	unlocked bool   // the right PIN was received
+	app      bool   // a wrong PIN: the application runs, the bootloader is gone
 }
 
 func (f *fakeBootloader) serve(c net.Conn) {
@@ -59,29 +65,57 @@ func (f *fakeBootloader) serve(c net.Conn) {
 			}
 			continue
 		}
+		if f.app { // a wrong PIN: the application printed its banner and ignores everything
+			continue
+		}
+		if f.pin != "" && !f.unlocked {
+			if cmd[0] == 0x02 {
+				var line []byte
+				for {
+					b := read(1)
+					if b == nil || b[0] == '\n' {
+						break
+					}
+					line = append(line, b[0])
+				}
+				if string(line) == f.pin {
+					f.unlocked = true
+				} else {
+					f.app = true
+					c.Write([]byte("TrustIssue 0.1.0 proto 1\n"))
+				}
+			} else {
+				if cmd[0] == 0x30 {
+					read(1)
+				}
+				c.Write([]byte("?"))
+			}
+			continue
+		}
 		reply := byte(0x10)
 		var data []byte
 		switch cmd[0] {
-		case 0x42:
-			read(21)
-		case 0x45:
-			read(6)
 		case 0x55:
 			a := read(3)
 			f.address = (int(a[1])<<8 | int(a[0])) << 1
 		case 0x64:
 			h := read(3)
 			length := int(h[0])<<8 | int(h[1])
-			body := read(length + 1)
-			if h[2] != 'F' || f.address+length > 0x7800 {
+			body := read(length + 2) // the page, the sum of the page, EOP
+			var sum byte
+			for _, b := range body[:length] {
+				sum += b
+			}
+			switch {
+			case h[2] != 'F' || f.address+length > 0x7800:
 				reply = 0x11
-			} else {
+			case sum != body[length] || f.corrupt > 0: // a line error: refused, nothing written
+				f.corrupt--
+				f.refused++
+				reply = 0x11
+			default:
 				copy(f.flash[f.address:], body[:length])
 			}
-		case 0x74:
-			h := read(4)
-			length := int(h[0])<<8 | int(h[1])
-			data = f.flash[f.address : f.address+length]
 		case 0x51:
 			read(1)
 			f.left = true
@@ -94,7 +128,7 @@ func (f *fakeBootloader) serve(c net.Conn) {
 	}
 }
 
-func TestSyncWriteVerify(t *testing.T) {
+func TestSyncWrite(t *testing.T) {
 	host, dev := net.Pipe()
 	defer host.Close()
 	fb := &fakeBootloader{opened: time.Now().Add(700 * time.Millisecond)}
@@ -102,7 +136,7 @@ func TestSyncWriteVerify(t *testing.T) {
 	p := flasher.New(pipePort{host})
 
 	tries := 0
-	if err := p.WaitForBootloader(5*time.Second, func() { tries++ }); err != nil {
+	if err := p.WaitForBootloader(5*time.Second, func() { tries++ }, nil); err != nil {
 		t.Fatal(err)
 	}
 	if tries < 2 {
@@ -129,7 +163,7 @@ func TestSyncWriteVerify(t *testing.T) {
 	if string(fb.flash[0x7000:0x7004]) != "TIPB" {
 		t.Error("the parameter block page was not written")
 	}
-	if len(phases) != 2*len(pages) {
+	if len(phases) != len(pages) {
 		t.Errorf("progress called %d times for %d pages", len(phases), len(pages))
 	}
 }
@@ -149,8 +183,103 @@ func TestGateNeverOpens(t *testing.T) {
 	host, dev := net.Pipe()
 	defer host.Close()
 	go (&fakeBootloader{opened: time.Now().Add(time.Hour)}).serve(dev)
-	err := flasher.New(pipePort{host}).WaitForBootloader(1*time.Second, nil)
+	err := flasher.New(pipePort{host}).WaitForBootloader(1*time.Second, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "gesture") {
 		t.Fatalf("expected a hint about the gesture: %v", err)
+	}
+}
+
+func writeOnePage(t *testing.T, p *flasher.Programmer) {
+	t.Helper()
+	img := &hexfile.Image{}
+	for i := range img.Data {
+		img.Data[i] = 0xFF
+	}
+	img.Write(0, bytes.Repeat([]byte{0x5A}, 200))
+	if err := p.Write(img.Pages(flasher.PageSize), nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPageIsSentAgainAfterALineError(t *testing.T) {
+	host, dev := net.Pipe()
+	defer host.Close()
+	fb := &fakeBootloader{corrupt: 2}
+	go fb.serve(dev)
+	p := flasher.New(pipePort{host})
+	writeOnePage(t, p)
+	if fb.refused != 2 || fb.flash[0] != 0x5A || fb.flash[199] != 0x5A {
+		t.Errorf("refused %d times, flash %x", fb.refused, fb.flash[:4])
+	}
+}
+
+func TestPageGivesUpAfterThreeTries(t *testing.T) {
+	host, dev := net.Pipe()
+	defer host.Close()
+	go (&fakeBootloader{corrupt: 99}).serve(dev)
+	img := &hexfile.Image{}
+	img.Write(0, []byte{1})
+	err := flasher.New(pipePort{host}).Write(img.Pages(flasher.PageSize), nil)
+	if err == nil || !strings.Contains(err.Error(), "page 0x0") {
+		t.Fatalf("expected a failure naming the page: %v", err)
+	}
+}
+
+func TestPinIsAskedForOnceAndSent(t *testing.T) {
+	host, dev := net.Pipe()
+	defer host.Close()
+	fb := &fakeBootloader{pin: "4711"}
+	go fb.serve(dev)
+	asked := 0
+	p := flasher.New(pipePort{host})
+	p.PinPause = 10 * time.Millisecond
+	err := p.WaitForBootloader(5*time.Second, nil, func() (string, error) {
+		asked++
+		return "4711", nil
+	})
+	if err != nil || asked != 1 || !fb.unlocked {
+		t.Fatalf("err %v, asked %d, unlocked %v", err, asked, fb.unlocked)
+	}
+}
+
+func TestWrongPin(t *testing.T) {
+	host, dev := net.Pipe()
+	defer host.Close()
+	go (&fakeBootloader{pin: "4711"}).serve(dev)
+	p := flasher.New(pipePort{host})
+	p.PinPause = 10 * time.Millisecond
+	err := p.WaitForBootloader(5*time.Second, nil, func() (string, error) { return "0815", nil })
+	if !errors.Is(err, flasher.ErrWrongPIN) {
+		t.Fatalf("expected ErrWrongPIN, got %v", err)
+	}
+}
+
+func TestPinNeededButNoWayToAsk(t *testing.T) {
+	host, dev := net.Pipe()
+	defer host.Close()
+	go (&fakeBootloader{pin: "4711"}).serve(dev)
+	err := flasher.New(pipePort{host}).WaitForBootloader(5*time.Second, nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "PIN") {
+		t.Fatalf("expected a hint about the PIN: %v", err)
+	}
+}
+
+func TestValidatePINAndPage(t *testing.T) {
+	for _, bad := range []string{"", "123", "1234567890123456", "12 34", "12\n34", "12ü34"} {
+		if flasher.ValidatePIN(bad) == nil {
+			t.Errorf("%q was accepted", bad)
+		}
+	}
+	for _, good := range []string{"1234", "abcd!#%&", "123456789012345"} {
+		if err := flasher.ValidatePIN(good); err != nil {
+			t.Errorf("%q: %v", good, err)
+		}
+	}
+	page := flasher.PinPageData("4711")
+	if len(page) != flasher.PageSize || string(page[:4]) != "4711" || page[4] != 0xFF || page[127] != 0xFF {
+		t.Errorf("page %x", page[:8])
+	}
+	if !bytes.Equal(flasher.PinPageData(""), bytes.Repeat([]byte{0xFF}, flasher.PageSize)) {
+		t.Error("an empty PIN must give the blank page")
 	}
 }

@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Security tests of the button-gated bootloader, with the Uno rig as the finger.
 
-  tools/build/boot_test.py [nano_port] [uno_port]
+  tools/build/boot_test.py [nano_port] [uno_port] [--pin]
+
+--pin adds the update PIN tests (about 2 minutes): it writes the PIN 4711 to the device, tries a wrong and
+the right one, and removes it again. Without it the device must have no PIN set.
 
 Needs the bootloader on the Nano (firmware/bootloader) with the core firmware flashed.
 """
@@ -15,8 +18,10 @@ import serial
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import flash  # noqa: E402
 
-NANO = sys.argv[1] if len(sys.argv) > 1 else "/dev/ttyUSB0"
-UNO = sys.argv[2] if len(sys.argv) > 2 else "/dev/ttyUSB1"
+PIN_TESTS = "--pin" in sys.argv  # also test the update PIN: sets it on the device and clears it again
+positional = [a for a in sys.argv[1:] if not a.startswith("--")]
+NANO = positional[0] if len(positional) > 0 else "/dev/ttyUSB0"
+UNO = positional[1] if len(positional) > 1 else "/dev/ttyUSB1"
 failures = 0
 
 
@@ -104,33 +109,101 @@ port.timeout = 2
 pg = flash.Programmer(port)
 pg.exchange([0x50, 0x20], 2)
 
-port.reset_input_buffer()
-check(len(pg.read_page(0, 16)) == 16, "flash can be read (for verification)")
-
 port.write(bytes([0x55, 0x00, 0x00, 0x20]))
 port.read(2)
-port.write(bytes([0x74, 0x00, 0x10, ord("E"), 0x20]))
-reply = port.read(2)
-check(reply == bytes([flash.INSYNC, 0x11]), f"EEPROM read is refused (reply {reply.hex()})")
-
-port.write(bytes([0x55, 0x00, 0x00, 0x20]))
-port.read(2)
-port.write(bytes([0x64, 0x00, 0x04, ord("E"), 1, 2, 3, 4, 0x20]))
+eeprom_write = bytes([0x64, 0x00, 0x04, ord("E"), 1, 2, 3, 4, 10, 0x20])  # with the sum byte
+port.write(eeprom_write)
 reply = port.read(2)
 check(reply == bytes([flash.INSYNC, 0x11]), f"EEPROM write is refused (reply {reply.hex()})")
 
 boot_word_address = 0x7800 >> 1
 port.write(bytes([0x55, boot_word_address & 0xFF, boot_word_address >> 8, 0x20]))
 port.read(2)
-port.write(bytes([0x64, 0x00, 0x80, ord("F")] + [0] * 128 + [0x20]))
+port.write(bytes([0x64, 0x00, 0x80, ord("F")] + [0] * 128 + [0, 0x20]))
 reply = port.read(2)
 check(reply == bytes([flash.INSYNC, 0x11]), f"writing the bootloader's own section is refused (reply {reply.hex()})")
 
-time.sleep(9)  # no traffic: the update mode ends after 8 s and the chip restarts
+port.write(bytes([0x55, 0x00, 0x00, 0x20]))
+port.read(2)
+bad_sum = bytes([0x64, 0x00, 0x80, ord("F")] + [0x11] * 128 + [0x99, 0x20])
+port.write(bad_sum)
+reply = port.read(2)
+check(reply == bytes([flash.INSYNC, 0x11]), f"a page with a wrong checksum is refused (reply {reply.hex()})")
+
+# there is no read-back at all (the PIN lives in flash): the old READ_PAGE gets no flash data
+port.reset_input_buffer()
+port.write(bytes([0x74, 0x00, 0x80, ord("F"), 0x20]))
+time.sleep(1)
+leak = port.read(port.in_waiting or 1)
+check(len(leak) < 16, f"READ_PAGE returns no flash data ({len(leak)} bytes came back)")
+
+time.sleep(9)  # no traffic (the unknown command probably reset the chip already): the update mode ends after 8 s
 
 nano = serial.Serial(NANO, 9600, timeout=0.3)
 time.sleep(3)
 print("-- after all that")
 check(app_runs(nano), "the device restarted into its application (the firmware was not damaged)")
+def gate(pin=None):
+    """Opens the update mode through the gesture (and the PIN); returns (args, port) or raises WrongPin."""
+    a = argparse.Namespace(port=NANO, baud=115200, wait=60, rig=None, pin=pin)
+    return a, flash.open_gate_and_sync(a, rig)
+
+
+def write_pin_page(port, text):
+    page = bytearray([0xFF] * flash.PAGE)
+    page[: len(text)] = text.encode()
+    port.timeout = 2
+    pg = flash.Programmer(port)
+    pg.exchange([0x50, 0x20], 2)
+    pg.write_page(flash.PIN_PAGE, page)
+    pg.exchange([0x51, 0x20], 2)
+
+
+if PIN_TESTS:
+    print("-- the update PIN")
+    nano.close()
+    try:
+        _, port = gate()
+        write_pin_page(port, "4711")
+        port.close()
+        time.sleep(3)
+        check(True, "a PIN was written through the gate")
+
+        try:
+            a, port = gate(pin="0000")
+            check(False, "a wrong PIN must not open the update mode")
+            port.close()
+        except flash.WrongPin:
+            check(True, "a wrong PIN starts the application instead")
+        decided = a.verdict - a.pin_sent
+        check(decided >= 6, f"the wrong PIN is only noticed after the bar ({decided:.1f} s after sending it)")
+        nano = serial.Serial(NANO, 9600, timeout=0.3)
+        check(app_runs_within(nano, 10), "the application runs after a wrong PIN")
+        nano.close()
+
+        a, port = gate(pin="4711")
+        decided = a.verdict - a.pin_sent
+        check(decided >= 6, f"the right PIN opens the update mode, also only after the bar ({decided:.1f} s)")
+        write_pin_page(port, "")  # remove the PIN again (needs the open update mode)
+        port.close()
+        time.sleep(3)
+        _, port = gate()
+        check(True, "after removing it the gesture alone opens the update mode again")
+        port.timeout = 2
+        flash.Programmer(port).exchange([0x51, 0x20], 2)
+        port.close()
+        time.sleep(3)
+    except BaseException:
+        print("PIN test aborted: trying to remove the PIN again (4711) so the device is left as it was", flush=True)
+        try:
+            a, port = gate(pin="4711")
+            write_pin_page(port, "")
+            port.close()
+        except BaseException as error:  # noqa: BLE001
+            print(f"could not remove it: {error!r}; flash a blank PIN page by hand: flash.py FILE --pin 4711 --clear-pin")
+        failures += 1
+        raise
+
+
 print("ALL PASSED" if not failures else f"{failures} FAILED")
 sys.exit(1 if failures else 0)

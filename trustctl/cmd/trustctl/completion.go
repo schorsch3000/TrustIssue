@@ -133,9 +133,9 @@ _trustctl() {
         COMPREPLY=($(compgen -W "$(trustctl font list 2>/dev/null | cut -d' ' -f1)" -- "$cur"))
         _trustctl_files "$cur" bin
       elif [[ "$cur" == -* ]]; then
-        COMPREPLY=($(compgen -W "--no-patch --profile --font --wait --countdown" -- "$cur"))
+        COMPREPLY=($(compgen -W "--no-patch --profile --font --set-pin --clear-pin --wait --countdown" -- "$cur"))
       elif [ "$npos" -eq 0 ]; then
-        COMPREPLY=($(compgen -W "core calibration" -- "$cur"))
+        COMPREPLY=($(compgen -W "core calibration pin" -- "$cur"))
         _trustctl_files "$cur" hex
       fi ;;
     font|logo)
@@ -230,11 +230,13 @@ _trustctl() {
         flash)
           _arguments \
             '--no-patch[flash the file as it is]' \
+            '--set-pin[set a new update PIN]' \
+            '--clear-pin[remove the update PIN]' \
             '--profile[settings to patch in]:profile:_files -g "*.json"' \
             '--font[font to patch in]:font:_alternative "builtin:built-in font:($(trustctl font list 2>/dev/null | cut -d" " -f1))" "files:font file:_files -g \"*.bin\""' \
             '--wait[how long to wait for the bootloader]:duration:' \
             '--countdown[seconds before the device is reset]:seconds:' \
-            '1:what to flash:_alternative "builtin:built-in firmware:(core calibration)" "files:hex file:_files -g \"*.hex\""'
+            '1:what to flash:_alternative "builtin:built-in firmware:(core calibration pin)" "files:hex file:_files -g \"*.hex\""'
           ;;
         font|logo)
           if (( CURRENT == 2 )); then
@@ -364,11 +366,13 @@ complete -c trustctl -n '__trustctl_is config 0' -a 'get set'
 complete -c trustctl -n '__trustctl_is config 1; and test (__trustctl_args)[1] = set' -a 'rotate=on rotate=off invert=on invert=off logo=on logo=off autowipe=on autowipe=off'
 complete -c trustctl -n '__trustctl_is daemon 0' -a 'status stop'
 complete -c trustctl -n '__trustctl_is flash' -l no-patch -d 'flash the file as it is'
+complete -c trustctl -n '__trustctl_is flash' -l set-pin -d 'set a new update PIN'
+complete -c trustctl -n '__trustctl_is flash' -l clear-pin -d 'remove the update PIN'
 complete -c trustctl -n '__trustctl_is flash' -l profile -r -d 'settings to patch in'
 complete -c trustctl -n '__trustctl_is flash' -l font -r -a '(trustctl font list 2>/dev/null | string split -f1 " ")' -d 'font to patch in'
 complete -c trustctl -n '__trustctl_is flash' -l wait -x -d 'how long to wait for the bootloader'
 complete -c trustctl -n '__trustctl_is flash' -l countdown -x -d 'seconds before the device is reset'
-complete -c trustctl -n '__trustctl_is flash 0' -a 'core calibration' -d 'built-in firmware'
+complete -c trustctl -n '__trustctl_is flash 0' -a 'core calibration pin' -d 'built-in firmware'
 complete -c trustctl -n '__trustctl_is flash 0' -F
 complete -c trustctl -n '__trustctl_is font; or __trustctl_is logo' -l from -r -d 'firmware hex file'
 complete -c trustctl -n '__trustctl_is font; or __trustctl_is logo' -l profile -r -d 'profile file'

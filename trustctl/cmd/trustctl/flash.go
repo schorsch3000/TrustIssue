@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/term"
 	"trustissues/trustctl/internal/daemon"
 	"trustissues/trustctl/internal/firmware"
 	"trustissues/trustctl/internal/flasher"
@@ -51,7 +53,9 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 	wait := set.Duration("wait", 90*time.Second, "")
 	countdown := set.Int("countdown", 4, "")
 	fontSpec := set.String("font", "", "")
-	// what to flash comes first: trustctl flash [core|calibration|FILE.hex] --no-patch;
+	setPin := set.Bool("set-pin", false, "")
+	clearPin := set.Bool("clear-pin", false, "")
+	// what to flash comes first: trustctl flash [core|calibration|pin|FILE.hex] --no-patch;
 	// without it the built-in core firmware is flashed
 	what := firmware.Core
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
@@ -65,9 +69,24 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("flash needs the serial port: use --device PATH (probing would reset other boards)")
 	}
 
+	if *setPin && *clearPin {
+		return usageError("flash: --set-pin and --clear-pin exclude each other")
+	}
+	if what == "pin" && !*setPin && !*clearPin {
+		return usageError("flash pin: needs --set-pin or --clear-pin")
+	}
+
 	// the built-in names win, unless the argument looks like a path
-	img, builtin, err := firmware.Image(what)
+	var img *hexfile.Image
+	var builtin bool
+	if what == "pin" { // only the PIN page, the firmware stays as it is
+		img, *noPatch = newImage(), true
+		fmt.Fprintln(stderr, "Changing only the update PIN, the firmware stays as it is.")
+	} else {
+		img, builtin, err = firmware.Image(what)
+	}
 	switch {
+	case what == "pin":
 	case err != nil:
 		return fmt.Errorf("built-in %s firmware: %w", what, err)
 	case builtin:
@@ -86,8 +105,18 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 			return fmt.Errorf("%s: %w", what, err)
 		}
 	}
-	if img.Highest() >= flasher.BootStart {
-		return fmt.Errorf("%s writes into the bootloader's section (from %#x)", what, flasher.BootStart)
+	if img.Highest() >= flasher.PinPage {
+		return fmt.Errorf("%s writes into the end of the flash (from %#x): the bootloader's section and the update PIN's page are not available to firmware", what, flasher.PinPage)
+	}
+	if *setPin {
+		pin, err := askNewPIN(stderr)
+		if err != nil {
+			return err
+		}
+		img.Write(flasher.PinPage, flasher.PinPageData(pin))
+	} else if *clearPin {
+		img.Write(flasher.PinPage, flasher.PinPageData(""))
+		fmt.Fprintln(stderr, "The update PIN will be removed: the gesture alone opens the bootloader again.")
 	}
 	if *noPatch && *fontSpec != "" {
 		return usageError("flash: --font and --no-patch exclude each other")
@@ -127,8 +156,17 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 	fmt.Fprintln(stderr, "then tap, tap, and press a third time and hold until the bar is full.")
 
 	programmer := flasher.New(port)
-	if err := programmer.WaitForBootloader(*wait, nil); err != nil {
+	asked := false
+	err = programmer.WaitForBootloader(*wait, nil, func() (string, error) {
+		asked = true
+		fmt.Fprintln(stderr, "The device asks for its update PIN.")
+		return readHidden("Update PIN: ", stderr)
+	})
+	if err != nil {
 		return err
+	}
+	if asked {
+		fmt.Fprintln(stderr, "The PIN was accepted.")
 	}
 	fmt.Fprintln(stderr, "The bootloader is open.")
 	last := ""
@@ -155,6 +193,73 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 		fmt.Fprintf(stderr, "The profile %s remembers the font %s.\n", *profilePath, stored.Font)
 	}
 	return nil
+}
+
+// newImage is an empty flash image (every byte 0xFF and undefined).
+func newImage() *hexfile.Image {
+	img := &hexfile.Image{}
+	for i := range img.Data {
+		img.Data[i] = 0xFF
+	}
+	return img
+}
+
+// askNewPIN asks twice for the PIN that will be written to the device.
+func askNewPIN(stderr io.Writer) (string, error) {
+	fmt.Fprintf(stderr, "The update PIN guards the bootloader after the button gesture: %d to %d characters,\nasked for only when flashing. Without it the device cannot be reflashed except over ISP,\nwhich erases the keys.\n", flasher.MinPIN, flasher.MaxPIN)
+	pin, err := readHidden("New update PIN: ", stderr)
+	if err != nil {
+		return "", err
+	}
+	if err := flasher.ValidatePIN(pin); err != nil {
+		return "", err
+	}
+	again, err := readHidden("Again: ", stderr)
+	if err != nil {
+		return "", err
+	}
+	if again != pin {
+		return "", errors.New("the two entries differ, nothing was changed")
+	}
+	return pin, nil
+}
+
+// readHidden reads one line without showing it: stars on a terminal, a plain line from a pipe.
+func readHidden(prompt string, stderr io.Writer) (string, error) {
+	in := int(os.Stdin.Fd())
+	var line string
+	switch {
+	case term.IsTerminal(in) && term.IsTerminal(int(os.Stderr.Fd())):
+		var err error
+		if line, err = readMasked(in, prompt); err != nil {
+			return "", err
+		}
+	case term.IsTerminal(in):
+		fmt.Fprint(stderr, prompt)
+		b, err := term.ReadPassword(in)
+		fmt.Fprintln(stderr)
+		if err != nil {
+			return "", err
+		}
+		line = string(b)
+	default:
+		l, err := stdinReader().ReadString('\n')
+		if err != nil && l == "" {
+			return "", errors.New("no PIN on stdin")
+		}
+		line = l
+	}
+	return strings.TrimRight(line, "\r\n"), nil
+}
+
+var sharedStdin *bufio.Reader
+
+// stdinReader is one reader for all prompts, so a pipe with two lines (PIN and repeat) works.
+func stdinReader() *bufio.Reader {
+	if sharedStdin == nil {
+		sharedStdin = bufio.NewReader(os.Stdin)
+	}
+	return sharedStdin
 }
 
 func describe(p profile.Profile) string {

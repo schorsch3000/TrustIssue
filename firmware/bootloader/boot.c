@@ -11,8 +11,13 @@
 //      during that time aborts and resets.
 //   3. Gesture: tap, tap, then press again and hold for 2 s; the bottom row
 //      lights up one step per press.
-//   4. Update mode: a minimal STK500v1 programmer (as used by avrdude -c arduino
-//      and by tools/build/flash.py). Flash only: the EEPROM is neither readable nor
+//   4. If an update PIN is set (the last page of the application area), the host
+//      has to send it; a wrong PIN is only noticed after a 7 s bar, then the
+//      application starts. See pin_gate().
+//   5. Update mode: a small subset of STK500v1 (sync, load address, program page
+//      with a checksum byte and an in-place verify, read signature, leave), as
+//      spoken by trustctl and tools/build/flash.py. Flash can be written but never
+//      read back (the PIN lives there), the EEPROM is neither readable nor
 //      writable, and the bootloader's own section is protected.
 // Every timeout or mistake ends in a reset, which starts the application.
 // A missing or dead display fails closed: the update mode never opens.
@@ -39,6 +44,14 @@
 #define STK_NOSYNC 0x15
 #define CRC_EOP 0x20
 
+// The optional update PIN: the last page of the application area. Up to 15
+// characters followed by 0xFF up to the end of the page; a blank page (0xFF first) means no PIN is set.
+#define PIN_ADDRESS 0x7780U
+#define PIN_MAX 15
+#define PIN_START 0x02   // the host's PIN line is STX, the characters, then LF
+#define PIN_PROMPT '?'   // sent every 100 ms until the host answers
+#define CHECK_TICKS 5    // 128 columns x 5 ticks x 10 ms: the bar drains in about 7 s
+
 // ---- messages (at most 16 characters; boot_font.h carries exactly these glyphs)
 
 static const char M_RELEASE[] PROGMEM = "RELEASE";
@@ -47,9 +60,7 @@ static const char M_UPDATE[] PROGMEM = "FIRMWARE UPDATE";
 static const char M_WAIT[] PROGMEM = "WAIT";
 static const char M_TAPS[] PROGMEM = "TAP TAP HOLD";
 static const char M_MODE[] PROGMEM = "UPDATE MODE";
-static const char M_WRITING[] PROGMEM = "WRITING";
-static const char M_NOFW[] PROGMEM = "NO FIRMWARE";
-static const char M_PRESS[] PROGMEM = "PRESS BUTTON";
+static const char M_PIN[] PROGMEM = "PIN";
 
 // ---- start
 
@@ -61,10 +72,7 @@ void start(void) { __asm__ volatile("clr r1\n\trjmp main"); }
 
 static void run_app(void) __attribute__((noreturn));
 static void run_app(void) {
-  wdt_disable();
-  TWCR = 0;
-  UCSR0B = 0;
-  PORTD &= ~_BV(BUTTON_BIT);
+  wdt_disable();  // the application sets up everything else itself
   __asm__ volatile("jmp 0");
   for (;;) {}
 }
@@ -135,13 +143,8 @@ static void oled_commands(const uint8_t *commands, uint8_t count, bool flash) {
 }
 
 static void oled_put_glyph(char c, bool invert) {
-  uint8_t index = 0;  // unknown characters show as a space
-  for (uint8_t i = 0; i < CHARSET_SIZE; i++) {
-    if (pgm_read_byte(&CHARSET[i]) == c) {
-      index = i;
-      break;
-    }
-  }
+  uint8_t index = 0;  // gen_font.py puts every character of the messages into CHARSET
+  while (pgm_read_byte(&CHARSET[index]) != c) index++;
   for (uint8_t column = 0; column < 8; column++) {
     uint8_t bits = pgm_read_byte(&GLYPHS[index * 8 + column]);
     twi_write(invert ? ~bits : bits);
@@ -240,14 +243,21 @@ static bool release_first(void) {
   return wait_level(false, LONG_WAIT) >= 0;
 }
 
+// A bar in the bottom row that drains one column per `ticks` ticks. Pressing
+// the button meanwhile (mashing) aborts: returns false.
+static bool wait_bar(uint8_t ticks) {
+  for (uint8_t pixels = 129; pixels--;) {
+    oled_bar(pixels);
+    if (wait_level(true, ticks) > 0) return false;
+  }
+  return true;
+}
+
 static bool gate(void) {
   if (button() && !release_first()) return false;
 
   show(M_UPDATE, M_WAIT, 0, 0, false);
-  for (uint8_t pixels = 129; pixels--;) {  // the bar drains smoothly over about 4 s
-    oled_bar(pixels);
-    if (wait_level(true, 3) > 0) return false;  // pressed: mashing aborts
-  }
+  if (!wait_bar(3)) return false;  // about 4 s
 
   show(M_UPDATE, M_TAPS, 0, 0, false);
   for (;;) {  // tap, tap, then press and hold 2 s; every mistake starts over
@@ -290,10 +300,6 @@ static void putch(uint8_t value) {
   UDR0 = value;
 }
 
-static void skip(uint8_t count) {
-  while (count--) getch();
-}
-
 static void verify_space(void) {
   if (getch() != CRC_EOP) reboot();
   putch(STK_INSYNC);
@@ -311,31 +317,53 @@ static void write_page(uint16_t address, const uint8_t *data, uint8_t length) {
   boot_rww_enable();
 }
 
+static void uart_on(void) {
+  UCSR0A = _BV(U2X0);
+  UBRR0L = 16;  // 115200 baud at 16 MHz
+  UCSR0B = _BV(RXEN0) | _BV(TXEN0);
+  wdt_enable(WDTO_8S);  // no activity for 8 s ends the PIN entry or the update mode
+}
+
+// The PIN gate, after the button gesture: with a PIN set, the host has to send
+// it before the update mode opens. A wrong PIN looks exactly like a right one
+// until the second wait bar has run out, so a guess costs the whole gate plus
+// the bar however the attacker resets the chip. A wrong PIN just starts the
+// application. The host can never read the PIN back: the update mode has no
+// flash read-out and no compare command, and the page is only ever compared
+// inside this function.
+static bool pin_gate(void) {
+  if (pgm_read_byte_near(PIN_ADDRESS) == 0xFF) return true;  // no PIN set
+
+  show(M_UPDATE, M_PIN, 0, 0, false);
+  uart_on();
+  do {  // ask until the host answers
+    putch(PIN_PROMPT);
+    wait_level(true, 10);
+  } while (!(UCSR0A & _BV(RXC0)));
+  while (getch() != PIN_START) {}  // junk before the start byte is ignored
+  uint8_t difference = 0;
+  uint8_t position = 0;  // compared as the characters arrive; nothing is stored
+  for (uint8_t c; (c = getch()) != '\n';) {
+    difference |= c ^ pgm_read_byte_near(PIN_ADDRESS + position);
+    if (position < PIN_MAX) position++;  // longer entries meet the 0xFF after the PIN
+  }
+  difference |= pgm_read_byte_near(PIN_ADDRESS + position) ^ 0xFF;  // the PIN ends here
+  show(M_UPDATE, M_WAIT, 0, 0, false);  // the same screen as the first wait
+  return wait_bar(CHECK_TICKS) && !difference;
+}
+
 static void update_mode(void) {
   static uint8_t buffer[PAGE_BYTES] __attribute__((section(".noinit")));
   uint16_t address = 0;
 
   show(0, M_MODE, 0, 0, false);
-  UCSR0A = _BV(U2X0);
-  UBRR0L = 16;  // 115200 baud at 16 MHz
-  UCSR0B = _BV(RXEN0) | _BV(TXEN0);
-  UCSR0C = _BV(UCSZ00) | _BV(UCSZ01);
-  wdt_enable(WDTO_8S);  // no activity for 8 s ends the update mode
+  uart_on();
+  while (UCSR0A & _BV(RXC0)) (void)UDR0;  // polls sent while the PIN was checked
 
   for (;;) {
     uint8_t reply = STK_OK;
     uint8_t command = getch();
     switch (command) {
-      case 0x41:  // get parameter
-        skip(1);
-        verify_space();
-        putch(0x03);
-        break;
-      case 0x42:  // set device (20 bytes) and set device ext (5 bytes)
-      case 0x45:
-        skip(command == 0x42 ? 20 : 5);
-        verify_space();
-        break;
       case 0x55: {  // load address (word address)
         uint8_t low = getch();
         uint8_t high = getch();
@@ -347,28 +375,22 @@ static void update_mode(void) {
         uint16_t length = (uint16_t)getch() << 8;
         length |= getch();
         uint8_t type = getch();
+        uint8_t sum = 0;
         for (uint16_t i = 0; i < length; i++) {
           uint8_t value = getch();
+          sum += value;
           if (i < PAGE_BYTES) buffer[i] = value;
         }
+        sum -= getch();  // the host appends the sum of the page: catches line errors
         verify_space();
         // flash only, whole page aligned, never the bootloader's own section
         if (type == 'F' && length <= PAGE_BYTES && !(address & (PAGE_BYTES - 1)) &&
-            address + length <= BOOT_START) {
-          oled_row(2, M_WRITING, false);
+            address + length <= BOOT_START && !sum) {
           write_page(address, buffer, length);
-        } else {
-          reply = STK_FAILED;
-        }
-        break;
-      }
-      case 0x74: {  // read page: flash only, the EEPROM is never read out
-        uint16_t length = (uint16_t)getch() << 8;
-        length |= getch();
-        uint8_t type = getch();
-        verify_space();
-        if (type == 'F') {
-          while (length--) putch(pgm_read_byte_near(address++));
+          // verify in place: flash is never read out, so nothing can be learned from it
+          for (uint8_t i = 0; i < length; i++) {
+            if (pgm_read_byte_near(address + i) != buffer[i]) reply = STK_FAILED;
+          }
         } else {
           reply = STK_FAILED;
         }
@@ -399,10 +421,8 @@ int main(void) {
   MCUSR = 0;
   wdt_disable();
   PORTD |= _BV(BUTTON_BIT);  // pull-up
-  _delay_ms(2);
+  _delay_ms(5);  // pull-up settled
   bool held = button();
-  _delay_ms(3);
-  held = held && button();
   bool firmware = pgm_read_word(0) != 0xFFFF;
 
   if (!held && firmware) run_app();
@@ -412,10 +432,6 @@ int main(void) {
     if (firmware) run_app();
     for (;;) {}  // no display, no firmware: nothing safe to do
   }
-  if (!held) {
-    show(M_NOFW, M_PRESS, 0, 0, false);
-    while (!button()) wdt_reset();
-  }
-  if (gate()) update_mode();
+  if (gate() && pin_gate()) update_mode();
   reboot();
 }

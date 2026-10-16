@@ -47,6 +47,8 @@ var commandOptions = []struct {
 		{"--no-patch", "", "", "off", "Flash the firmware as it is, without the font, logo and contrast of the profile."},
 		{"--profile PATH", "", "", "the device profile (see below)", "The profile file to patch into the firmware."},
 		{"--font NAME|FILE.bin", "", "", "the profile's font, else the built-in default", "Patch this font in instead (a built-in name from \"trustctl font list\", or a font file)."},
+		{"--set-pin", "", "", "off", "Write a new update PIN (4 to 15 characters, asked for twice) with this flash. From then on the bootloader asks for it after the gesture, and a wrong one starts the application after about 7 s. \"flash pin --set-pin\" changes only the PIN."},
+		{"--clear-pin", "", "", "off", "Remove the update PIN with this flash (the current one is asked for first)."},
 		{"--wait DURATION", "", "", "90s", "How long to wait for the bootloader to open (the button gesture)."},
 		{"--countdown N", "", "", "4", "Seconds between \"hold the button\" and the reset of the device."},
 	}},

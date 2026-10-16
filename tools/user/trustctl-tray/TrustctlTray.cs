@@ -170,6 +170,23 @@ namespace TrustctlTray
             return sb.ToString();
         }
 
+        // The last non-empty line of the output (trustctl prints the code alone on stdout).
+        public static string LastLine(string output)
+        {
+            string[] lines = output.Replace("\r", "").Split('\n');
+            for (int i = lines.Length - 1; i >= 0; i--)
+                if (lines[i].Trim().Length > 0) return lines[i].Trim();
+            return "";
+        }
+
+        // A TOTP code: 6 to 8 digits (leading zeros included).
+        public static bool IsCode(string text)
+        {
+            if (text.Length < 6 || text.Length > 8) return false;
+            foreach (char c in text) if (c < '0' || c > '9') return false;
+            return true;
+        }
+
         // Digits only in practice; escaped anyway so that SendKeys never reads a code as a command.
         public static string EscapeForSendKeys(string text)
         {
@@ -385,14 +402,28 @@ namespace TrustctlTray
             return l;
         }
 
+        // A note under a field; it wraps inside the window instead of running out of it.
+        void Hint(string text, int x, int y)
+        {
+            Label l = new Label();
+            l.Text = text;
+            l.AutoSize = true;
+            l.MaximumSize = new Size(508 - x, 0);
+            l.ForeColor = SystemColors.GrayText;
+            l.Location = new Point(x, y);
+            Controls.Add(l);
+        }
+
         public SettingsForm(Settings s)
         {
+            AutoScaleDimensions = new SizeF(96f, 96f);  // follow the display scaling (125 %, 150 %) so text fits
+            AutoScaleMode = AutoScaleMode.Dpi;
             Text = "trustctl-tray settings";
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(520, 300);
+            ClientSize = new Size(520, 392);
             Font = new Font("Segoe UI", 9f);
 
             Caption("Path of trustctl.exe", 12);
@@ -411,67 +442,64 @@ namespace TrustctlTray
             Caption("Device (optional)", 48);
             device.SetBounds(150, 48, 120, 24);
             device.Text = s.Device;
-            Label deviceHint = new Label();
-            deviceHint.Text = "a port such as COM5; empty uses trustctl's own setting";
-            deviceHint.AutoSize = true;
-            deviceHint.Location = new Point(278, 52);
+            Hint("A port such as COM5; empty uses trustctl's own setting.", 150, 74);
 
-            Caption("Hotkey (optional)", 84);
-            hotkey.SetBounds(150, 84, 160, 24);
+            Caption("Hotkey (optional)", 108);
+            hotkey.SetBounds(150, 108, 160, 24);
             hotkey.ReadOnly = true;
             hotkey.Text = s.Hotkey;
             hotkey.KeyDown += HotkeyKeyDown;
-            Label hotkeyHint = new Label();
-            hotkeyHint.Text = "click, then press the keys; Backspace clears";
-            hotkeyHint.AutoSize = true;
-            hotkeyHint.Location = new Point(318, 88);
+            Hint("Click the field, then press the keys (a modifier is needed). Backspace clears it.", 150, 134);
 
             GroupBox what = new GroupBox();
             what.Text = "When the device has given the code";
-            what.SetBounds(12, 124, 496, 110);
+            what.SetBounds(12, 180, 496, 130);
             type.Text = "Type it into the window that was active before";
             type.Location = new Point(12, 22);
             type.AutoSize = true;
-            copy.Text = "Copy it to the clipboard";
-            copy.Location = new Point(12, 46);
-            copy.AutoSize = true;
             type.Checked = s.Action == "type";
-            copy.Checked = s.Action == "copy";
-            enter.Text = "Press Enter after typing";
-            enter.Location = new Point(32, 70);
+            // what belongs to typing hangs under it: the Enter key and the wait before the first key
+            enter.Text = "Then press Enter";
+            enter.Location = new Point(32, 46);
             enter.AutoSize = true;
             enter.Checked = s.PressEnter;
             Label wait = new Label();
-            wait.Text = "after";
+            wait.Text = "Wait";
             wait.AutoSize = true;
-            wait.Location = new Point(220, 74);
-            delay.SetBounds(256, 70, 60, 24);
+            wait.Location = new Point(32, 76);
+            delay.SetBounds(72, 72, 64, 24);
             delay.Minimum = 0;
             delay.Maximum = 10000;
             delay.Increment = 100;
             delay.Value = s.DelayMs;
             Label ms = new Label();
-            ms.Text = "ms";
+            ms.Text = "ms before typing (time to let go of the hotkey)";
             ms.AutoSize = true;
-            ms.Location = new Point(320, 74);
-            what.Controls.AddRange(new Control[] { type, copy, enter, wait, delay, ms });
+            ms.Location = new Point(142, 76);
+            copy.Text = "Copy it to the clipboard";
+            copy.Location = new Point(12, 102);
+            copy.AutoSize = true;
+            copy.Checked = s.Action == "copy";
+            what.Controls.AddRange(new Control[] { type, enter, wait, delay, ms, copy });
+            type.CheckedChanged += delegate { enter.Enabled = delay.Enabled = type.Checked; };
+            enter.Enabled = delay.Enabled = type.Checked;
 
             autostart.Text = "Start with Windows";
-            autostart.Location = new Point(12, 244);
+            autostart.Location = new Point(12, 324);
             autostart.AutoSize = true;
             autostart.Checked = AutostartEnabled();
 
             Button ok = new Button();
             ok.Text = "OK";
-            ok.SetBounds(352, 262, 75, 26);
+            ok.SetBounds(352, 352, 75, 28);
             ok.Click += delegate { Accept(); };
             Button cancel = new Button();
             cancel.Text = "Cancel";
-            cancel.SetBounds(433, 262, 75, 26);
+            cancel.SetBounds(433, 352, 75, 28);
             cancel.DialogResult = DialogResult.Cancel;
             AcceptButton = ok;
             CancelButton = cancel;
-            Controls.AddRange(new Control[] { path, browse, device, deviceHint, hotkey, hotkeyHint, what, autostart, ok, cancel });
+            Controls.AddRange(new Control[] { path, browse, device, hotkey, what, autostart, ok, cancel });
         }
 
         void HotkeyKeyDown(object sender, KeyEventArgs e)
@@ -510,7 +538,7 @@ namespace TrustctlTray
 
         readonly NotifyIcon icon = new NotifyIcon();
         readonly HotkeyWindow window;
-        readonly SynchronizationContext ui;
+        readonly Control ui = new Control();  // never shown: carries results of the worker thread back to the UI thread
         Settings settings;
         bool busy;
 
@@ -527,7 +555,7 @@ namespace TrustctlTray
 
         public TrayContext()
         {
-            ui = SynchronizationContext.Current;
+            IntPtr unused = ui.Handle;  // creates the handle on the UI thread (Application.Run has not started yet here)
             settings = Settings.Load(Settings.FilePath);
             window = new HotkeyWindow();
             window.Pressed = delegate { ShowPicker(); };
@@ -637,8 +665,15 @@ namespace TrustctlTray
             // the device waits up to 30 s for the button; do not block the message loop meanwhile
             ThreadPool.QueueUserWorkItem(delegate
             {
-                TrustctlResult r = Trustctl.Run(settings, new string[] { "token", name }, 60000);
-                ui.Post(delegate { Deliver(r, name, previous); }, null);
+                TrustctlResult r;
+                try { r = Trustctl.Run(settings, new string[] { "token", name }, 60000); }
+                catch (Exception e)
+                {
+                    r = new TrustctlResult();
+                    r.ExitCode = -1;
+                    r.Error = "trustctl token failed: " + e.Message;
+                }
+                ui.BeginInvoke((MethodInvoker)delegate { Deliver(r, name, previous); });
             });
         }
 
@@ -647,7 +682,12 @@ namespace TrustctlTray
             busy = false;
             icon.Visible = false;  // the only way to withdraw the balloon early
             icon.Visible = true;
-            string code = r.Output.Trim();
+            string code = Logic.LastLine(r.Output);
+            if (r.ExitCode == 0 && !Logic.IsCode(code))
+            {
+                Error("trustctl printed something unexpected instead of a code: " + (r.Output.Trim().Length > 60 ? r.Output.Trim().Substring(0, 60) + "..." : r.Output.Trim()));
+                return;
+            }
             if (r.ExitCode != 0 || code.Length == 0)
             {
                 string why = r.Error.Length > 0 ? r.Error : "trustctl token failed (exit " + r.ExitCode + ")";
@@ -662,9 +702,13 @@ namespace TrustctlTray
                 icon.ShowBalloonTip(2000, "trustctl", "The code for " + name + " is in the clipboard.", ToolTipIcon.Info);
                 return;
             }
-            if (previous != IntPtr.Zero) Native.ForceForeground(previous);
-            Thread.Sleep(Math.Max(settings.DelayMs, 50));
-            SendKeys.SendWait(Logic.EscapeForSendKeys(code) + (settings.PressEnter ? "{ENTER}" : ""));
+            try
+            {
+                if (previous != IntPtr.Zero) Native.ForceForeground(previous);
+                Thread.Sleep(Math.Max(settings.DelayMs, 50));
+                SendKeys.SendWait(Logic.EscapeForSendKeys(code) + (settings.PressEnter ? "{ENTER}" : ""));
+            }
+            catch (Exception e) { Error("Could not type the code: " + e.Message); }
         }
 
         void Quit()

@@ -51,6 +51,12 @@ static class LogicTests
         Check(Logic.EscapeForSendKeys("012345") == "012345", "digits are not changed for SendKeys");
         Check(Logic.EscapeForSendKeys("+^%~(){}[]") == "{+}{^}{%}{~}{(}{)}{{}{}}{[}{]}", "SendKeys specials are escaped");
 
+        Check(Logic.LastLine("012345\r\n") == "012345", "LastLine of a code");
+        Check(Logic.LastLine("note\n\n654321\n\n") == "654321", "LastLine skips empty lines");
+        Check(Logic.LastLine("") == "", "LastLine of nothing");
+        Check(Logic.IsCode("012345") && Logic.IsCode("12345678"), "6 and 8 digits are a code");
+        Check(!Logic.IsCode("12345") && !Logic.IsCode("123456789") && !Logic.IsCode("12 456") && !Logic.IsCode("abcdef"), "other strings are not");
+
         Settings s = new Settings();
         s.TrustctlPath = "C:\\Tools\\trustctl.exe";
         s.Device = "COM5";

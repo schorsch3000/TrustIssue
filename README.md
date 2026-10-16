@@ -8,6 +8,8 @@ needs somebody to hold the button on the device while its display shows what is 
 Malware on the laptop can neither export the secrets nor silently use them, and it cannot reflash
 the device either: the bootloader only opens after a gesture on the button.
 
+`wiring.md` shows how to wire the Nano, the display and the button.
+
 `CLAUDE.md` holds the design decisions and the detailed state of the project.
 
 ## What is in here

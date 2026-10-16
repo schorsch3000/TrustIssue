@@ -20,7 +20,7 @@ the device either: the bootloader only opens after a gesture on the button.
 | `firmware/calibration` | tiny firmware to try out contrast, logo and font on the display |
 | `firmware/rig` | the Uno test rig that presses the button and resets the Nano |
 | `trustctl` | the host tool in Go: `list`, `token`, `add`, `del`, `tz`, `config`, `wipe`, `flash`, `calibrate`, `font extract`, `logo extract`, `daemon` |
-| `tools/user` | tools for people who use the device: `trustctl-menu`, `dummy-keys.html` (fake keys), `font2png.py`, `png2font.py`, `c64rom2font.py`, `final_lock.sh` |
+| `tools/user` | tools for people who use the device: `trustctl-menu`, `dummy-keys.html` (fake keys), `font2png.py`, `png2font.py`, `c64rom2font.py`, `final_lock.sh`, `onboard_usbtiny.sh` |
 | `tools/build` | for building and testing the project: end-to-end tests (need the rig), `release.sh`, `embed_firmware.sh`, `embed_fonts.py`, `gen_params.py`, `flash.py` |
 
 ## Hardware
@@ -32,6 +32,7 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
 
 ## Setting up a device
 
+1. **With a USBtinyISP programmer** one script does steps 1 and 3 at once: `tools/user/onboard_usbtiny.sh --yes` (chip erase, bootloader, the core firmware built into the repo, fuses, development lock bits; `--final-lock` for a finished device). Otherwise:
 1. **Bootloader (once, over ISP).** Put the `ArduinoISP` example sketch on the Uno, then
    `tools/user/flash_bootloader.sh <uno port> --yes`. It builds the bootloader, sets the fuses and the
    development lock bits and verifies them. The burn starts with a chip erase, so the keys are gone, unless you add

@@ -86,6 +86,8 @@ A fixed 1300 byte block at flash address **0x7000** of the core firmware (sectio
 
 ### Idle screen
 
+The second row of the idle screen shows the key count against the capacity, e.g. `6 / 20 keys` (firmware 0.1.3; the capacity is `TC_SLOT_COUNT`). The wipe confirm screen still says just `N keys`.
+
 Timings are compile-time options (defaults in parentheses, to be tuned on the real device):
 
 0. At power-up or reset, with the logo option on and a logo in the parameter block, the logo is shown at full contrast for 5 s (`BOOT_LOGO_MS`) before the idle screen appears. A button press or a command that needs a confirmation cuts it short; read-only commands do not.

@@ -20,7 +20,7 @@ var commandTable = []struct{ name, description string }{
 	{"flash", "program the firmware through the bootloader"},
 	{"font", "write the current font to a file to work on (font extract FILE.bin)"},
 	{"logo", "write the current logo to a file to work on (logo extract FILE.png)"},
-	{"calibrate", "try out contrast, logo and font on the calibration firmware"},
+	{"calibrate", "try out contrast, logo, font, rotation and inversion on the calibration firmware"},
 	{"version", "the versions of trustctl and of the firmware built into it"},
 	{"help", "show the short usage text"},
 	{"help-options", "every option with its argument, environment variable and config file syntax"},
@@ -155,10 +155,11 @@ _trustctl() {
       elif [[ "$cur" == -* ]]; then
         COMPREPLY=($(compgen -W "--profile --invert" -- "$cur"))
       elif [ "$npos" -eq 0 ]; then
-        COMPREPLY=($(compgen -W "contrast logo font show forget" -- "$cur"))
+        COMPREPLY=($(compgen -W "contrast logo font rotate invert show forget" -- "$cur"))
       elif [ "$npos" -eq 1 ]; then
         case "$sub" in
           contrast) COMPREPLY=($(compgen -W "full dim" -- "$cur")) ;;
+          rotate|invert) COMPREPLY=($(compgen -W "on off" -- "$cur")) ;;
           logo) _trustctl_files "$cur" png ;;
           font) COMPREPLY=($(compgen -W "$(trustctl font list 2>/dev/null | cut -d' ' -f1)" -- "$cur")); _trustctl_files "$cur" bin ;;
           forget) COMPREPLY=($(compgen -W "logo font contrast" -- "$cur")) ;;
@@ -247,10 +248,11 @@ _trustctl() {
           ;;
         calibrate)
           if (( CURRENT == 2 )); then
-            _values 'calibrate command' contrast logo font show forget
+            _values 'calibrate command' contrast logo font rotate invert show forget
           else
             case $words[2] in
               contrast) (( CURRENT == 3 )) && _values 'which' full dim ;;
+              rotate|invert) (( CURRENT == 3 )) && _values 'state' on off ;;
               logo) _arguments '--invert[swap light and dark]' '--profile[profile file]:profile:_files -g "*.json"' '*:png file:_files -g "*.png"' ;;
               font) _arguments '--profile[profile file]:profile:_files -g "*.json"' '*:font:_alternative "builtin:built-in font:($(trustctl font list 2>/dev/null | cut -d" " -f1))" "files:font file:_files -g \"*.bin\""' ;;
               forget) (( CURRENT == 3 )) && _values 'what' logo font contrast ;;
@@ -383,8 +385,9 @@ complete -c trustctl -n '__trustctl_is logo 0' -a extract
 complete -c trustctl -n '__trustctl_is font 1; or __trustctl_is logo 1' -F
 complete -c trustctl -n '__trustctl_is calibrate' -l profile -r -d 'profile file'
 complete -c trustctl -n '__trustctl_is calibrate' -l invert -d 'swap light and dark (logo)'
-complete -c trustctl -n '__trustctl_is calibrate 0' -a 'contrast logo font show forget'
+complete -c trustctl -n '__trustctl_is calibrate 0' -a 'contrast logo font rotate invert show forget'
 complete -c trustctl -n '__trustctl_is calibrate 1; and test (__trustctl_args)[1] = contrast' -a 'full dim'
+complete -c trustctl -n '__trustctl_is calibrate 1; and contains (__trustctl_args)[1] rotate invert' -a 'on off'
 complete -c trustctl -n '__trustctl_is calibrate 1; and test (__trustctl_args)[1] = forget' -a 'logo font contrast'
 complete -c trustctl -n '__trustctl_is calibrate 1; and contains (__trustctl_args)[1] logo font' -F
 `)

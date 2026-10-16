@@ -49,7 +49,7 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
 1. **Look and feel (optional).** Flash the built-in calibration firmware the same way
    (`trustctl flash calibration`), then
    `trustctl calibrate contrast full 0x20`, `calibrate contrast dim 0`, `calibrate logo Demo-Logos/trust_issue_01.png`,
-   `calibrate font victoriabold8` (the options like `--device` may stand before or after
+   `calibrate font victoriabold8`, and `calibrate rotate on` or `calibrate invert on` to see a rotated or inverted display before setting it with `trustctl config set rotate=on` (the options like `--device` may stand before or after
    the command), and flash the core firmware again; the settings are
    patched in from `~/.config/trustctl/device.json`.
 1. `trustctl config set logo=on` for the idle logo.

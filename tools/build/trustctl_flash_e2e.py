@@ -134,6 +134,13 @@ code, out, err = run("calibrate", "font", "nonsense", "--profile", profile)
 check(code != 0, "an unknown font name is refused", f"{code}")
 code, out, err = run("calibrate", "font", "README.md", "--profile", profile)
 check(code != 0, "a file that is no font is refused", f"{code}")
+for what in ("rotate", "invert"):
+    for state in ("on", "off"):
+        code, out, err = run("calibrate", what, state, "--profile", profile)
+        check(code == 0, f"calibrate {what} {state}", f"{code} {err}")
+        time.sleep(1.2)
+code, out, err = run("calibrate", "rotate", "maybe", "--profile", profile)
+check(code != 0, "calibrate rotate maybe is refused", f"{code}")
 code, out, err = run("calibrate", "show", "--profile", profile)
 check("contrast full 32" in out and "dim 0" in out and "logo " in out and "font builtin:" in out, "the profile remembers it all", out)
 

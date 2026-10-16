@@ -20,6 +20,8 @@ const calibrateUsage = `calibrate commands (the device must run the calibration 
   calibrate contrast full|dim VALUE   try a contrast (0-255, or 0x..) and remember it for "flash"
   calibrate logo FILE.png [--invert]  show the logo on the display and remember it for "flash"
   calibrate font NAME|FILE.bin        show a sample with a built-in font (see: font list) or a font file and remember it
+  calibrate rotate on|off             try the display rotated by 180 degrees (not remembered: "config set rotate=on" on the core firmware)
+  calibrate invert on|off             try swapped light and dark pixels (not remembered: "config set invert=on")
   calibrate show                      what "flash" will patch into the firmware
   calibrate forget logo|font|contrast drop a remembered setting
 The settings are kept in ~/.config/trustctl/device.json (--profile PATH to use another file).
@@ -186,6 +188,23 @@ func calibrateCommand(opt options, args []string, stdout, stderr io.Writer) erro
 			return err
 		}
 		fmt.Fprintln(stderr, "The sample is on the display and the font is remembered for flashing.")
+	case "rotate", "invert":
+		if len(rest) != 1 || (rest[0] != "on" && rest[0] != "off") {
+			return usageError("calibrate %s on|off", action)
+		}
+		value := 0
+		if rest[0] == "on" {
+			value = 1
+		}
+		command := "FLIP"
+		if action == "invert" {
+			command = "INVERT"
+		}
+		if err := c.send(fmt.Sprintf("%s %d", command, value)); err != nil {
+			return err
+		}
+		fmt.Fprintf(stderr, "The display is tried out with %s %s. This is not remembered: it is a setting of the device, change it with \"trustctl config set %s=%s\" on the core firmware.\n", action, rest[0], action, rest[0])
+		return nil
 	default:
 		return usageError("unknown calibrate command %q\n%s", action, calibrateUsage)
 	}

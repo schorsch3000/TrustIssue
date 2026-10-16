@@ -53,7 +53,7 @@ commands:
   font list                 the fonts built into trustctl
   font extract FILE.bin     write the current font to a file to work on (--from FILE.hex, or --name NAME)
   logo extract FILE.png     write the current logo as a 128x32 PNG to work on
-  calibrate ...             try out contrast, logo and font on the calibration firmware (see: trustctl calibrate)
+  calibrate ...             try out contrast, logo, font, rotation and inversion on the calibration firmware (see: trustctl calibrate)
 
 NAME is a key name (any case), its slot number, or a unique beginning of a name.
 

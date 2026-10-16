@@ -17,8 +17,9 @@ const (
 	MaxKeys = 20
 )
 
-// ValidateName checks the key name rules of the device: 1 to 27 characters from
-// A-Z a-z 0-9 . : - and space, no leading or trailing space, no double spaces.
+// ValidateName checks the key name rules of the device: 1 to 27 printable ASCII
+// characters (the ones the display font draws: 0x20 to 0x7E), no leading or
+// trailing space, no double spaces.
 func ValidateName(name string) error {
 	if name == "" {
 		return fmt.Errorf("the name is empty")
@@ -27,11 +28,8 @@ func ValidateName(name string) error {
 		return fmt.Errorf("the name %q has %d characters, the device stores at most %d", name, len(name), MaxNameLength)
 	}
 	for i := 0; i < len(name); i++ {
-		c := name[i]
-		ok := c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' ||
-			c == '.' || c == ':' || c == '-' || c == ' '
-		if !ok {
-			return fmt.Errorf("the name %q contains %q; allowed are letters A-Z a-z, digits, . : - and space (no accents, no emoji)", name, string(rune(c)))
+		if c := name[i]; c < 0x20 || c > 0x7E {
+			return fmt.Errorf("the name %q contains a character that is not printable ASCII (no accents, no emoji, no control characters)", name)
 		}
 	}
 	if name[0] == ' ' || name[len(name)-1] == ' ' {
@@ -127,8 +125,8 @@ func ParseOTPAuth(raw string) (*OTPAuth, error) {
 
 // DeriveName makes a device key name out of an otpauth URI: the label
 // ("Issuer:account" or just "account"), with the issuer in front if the label
-// does not mention it. Characters the device does not accept (such as the @ of
-// an e-mail address) become "-". changed says whether anything was replaced.
+// does not mention it. Characters the device does not accept (anything but
+// printable ASCII, such as accents) become "-". changed says whether anything was replaced.
 // A name that is empty or longer than the device allows is an error: nothing
 // is ever cut off, because two cut-off names could collide.
 func (a *OTPAuth) DeriveName() (name string, changed bool, err error) {
@@ -145,7 +143,7 @@ func (a *OTPAuth) DeriveName() (name string, changed bool, err error) {
 	}
 	var b strings.Builder
 	for _, r := range label {
-		if r < 0x80 && (r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '.' || r == ':' || r == '-' || r == ' ') {
+		if r >= 0x20 && r <= 0x7E {
 			b.WriteRune(r)
 		} else {
 			b.WriteByte('-') // one "-" per character, also for multi-byte ones

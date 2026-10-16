@@ -76,6 +76,13 @@ GitLab work
 AWS root"
 check "rofi gets -dmenu" equals rofi.args "-dmenu"
 
+weird='Z*$HOME `id` "q" '"'"'x'"'"' \\ [a]?'
+CHOICE=$weird
+export CHOICE
+run -- chooser=rofi
+check "a name with shell characters reaches trustctl token unchanged" equals token.name "$weird"
+unset CHOICE
+
 run -- chooser=rofi -- -p token -theme-str 'window {width: 20%;}'
 check "arguments after -- go to the chooser, after -dmenu" equals rofi.args "-dmenu -p token -theme-str window {width: 20%;}"
 

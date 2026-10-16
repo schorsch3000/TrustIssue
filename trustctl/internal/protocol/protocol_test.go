@@ -137,7 +137,7 @@ func TestTimezoneAndConfig(t *testing.T) {
 
 func TestClientValidatesBeforeSending(t *testing.T) {
 	c, dev := newClient(t, func(string, string) sim.Outcome { t.Error("the device must not be asked"); return sim.Deny })
-	for _, name := range []string{"", "Bad_Name", " lead", "trail ", "two  spaces", "Müller", strings.Repeat("x", 28)} {
+	for _, name := range []string{"", "Bad\x01Name", "Bad\x7fName", " lead", "trail ", "two  spaces", "Müller", strings.Repeat("x", 28)} {
 		if _, err := c.Add(name, rfcSecret, 6, 30); err == nil {
 			t.Errorf("name %q was accepted", name)
 		}

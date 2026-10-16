@@ -128,7 +128,7 @@ func validName(name string) bool {
 	}
 	for i := 0; i < len(name); i++ {
 		c := name[i]
-		if !(c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '.' || c == ':' || c == '-' || c == ' ') {
+		if c < 0x20 || c > 0x7E {
 			return false
 		}
 	}

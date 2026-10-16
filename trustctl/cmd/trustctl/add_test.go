@@ -15,11 +15,12 @@ func TestPlanAddNameFromTheURI(t *testing.T) {
 	}{
 		{"the example of the user", "otpauth://totp/GitHub-schorsch3000?secret=" + secret + "&issuer=GitHub-schorsch3000&digits=6&period=30", "GitHub-schorsch3000"},
 		{"issuer and account in the label", "otpauth://totp/GitHub:alice?secret=" + secret + "&issuer=GitHub", "GitHub:alice"},
-		{"an e-mail address as account", "otpauth://totp/GitHub:alice%40example.com?secret=" + secret, "GitHub:alice-example.com"},
+		{"an e-mail address as account", "otpauth://totp/GitHub:alice%40example.com?secret=" + secret, "GitHub:alice@example.com"},
 		{"the issuer is added to a bare account", "otpauth://totp/alice?secret=" + secret + "&issuer=Example", "Example:alice"},
 		{"only an issuer", "otpauth://totp/?secret=" + secret + "&issuer=Example", "Example"},
 		{"spaces around the colon", "otpauth://totp/My%20Bank%3A%20bob?secret=" + secret, "My Bank:bob"},
 		{"a non-ASCII letter", "otpauth://totp/Caf%C3%A9?secret=" + secret, "Caf-"},
+		{"punctuation is kept", "otpauth://totp/Corp%20%28EU%29%3A%20a_b%2Bc%40x.org?secret=" + secret, "Corp (EU):a_b+c@x.org"},
 	}
 	for _, c := range cases {
 		plan, err := planAdd(nil, c.input)
@@ -27,7 +28,7 @@ func TestPlanAddNameFromTheURI(t *testing.T) {
 			t.Errorf("%s: got %q %v, want %q", c.name, plan.name, err, c.want)
 		}
 	}
-	plan, _ := planAdd(nil, "otpauth://totp/GitHub:alice%40example.com?secret="+secret)
+	plan, _ := planAdd(nil, "otpauth://totp/Caf%C3%A9?secret="+secret)
 	if !plan.nameWasAdjusted {
 		t.Error("a replaced character must be reported")
 	}
@@ -59,7 +60,7 @@ func TestPlanAddErrors(t *testing.T) {
 		"no label at all":             {nil, "otpauth://totp/?secret=" + secret, "no label"},
 		"an unsupported URI":          {nil, "otpauth://hotp/x?secret=" + secret, "only totp"},
 		"bad digits":                  {[]string{"X", "--digits", "9"}, secret, "6 to 8 digits"},
-		"a bad given name":            {[]string{"Bad_Name"}, secret, "contains"},
+		"a bad given name":            {[]string{"Bad\x01Name"}, secret, "contains"},
 	}
 	for what, c := range cases {
 		if _, err := planAdd(c.args, c.input); err == nil || !strings.Contains(err.Error(), c.want) {

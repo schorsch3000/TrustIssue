@@ -66,11 +66,10 @@ _trustctl_files() {
 # the names of the keys on the device (the device is asked through "trustctl __keys")
 _trustctl_keys() {
   local cur="${1//\\/}" key
-  local IFS=$'\n'
   COMPREPLY=()
-  for key in $(trustctl __keys 2>/dev/null); do
+  while IFS= read -r key; do  # a name may hold * or [ ]: no word splitting, no globbing
     [[ "${key,,}" == "${cur,,}"* ]] && COMPREPLY+=("$(printf '%q' "$key")")
-  done
+  done < <(trustctl __keys 2>/dev/null)
 }
 
 _trustctl() {

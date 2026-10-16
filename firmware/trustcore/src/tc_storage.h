@@ -54,7 +54,7 @@ enum TcStatus : uint8_t {
 // defaultConfig is used while the header is blank or damaged.
 void tc_store_begin(const TcEeprom *eeprom, uint8_t defaultConfig);
 
-// Names: 1..27 characters from A-Z a-z 0-9 . : - and space, no leading or
+// Names: 1..27 printable ASCII characters (0x20..0x7E), no leading or
 // trailing space, no double spaces.
 bool tc_name_valid(const char *name);
 // Case-insensitive comparison, as used for the uniqueness rule.

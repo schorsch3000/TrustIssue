@@ -63,7 +63,7 @@ func bashComplete(t *testing.T, words ...string) []string {
 		t.Skip("no bash")
 	}
 	dir := t.TempDir()
-	fake := "#!/bin/sh\n[ \"$1\" = __keys ] && printf 'GitHub\\nGitLab work\\nAWS\\n'\n[ \"$1\" = font ] && printf '5x8\\nvictoriabold8\\nvictoriamedium8  (the firmware default)\\n'\n"
+	fake := "#!/bin/sh\n[ \"$1\" = __keys ] && printf 'GitHub\\nGitLab work\\nAWS\\nZ*[a]?\\n'\n[ \"$1\" = font ] && printf '5x8\\nvictoriabold8\\nvictoriamedium8  (the firmware default)\\n'\n"
 	if err := os.WriteFile(filepath.Join(dir, "trustctl"), []byte(fake), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -119,12 +119,13 @@ func TestBashCompletion(t *testing.T) {
 		{[]string{"autocomplete-"}, []string{"autocomplete-zsh", "autocomplete-fish"}},
 		{[]string{"--"}, []string{"--device", "--autoprobe", "--simulate", "--no-daemon"}},
 		{[]string{"--device", "/dev/null", "to"}, []string{"token"}},
-		{[]string{"token", ""}, []string{"GitHub", "GitLab\\ work", "AWS"}},
+		{[]string{"token", ""}, []string{"GitHub", "GitLab\\ work", "AWS", "Z\\*\\[a\\]\\?"}},
 		{[]string{"token", "git"}, []string{"GitHub", "GitLab\\ work"}},
 		{[]string{"del", "aw"}, []string{"AWS"}},
 		{[]string{"token", "AWS", ""}, nil},
 		{[]string{"--device", "x", "token", "gitl"}, []string{"GitLab\\ work"}},
 		{[]string{"tz", ""}, []string{"get", "sync", "set"}},
+		{[]string{"token", "Z"}, []string{"Z\\*\\[a\\]\\?"}}, // glob characters in a name are neither expanded nor split
 		{[]string{"config", ""}, []string{"get", "set"}},
 		{[]string{"config", "set", "rot"}, []string{"rotate=on", "rotate=off"}},
 		{[]string{"daemon", "s"}, []string{"status", "stop"}},

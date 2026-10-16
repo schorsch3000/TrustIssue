@@ -19,7 +19,7 @@
 
 // ---------------------------------------------------------------- settings
 
-static const char VERSION[] PROGMEM = "0.1.0";
+static const char VERSION[] PROGMEM = "0.1.1";
 static const uint8_t BUTTON_PIN = 2;
 static const uint8_t DISPLAY_ADDRESS = 0x3C;
 static const uint8_t DEFAULT_CONFIG = 0;

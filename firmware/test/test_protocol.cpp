@@ -91,7 +91,7 @@ int main() {
         "ADD with a 20 byte secret");
 
   // the parser does not validate name rules; the storage layer does
-  check(parse("ADD MFRGGZDF SHA1 6 30 bad_name", &c) == TC_PARSE_OK &&
+  check(parse("ADD MFRGGZDF SHA1 6 30 bad\x01name", &c) == TC_PARSE_OK &&
             !tc_name_valid(c.key.name),
         "name rules are left to tc_name_valid");
 

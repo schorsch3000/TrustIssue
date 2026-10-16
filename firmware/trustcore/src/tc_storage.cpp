@@ -54,10 +54,7 @@ bool tc_name_valid(const char *name) {
   for (; *name; name++, length++) {
     char c = *name;
     if (length >= TC_NAME_MAX) return false;
-    bool allowed = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-                   (c >= '0' && c <= '9') || c == '.' || c == ':' || c == '-' ||
-                   c == ' ';
-    if (!allowed) return false;
+    if ((uint8_t)c < 0x20 || (uint8_t)c > 0x7E) return false;  // printable ASCII, what the font draws
     if (c == ' ' && (length == 0 || previous == ' ')) return false;
     previous = c;
   }

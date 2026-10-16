@@ -79,7 +79,7 @@ class Device:
 
 d = Device()
 d.send("HELLO")
-check(d.line().startswith("TrustIssue 0.1.0 proto 1"), "HELLO")
+check(d.line().startswith("TrustIssue 0.1.1 proto 1"), "HELLO")
 d.send("LIST")
 keys = d.lines_until_end()
 if keys:
@@ -89,8 +89,14 @@ check(d.confirmed(f"ADD {SECRET} SHA1 6 30 RFC Test") == "OK 0", "ADD accepted g
 d.send("LIST")
 check(d.lines_until_end() == ["KEY 0 RFC Test"], "LIST shows the key")
 check(d.ask(f"ADD {SECRET} SHA1 6 30 rfc test") == "ERR DUPLICATE", "case-insensitive duplicate, no prompt")
-check(d.ask(f"ADD {SECRET} SHA1 6 30 bad_name") == "ERR BADARG", "bad name, no prompt")
+check(d.ask(f"ADD {SECRET} SHA1 6 30 bad\x01name") == "ERR BADARG", "bad name, no prompt")
 check(d.ask("DEL 7") == "ERR NOTFOUND", "DEL unknown slot, no prompt")
+check(d.ask(f"ADD {SECRET} SHA1 6 30 bad\x7fname") == "ERR BADARG", "DEL (0x7F) is not allowed in a name")
+punct = "Corp (EU): a_b+c@x.org #1"
+check(d.confirmed(f"ADD {SECRET} SHA1 6 30 {punct}") == "OK 1", "a name with punctuation and @ is accepted")
+d.send("LIST")
+check(d.lines_until_end() == ["KEY 0 RFC Test", f"KEY 1 {punct}"], "LIST shows the punctuation name unchanged")
+check(d.confirmed("DEL 1") == "OK", "and it can be deleted")
 
 check(d.confirmed("TOKEN 0 35") == "OK 287082", "TOKEN accepted: counter 1 (t=35)")
 check(d.confirmed("TOKEN 0 1111111090") == "OK 081804", "TOKEN accepted: leading zero in the code")

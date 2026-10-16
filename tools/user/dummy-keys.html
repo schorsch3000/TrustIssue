@@ -166,8 +166,7 @@ function totp(secretBytes, unixSeconds, period, digits, windowOffset = 0) {
 function validateName(name) {
   if (!name) return "the name is empty";
   if (name.length > 27) return `the name has ${name.length} characters, the device stores at most 27`;
-  const bad = name.match(/[^A-Za-z0-9.:\- ]/);
-  if (bad) return `the name contains "${bad[0]}"; allowed are letters A-Z a-z, digits, . : - and space`;
+  if (/[^\x20-\x7E]/.test(name)) return "the name has a character that is not printable ASCII (no accents, no emoji)";
   if (name.startsWith(" ") || name.endsWith(" ")) return "the name starts or ends with a space";
   if (name.includes("  ")) return "the name contains two spaces in a row";
   return "";

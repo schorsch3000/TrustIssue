@@ -134,8 +134,7 @@ The settings are in `%APPDATA%\trustctl\tray.ini`; the code is never written any
 
 Build it on Windows with `tools\user\trustctl-tray\build.cmd`: it uses the C# compiler that ships with Windows (.NET
 Framework 4, no SDK to install) and writes `trustctl-tray.exe` next to the source. `tools/user/trustctl-tray/test.sh` compiles the
-source with Mono on Linux and runs the tests of the filter, argument quoting, hotkey and settings code. The windows
-themselves have not been run yet (no Windows machine here): please try it and report what is off.
+source with Mono on Linux and runs the tests of the filter, argument quoting, hotkey and settings code. It was tried on Windows by the user and works (hotkey, picker, button confirmation, typing the code).
 
 ## Security model in short
 

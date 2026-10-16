@@ -20,7 +20,7 @@ Every sensitive operation needs physical confirmation on the device. The display
 ## Threat model
 
 - **In scope:** a compromised host (malware on the laptop). It controls the serial port, DTR/reset, and timing.
-- **Out of scope:** physical access to the device. Anyone holding the device (ISP, decapping, glitching) wins; this is accepted and not to be discussed further.
+- **Physical access: partly in scope.** Used to be "out of scope: anyone holding the device wins". Now covered in layers: final lock bits (no ISP read, a chip erase destroys the EEPROM), the button-gated bootloader, the update PIN against the unnoticed evil maid (see "The evil-maid problem and the update PIN"), the unlocked indicator, and wipe. Still **out of scope**: attacks on the chip itself (decapping, glitching, probing, cold boot), a patient attacker against a short PIN (USB and the button are reachable by design, so a laptop plus a servo on the button guesses unattended: no seal or on-device counter can detect it; the only lever is PIN length against the time the device is out of the owner's sight), and a user tricked into the update gesture. README.md has the user-facing version ("Physical access").
 - TOTP stays phishable: the token passes through the host. The gain is that secrets can never be exported and each token needs a human press.
 
 ## Hardware
@@ -65,13 +65,13 @@ Wiring:
 
 One flags byte in the EEPROM header, readable and writable over serial (`GETCFG` / `SETCFG`, the latter needs a button confirm like every mutating command). Defaults are compile-time constants; the physical case layout (button-display-USB vs display-button-USB) decides the sensible default rotation. Anything that cannot be a runtime bit is a compile-time option (or patched into the hex at flash time).
 
-| Bit | Meaning | Runtime cost |
-| --- | --- | --- |
-| 0 | rotate display 180 degrees | none: SSD1306 segment remap (0xA0/0xA1) plus COM scan direction (0xC0/0xC8) |
-| 1 | invert display (swap lit/dark pixels) | none: SSD1306 command 0xA6/0xA7 |
-| 2 | show idle logo (yes/no); see Idle screen below | small code; logo is compile-time data |
-| 3 | autonomous wipe enabled (only effective if compiled in; default off) | one bit |
-| 4-7 | reserved | |
+| Bit | Meaning                                                              | Runtime cost                                                                |
+| --- | -------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| 0   | rotate display 180 degrees                                           | none: SSD1306 segment remap (0xA0/0xA1) plus COM scan direction (0xC0/0xC8) |
+| 1   | invert display (swap lit/dark pixels)                                | none: SSD1306 command 0xA6/0xA7                                             |
+| 2   | show idle logo (yes/no); see Idle screen below                       | small code; logo is compile-time data                                       |
+| 3   | autonomous wipe enabled (only effective if compiled in; default off) | one bit                                                                     |
+| 4-7 | reserved                                                             |                                                                             |
 
 - The SETCFG confirm screen shows all four flags (`Rot:off Inv:on` / `Logo:on Wp:off`) and shows the ones this request changes inverted (white block, dark text), so the user sees at a glance what is being switched. Mechanism: bit 7 of a character in the shadow grid means "draw inverted" (`drawTile`, set by `settingsRow`); the progress bar still XORs over it. The autowipe label is `Wp:` because `Logo:off Wipe:off` is 17 characters and the old text lost its last letter.
 - After an accepted `TOKEN` the result screen shows "Done" and the code in large letters (two lines, each centered, tile rows 0-1 and 2-3, up to 8 characters per line) for 5 s (`TOKEN_SHOW_MS`) instead of the usual 1.2 s "Done"; a button press ends it early. The host gets the code anyway, so this reveals nothing new; it lets the user read it off the device. `showResult(text, second, ms)`; the large glyphs are computed per tile by `bigTile`.
@@ -207,7 +207,7 @@ Decision: an optional **update PIN** that the bootloader asks for after the butt
 - The PIN must never be readable from the host, which is our primary threat: the update mode has **no flash read-back and no compare command** (a good/bad answer to "does this page match" would be an oracle for guessing the PIN page at full speed). `READ_PAGE`, `SET_DEVICE`, `GET_PARAMETER` are gone from the bootloader (these also paid for the PIN code).
 - Verification instead of read-back, both without an oracle: every `PROG_PAGE` carries one more byte, the sum of the page (catches line errors; STK500 has no checksum and 115200 baud at 16 MHz is 3.5 % off), and after writing a page the bootloader compares the flash with its RAM buffer and answers `STK_FAILED` on a mismatch. `trustctl` and `flash.py` resend a page up to 3 times. In-place verify alone would not catch a byte damaged on the line (it would be written and verified as damaged), the sum alone would not catch a flash write error; together they do.
 - Where the PIN is typed matters: `trustctl flash` asks for it without echo, only at updates. A keylogger on the host sees it then; that is the narrow case where a compromised host and an evil maid combine, and it is accepted. Changing the PIN sends the new one over the same host.
-- It only counts on a finished device: without the final lock bits (`final_lock.sh`, 0xCC) ISP reads the EEPROM directly. With them, ISP can only chip-erase, which destroys the keys (EESAVE unprogrammed). A tamper-evident seal on the case is the only detection available for the rest.
+- It only counts on a finished device: without the final lock bits (`final_lock.sh`, 0xCC) ISP reads the EEPROM directly. With them, ISP can only chip-erase, which destroys the keys (EESAVE unprogrammed). Nothing detects an unattended guessing run afterwards (USB and the button are reachable without opening the case, so a tamper seal would not show it either); the PIN length is the only defence.
 - Cuts that paid for it (the bootloader went from 2038 to 2040 of 2048 bytes; the `PIN_MAX` clamp is gone too: an entry longer than the PIN differs at its end anyway): the `NO FIRMWARE / PRESS BUTTON` screen (a blank chip now starts the normal gate), the `WRITING` line, the unknown-character fallback of the font lookup, the double debounce of the button at power-up, and `run_app` no longer resets TWI, UART and the pull-up (the Arduino startup does).
 
 ### Bootloader implementation (done, on the dev Nano)
@@ -276,20 +276,20 @@ Old Arduinos are being collected as the development setup (the original Nano has
 - During development leave the lock bits **unset** so the board can be read and reprogrammed freely. Set `BOOTRST`/boot-section size fuses as needed, but burn the final lock bits (BLB1, read-out protection) and verify `EESAVE` is unprogrammed only for the finished device.
 - Breadboard wiring (Nano pins are the edge header pins; the ICSP header carries the same signals but is easy to mount rotated):
 
-| From | To | Purpose |
-| --- | --- | --- |
-| Uno GND | Nano GND | common ground (the only shared supply line) |
-| Uno D10 | Nano RST | ISP reset; the test rig also pulses it to reset the Nano |
-| Uno D11 | Nano D11 | MOSI |
-| Uno D12 | Nano D12 | MISO |
-| Uno D13 | Nano D13 | SCK |
-| Uno D4 | 1 kΩ resistor, then Nano A3 | simulated button press |
-| Nano A3 | push button, other leg to Nano GND | physical button |
-| Nano A4 | display SDA | I2C data |
-| Nano A5 | display SCL | I2C clock |
-| Nano 5V (or 3V3, see the module's label) | display VCC | display power |
-| Nano GND | display GND | display ground |
-| 10 µF capacitor, + leg on Uno RESET, - leg on Uno GND | | stops the Uno from auto-resetting while `avrdude` talks to ArduinoISP; make it removable (jumper) because it also blocks uploading new sketches to the Uno |
+| From                                                  | To                                 | Purpose                                                                                                                                                    |
+| ----------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Uno GND                                               | Nano GND                           | common ground (the only shared supply line)                                                                                                                |
+| Uno D10                                               | Nano RST                           | ISP reset; the test rig also pulses it to reset the Nano                                                                                                   |
+| Uno D11                                               | Nano D11                           | MOSI                                                                                                                                                       |
+| Uno D12                                               | Nano D12                           | MISO                                                                                                                                                       |
+| Uno D13                                               | Nano D13                           | SCK                                                                                                                                                        |
+| Uno D4                                                | 1 kΩ resistor, then Nano A3        | simulated button press                                                                                                                                     |
+| Nano A3                                               | push button, other leg to Nano GND | physical button                                                                                                                                            |
+| Nano A4                                               | display SDA                        | I2C data                                                                                                                                                   |
+| Nano A5                                               | display SCL                        | I2C clock                                                                                                                                                  |
+| Nano 5V (or 3V3, see the module's label)              | display VCC                        | display power                                                                                                                                              |
+| Nano GND                                              | display GND                        | display ground                                                                                                                                             |
+| 10 µF capacitor, + leg on Uno RESET, - leg on Uno GND |                                    | stops the Uno from auto-resetting while `avrdude` talks to ArduinoISP; make it removable (jumper) because it also blocks uploading new sketches to the Uno |
 
 - The Uno's button pin is only ever driven low or released (`OUTPUT LOW` = pressed, `INPUT` = released), never driven high. Do not use Uno D7, D8 or D9 for it: `ArduinoISP` blinks LEDs on them.
 - Each board has its own USB cable to the PC.

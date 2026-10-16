@@ -14,16 +14,16 @@ the device either: the bootloader only opens after a gesture on the button.
 
 ## What is in here
 
-| Path | What |
-| --- | --- |
-| `firmware/core` | the application: serial protocol, confirm screens, idle logo, autonomous wipe |
-| `firmware/trustcore` | portable C++ core (SHA-1, HMAC, TOTP, Base32, EEPROM storage, protocol parser, time) with host tests in `firmware/test` |
-| `firmware/bootloader` | the button-gated bootloader (2 KB, from scratch) |
-| `firmware/calibration` | tiny firmware to try out contrast, logo and font on the display |
-| `firmware/rig` | the Uno test rig that presses the button and resets the Nano |
-| `trustctl` | the host tool in Go: `list`, `token`, `add`, `del`, `tz`, `config`, `wipe`, `flash`, `calibrate`, `font extract`, `logo extract`, `daemon` |
-| `tools/user` | tools for people who use the device: `trustctl-menu`, `dummy-keys.html` (fake keys), `font2png.py`, `png2font.py`, `c64rom2font.py`, `final_lock.sh`, `onboard_usbtiny.sh` |
-| `tools/build` | for building and testing the project: end-to-end tests (need the rig), `release.sh`, `embed_firmware.sh`, `embed_fonts.py`, `gen_params.py`, `flash.py` |
+| Path                   | What                                                                                                                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `firmware/core`        | the application: serial protocol, confirm screens, idle logo, autonomous wipe                                                                                              |
+| `firmware/trustcore`   | portable C++ core (SHA-1, HMAC, TOTP, Base32, EEPROM storage, protocol parser, time) with host tests in `firmware/test`                                                    |
+| `firmware/bootloader`  | the button-gated bootloader (2 KB, from scratch)                                                                                                                           |
+| `firmware/calibration` | tiny firmware to try out contrast, logo and font on the display                                                                                                            |
+| `firmware/rig`         | the Uno test rig that presses the button and resets the Nano                                                                                                               |
+| `trustctl`             | the host tool in Go: `list`, `token`, `add`, `del`, `tz`, `config`, `wipe`, `flash`, `calibrate`, `font extract`, `logo extract`, `daemon`                                 |
+| `tools/user`           | tools for people who use the device: `trustctl-menu`, `dummy-keys.html` (fake keys), `font2png.py`, `png2font.py`, `c64rom2font.py`, `final_lock.sh`, `onboard_usbtiny.sh` |
+| `tools/build`          | for building and testing the project: end-to-end tests (need the rig), `release.sh`, `embed_firmware.sh`, `embed_fonts.py`, `gen_params.py`, `flash.py`                    |
 
 ## Hardware
 
@@ -40,20 +40,20 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
    development lock bits and verifies them. The burn starts with a chip erase, so the keys are gone, unless you add
    `--keep-eeprom`. `tools/user/unlock.sh <uno port> --yes` is the way back from the final lock bits
    (`final_lock.sh`): a chip erase that destroys flash and EEPROM, followed by `flash_bootloader.sh`.
-2. **Host tool.** `cd trustctl && go build -o bin/trustctl ./cmd/trustctl` (a static binary; Go 1.25+, which
+1. **Host tool.** `cd trustctl && go build -o bin/trustctl ./cmd/trustctl` (a static binary; Go 1.25+, which
    the module fetches by itself).
-3. **Firmware.** `trustctl --device /dev/ttyUSB0 flash` (the core firmware is built into the `trustctl` binary;
+1. **Firmware.** `trustctl --device /dev/ttyUSB0 flash` (the core firmware is built into the `trustctl` binary;
    for development `flash FILE.hex` takes your own build, e.g. from `firmware/core/build.sh`). It tells you what to do on
    the device: hold the button while it resets, release when the display says so, wait for the bar,
    then tap, tap, press a third time and hold until the bar is full.
-4. **Look and feel (optional).** Flash the built-in calibration firmware the same way
+1. **Look and feel (optional).** Flash the built-in calibration firmware the same way
    (`trustctl flash calibration`), then
    `trustctl calibrate contrast full 0x20`, `calibrate contrast dim 0`, `calibrate logo Demo-Logos/trust_issue_01.png`,
    `calibrate font victoriabold8` (the options like `--device` may stand before or after
    the command), and flash the core firmware again; the settings are
    patched in from `~/.config/trustctl/device.json`.
-5. `trustctl config set logo=on` for the idle logo.
-6. Optional: `trustctl flash --set-pin` adds an update PIN (see Security model). From then on every `flash` asks for it after the gesture (the device waits only 8 s for it: `flash --pin` asks first); `flash --clear-pin` removes it, `flash pin --set-pin` changes only the PIN.
+1. `trustctl config set logo=on` for the idle logo.
+1. Optional: `trustctl flash --set-pin` adds an update PIN (see Security model). From then on every `flash` asks for it after the gesture (the device waits only 8 s for it: `flash --pin` asks first); `flash --clear-pin` removes it, `flash pin --set-pin` changes only the PIN.
 
 Put `device = /dev/ttyUSB0` into `~/.config/trustctl/config` to leave out `--device`. `trustctl help-options` lists every
 option with its `--argument`, environment variable and config file syntax, and the defaults.
@@ -116,6 +116,7 @@ trustctl-menu chooser=/bin/rofi target=copy clipboard=primary
 trustctl-menu target=type delay=300 enter            # type it into the focused window (xdotool, or wtype on Wayland)
 trustctl-menu chooser=rofi -- -p token -theme-str 'window {width: 20%;}'   # after -- the launcher's own arguments
 ```
+
 It needs `trustctl` in the `PATH` (with the device known to it, see above) and shows a notification if
 `notify-send` exists, so you know the device is waiting for the button; the notice is closed again as soon as you have
 confirmed, refused or the device timed out. Bind it to a key in your window manager.
@@ -123,13 +124,57 @@ The code never appears on a command line: it goes to `xdotool`, `wtype`, `xclip`
 
 ## Security model in short
 
-- A compromised host is the threat; physical access to the device is out of scope.
+- The main threat is a compromised host (malware on the laptop). Physical access is handled in layers, see
+  "Physical access" below; only attacks on the chip itself are out of scope.
 - Secrets can't be read back over serial. Adding, deleting, wiping, changing settings and every
   token need the button, with the name or value on the display.
 - The bootloader only opens after a physical gesture and refuses to touch the EEPROM or itself.
   A held button at reset (the bait and switch) never opens it.
-- **Evil maid:** whoever holds the device briefly can do the button gesture and flash a firmware that copies the keys, then restore everything, and nothing would show. Set an update PIN (`trustctl flash --set-pin`, 4 to 15 characters) and the bootloader asks for it after the gesture; a wrong one starts the application after a wait of about 7 s, so each guess costs the whole gate plus that wait (a 4 digit PIN takes about 21 hours on average). The PIN is only needed to flash; the device works without it. Details in `CLAUDE.md`. It only counts together with the final lock bits.
 - When a device is finished, set the read-out lock bits with `tools/user/final_lock.sh` (undo: `tools/user/unlock.sh`, which erases everything). Until then the idle screen shows an inverted `NOT LOCKED` and `trustctl hello` and `add` warn.
+
+### Physical access
+
+Earlier versions treated anyone holding the device as an attacker who wins, and left it at that. That is no longer the
+whole story. Whoever has the device for a while can do less than before, and what remains is spelled out here.
+
+What stops an attacker who has the finished device (lock bits set) in their hands:
+
+- **No reading over ISP.** With the lock bits (`final_lock.sh`, lock byte 0xCC) the programming header cannot read flash
+  or EEPROM. The only thing it still allows is a chip erase, which destroys the keys too (the EEPROM is not preserved
+  across a chip erase), so the keys cannot be taken that way.
+- **No reflashing without the button gesture.** The bootloader opens only after holding the button through a reset,
+  waiting for a bar, and a tap, tap, hold gesture. A press that the host did not ask for, a held button through a reset
+  and a user mashing the button do not open it.
+- **The update PIN.** Without a PIN, the gesture is all an attacker needs: two wires on the button pads and a
+  microcontroller can do it, flash a firmware that dumps the EEPROM over serial, put the original firmware and the
+  original EEPROM back, and nothing would show afterwards. With a PIN (`trustctl flash --set-pin`, 4 to 15 characters)
+  the bootloader asks for it after the gesture. The device gives no sign whether a guess was right until a fixed wait
+  of about 7 s has passed, and nothing can read the PIN back (the update mode has no flash read-back), so every guess
+  costs the whole gate (about 8 s) plus that wait: a 4 digit PIN takes about 21 hours on average, 42 at worst; each
+  additional digit multiplies that by ten. The PIN is only needed to flash; the device works without it.
+- **Warnings.** A device without the final lock bits shows `NOT LOCKED` on its idle screen, and `trustctl` warns.
+- **Wiping.** `trustctl wipe` and, if you enable it, the autonomous wipe (a long hold at idle, no host needed) destroy the keys, so a
+  device that must not be taken can be emptied. The keys come back from your offline backups.
+
+What is not covered:
+
+- **Long access.** Time is all the PIN buys. The USB port and the button are reachable by design, so an attacker needs
+  no tools inside the case: a laptop on the USB port and a servo or solenoid on the button (or a wire to its pads) can
+  try PINs unattended. A 4 digit PIN falls in about a day, a 5 digit one in about a week or two, a 6 digit one in months.
+  Nothing on the device can notice or log this (no counter fits in the bootloader, and anything rewritable could be
+  restored), and a tamper seal does not help while the port and button are outside the case. What helps: a PIN
+  length matching how long the device could be out of your sight (a password manager that malware can reach is the
+  cost of a longer one), and not leaving the device unattended for that long.
+- **Attacks on the chip itself:** decapping, voltage or clock glitching, probing, cold boot. Anyone with the equipment for those
+  wins against an ATmega328P; this is accepted.
+- **A user who is talked into doing the gesture** on a screen the attacker induced (with a PIN, the attacker still needs it). The rule: never
+  complete the update gesture unless you started an update. An unexpected update screen means do nothing; it times out
+  into the application.
+- **A compromised host and an evil maid together:** the PIN is typed on the host at an update, so a keylogger there sees it.
+- **A stolen device** is not prevented, only made useless to read: you notice it is gone, rotate the passwords and reset the MFA of every account.
+  A forgotten PIN is not fatal either (the device keeps working; recovery is an ISP chip erase, `tools/user/unlock.sh`, and re-adding the keys).
+
+All of this only holds for a finished device: until the lock bits are set the programming header can read everything.
 
 ## Tests
 

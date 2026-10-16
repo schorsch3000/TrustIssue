@@ -133,7 +133,7 @@ func TestBashCompletion(t *testing.T) {
 		{[]string{"flash", ""}, []string{"core", "calibration", "pin", "firmware.hex", "sub"}},
 		{[]string{"--device", "/dev/ttyUSB0", "flash", ""}, []string{"core", "calibration", "pin", "firmware.hex", "sub"}},
 		{[]string{"flash", "ca"}, []string{"calibration"}},
-		{[]string{"flash", "--"}, []string{"--no-patch", "--profile", "--font", "--set-pin", "--clear-pin", "--wait", "--countdown"}},
+		{[]string{"flash", "--"}, []string{"--no-patch", "--profile", "--font", "--pin", "--set-pin", "--clear-pin", "--wait", "--countdown"}},
 		{[]string{"flash", "--font", "5"}, []string{"5x8"}},
 		{[]string{"flash", "--profile", ""}, []string{"profile.json", "sub"}},
 		{[]string{"font", ""}, []string{"list", "extract"}},

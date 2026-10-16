@@ -55,6 +55,7 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 	fontSpec := set.String("font", "", "")
 	setPin := set.Bool("set-pin", false, "")
 	clearPin := set.Bool("clear-pin", false, "")
+	askPin := set.Bool("pin", false, "")
 	// what to flash comes first: trustctl flash [core|calibration|pin|FILE.hex] --no-patch;
 	// without it the built-in core firmware is flashed
 	what := firmware.Core
@@ -142,6 +143,15 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 	}
 	defer port.Close()
 
+	havePin := ""
+	if *askPin { // the bootloader waits only 8 s for the PIN, so ask before the gesture
+		if havePin, err = readHidden("Current update PIN: ", stderr); err != nil {
+			return err
+		}
+		if err := flasher.ValidatePIN(havePin); err != nil {
+			return err
+		}
+	}
 	fmt.Fprintf(stderr, "Flashing %d pages (%d bytes) through the bootloader of %s.\n", len(pages), len(pages)*flasher.PageSize, path)
 	fmt.Fprintln(stderr, "HOLD THE BUTTON on the device and keep holding it.")
 	for n := *countdown; n > 0; n-- {
@@ -159,7 +169,11 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 	asked := false
 	err = programmer.WaitForBootloader(*wait, nil, func() (string, error) {
 		asked = true
-		fmt.Fprintln(stderr, "The device asks for its update PIN.")
+		if havePin != "" {
+			return havePin, nil
+		}
+		fmt.Fprintln(stderr, "The device asks for its update PIN. It waits only 8 s for it: type quickly,")
+		fmt.Fprintln(stderr, "or use --pin to be asked before the gesture.")
 		return readHidden("Update PIN: ", stderr)
 	})
 	if err != nil {

@@ -92,7 +92,7 @@ check(code == 0 and "slot 0" in out and prompts == 1, "add confirms once and rep
 code, out, err, prompts = trustctl("add", "e2e test", stdin=SECRET_B32 + "\n")
 check(code == 1 and "already exists" in "\n".join(err) and prompts == 0, "a duplicate name is refused without a prompt", f"{code} {err}")
 
-code, out, err, prompts = trustctl("add", "Bad_Name", stdin=SECRET_B32 + "\n")
+code, out, err, prompts = trustctl("add", "Bad\x01Name", stdin=SECRET_B32 + "\n")
 check(code == 1 and prompts == 0, "a bad name is refused before the device is bothered", f"{code} {err}")
 
 code, out, err, prompts = trustctl("list")

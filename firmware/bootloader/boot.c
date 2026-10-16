@@ -325,7 +325,7 @@ static void uart_on(void) {
 
 // The PIN gate, after the button gesture: with a PIN set, the host has to send
 // it before the update mode opens. A wrong PIN looks exactly like a right one
-// until the second wait bar has run out, so a guess costs the whole gate plus
+// until the bar has run out, so a guess costs the whole gate plus
 // the bar however the attacker resets the chip. A wrong PIN just starts the
 // application. The host can never read the PIN back: the update mode has no
 // flash read-out and no compare command, and the page is only ever compared
@@ -337,7 +337,7 @@ static bool pin_gate(void) {
   uart_on();
   for (uint8_t received = 0; received != PIN_START;) {  // sync polls before the start byte are junk
     putch(PIN_PROMPT);
-    wait_level(true, 10);
+    _delay_ms(100);  // no watchdog reset here: nobody answering for 8 s ends in a reset
     while ((UCSR0A & _BV(RXC0)) && received != PIN_START) received = UDR0;
   }
   uint8_t difference = 0;
@@ -347,8 +347,7 @@ static bool pin_gate(void) {
     position++;  // an entry longer than the PIN differs at its end: the page is 0xFF there
   }
   difference |= pgm_read_byte_near(PIN_ADDRESS + position) ^ 0xFF;  // the PIN ends here
-  show(M_UPDATE, M_WAIT, 0, 0, false);  // the same screen as the first wait
-  return wait_bar(CHECK_TICKS) && !difference;
+  return wait_bar(CHECK_TICKS) && !difference;  // the same screen and bar for a right and a wrong PIN
 }
 
 static void update_mode(void) {

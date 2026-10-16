@@ -50,7 +50,7 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
    the command), and flash the core firmware again; the settings are
    patched in from `~/.config/trustctl/device.json`.
 5. `trustctl config set logo=on` for the idle logo.
-6. Optional: `trustctl flash --set-pin` adds an update PIN (see Security model). From then on every `flash` asks for it after the gesture; `flash --clear-pin` removes it, `flash pin --set-pin` changes only the PIN.
+6. Optional: `trustctl flash --set-pin` adds an update PIN (see Security model). From then on every `flash` asks for it after the gesture (the device waits only 8 s for it: `flash --pin` asks first); `flash --clear-pin` removes it, `flash pin --set-pin` changes only the PIN.
 
 Put `device = /dev/ttyUSB0` into `~/.config/trustctl/config` to leave out `--device`. `trustctl help-options` lists every
 option with its `--argument`, environment variable and config file syntax, and the defaults.

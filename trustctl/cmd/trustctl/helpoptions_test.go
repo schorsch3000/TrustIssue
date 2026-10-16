@@ -24,7 +24,7 @@ func TestHelpOptionsMentionsEverything(t *testing.T) {
 		"--device PATH", "--autoprobe", "--simulate", "--no-daemon",
 		envDevice, envSimulate, envNoDaemon,
 		configKeyDevice + " = PATH", configKeyAutoprobe + " = true", configKeyDaemon + " = false", configKeyIdleTimeout + " = 5m",
-		"--digits N", "--period S", "--no-patch", "--set-pin", "--clear-pin", "--profile PATH", "--wait DURATION", "--countdown N", "--invert",
+		"--digits N", "--period S", "--no-patch", "--pin", "--set-pin", "--clear-pin", "--profile PATH", "--wait DURATION", "--countdown N", "--invert",
 		`"contrast_full"`, `"contrast_dim"`, `"logo"`, `"logo_invert"`, `"font"`,
 		"rotate=on|off", "invert=on|off", "logo=on|off", "autowipe=on|off",
 		configPath(), "XDG_CONFIG_HOME", "XDG_RUNTIME_DIR",

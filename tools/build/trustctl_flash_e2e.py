@@ -89,6 +89,12 @@ if "--pin-only" in sys.argv:  # the update PIN through trustctl (about 3 minutes
     check(code != 0 and "differ" in " ".join(err), "two different entries change nothing", f"{code} {err[-2:]}")
     code, out, err = run("flash", "pin", "--clear-pin", "--countdown", "1", gate=True, stdin="0000\n")
     check(code != 0 and "did not accept the PIN" in " ".join(err), "a wrong PIN is reported and nothing is flashed", f"{code} {err[-3:]}")
+    for _ in range(10):  # the wrong PIN started the application: it answers without any reset by us
+        code, out, err = run("hello")
+        if code == 0:
+            break
+        time.sleep(2)
+    check(code == 0 and out.startswith("TrustIssue"), "the application answers after a wrong PIN", f"{code} {out} {err[-1:]}")
     time.sleep(3)
     code, out, err = run("flash", "pin", "--clear-pin", "--countdown", "1", gate=True, stdin="4711\n")
     check(code == 0 and "The PIN was accepted" in " ".join(err), "the right PIN is accepted and --clear-pin removes it", f"{code} {out} {err[-3:]}")

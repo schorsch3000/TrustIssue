@@ -132,7 +132,7 @@ _trustctl() {
         COMPREPLY=($(compgen -W "$(trustctl font list 2>/dev/null | cut -d' ' -f1)" -- "$cur"))
         _trustctl_files "$cur" bin
       elif [[ "$cur" == -* ]]; then
-        COMPREPLY=($(compgen -W "--no-patch --profile --font --set-pin --clear-pin --wait --countdown" -- "$cur"))
+        COMPREPLY=($(compgen -W "--no-patch --profile --font --pin --set-pin --clear-pin --wait --countdown" -- "$cur"))
       elif [ "$npos" -eq 0 ]; then
         COMPREPLY=($(compgen -W "core calibration pin" -- "$cur"))
         _trustctl_files "$cur" hex
@@ -229,6 +229,7 @@ _trustctl() {
         flash)
           _arguments \
             '--no-patch[flash the file as it is]' \
+            '--pin[ask for the current update PIN first]' \
             '--set-pin[set a new update PIN]' \
             '--clear-pin[remove the update PIN]' \
             '--profile[settings to patch in]:profile:_files -g "*.json"' \
@@ -365,6 +366,7 @@ complete -c trustctl -n '__trustctl_is config 0' -a 'get set'
 complete -c trustctl -n '__trustctl_is config 1; and test (__trustctl_args)[1] = set' -a 'rotate=on rotate=off invert=on invert=off logo=on logo=off autowipe=on autowipe=off'
 complete -c trustctl -n '__trustctl_is daemon 0' -a 'status stop'
 complete -c trustctl -n '__trustctl_is flash' -l no-patch -d 'flash the file as it is'
+complete -c trustctl -n '__trustctl_is flash' -l pin -d 'ask for the current update PIN first'
 complete -c trustctl -n '__trustctl_is flash' -l set-pin -d 'set a new update PIN'
 complete -c trustctl -n '__trustctl_is flash' -l clear-pin -d 'remove the update PIN'
 complete -c trustctl -n '__trustctl_is flash' -l profile -r -d 'settings to patch in'

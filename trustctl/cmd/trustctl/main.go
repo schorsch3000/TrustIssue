@@ -49,7 +49,7 @@ commands:
                             (needs the button gesture, and the update PIN if one is set); core is the default
   flash pin --set-pin       only set the update PIN (--clear-pin removes it); the firmware stays as it is
   flash FILE.hex            the same with a firmware file of your own (for development)
-        --no-patch --profile PATH --font NAME|FILE.bin --set-pin --clear-pin --wait 90s --countdown 4
+        --no-patch --profile PATH --font NAME|FILE.bin --pin --set-pin --clear-pin --wait 90s --countdown 4
   font list                 the fonts built into trustctl
   font extract FILE.bin     write the current font to a file to work on (--from FILE.hex, or --name NAME)
   logo extract FILE.png     write the current logo as a 128x32 PNG to work on

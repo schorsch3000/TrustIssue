@@ -10,6 +10,7 @@ Needs the bootloader on the Nano (firmware/bootloader) with the core firmware fl
 """
 import argparse
 import os
+import subprocess
 import sys
 import time
 
@@ -23,6 +24,7 @@ positional = [a for a in sys.argv[1:] if not a.startswith("--")]
 NANO = positional[0] if len(positional) > 0 else "/dev/ttyUSB0"
 UNO = positional[1] if len(positional) > 1 else "/dev/ttyUSB1"
 failures = 0
+TRUSTCTL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "trustctl", "bin", "trustctl")
 
 
 def check(ok, what):
@@ -62,6 +64,7 @@ def app_runs_within(port, seconds):
     return False
 
 
+subprocess.run([TRUSTCTL, "daemon", "stop"], capture_output=True)  # a daemon would hold the port
 rig = flash.Rig(UNO)
 nano = serial.Serial(NANO, 9600, timeout=0.3)  # opening resets the Nano
 time.sleep(3)
@@ -148,22 +151,9 @@ check(app_runs(nano), "the device restarted into its application (the firmware w
 LAST = []
 
 
-def application_starts_within(port, seconds):
-    """Watches a port (switched to the application's 9600 baud) for the first HELLO answer."""
-    port.baudrate = 9600
-    end = time.time() + seconds
-    while time.time() < end:
-        port.reset_input_buffer()
-        port.write(b"HELLO\n")
-        if port.readline().startswith(b"TrustIssue"):
-            return True
-        time.sleep(0.2)
-    return False
-
-
-def gate(pin=None, watch=None):
+def gate(pin=None, wait=60):
     """Opens the update mode through the gesture (and the PIN); returns (args, port) or raises WrongPin."""
-    a = argparse.Namespace(port=NANO, baud=115200, wait=60, rig=None, pin=pin, watch=watch)
+    a = argparse.Namespace(port=NANO, baud=115200, wait=wait, rig=None, pin=pin)
     LAST.append(a)  # the timing is read from it even when the gate raises
     return a, flash.open_gate_and_sync(a, rig)
 
@@ -188,18 +178,29 @@ if PIN_TESTS:
         time.sleep(3)
         check(True, "a PIN was written through the gate")
 
+        try:  # nobody answers the prompt: the device gives up after 8 s instead of waiting for ever
+            gate(pin=None, wait=16)
+            check(False, "the update mode must not open without the PIN")
+        except SystemExit:
+            nano = serial.Serial(NANO, 9600, timeout=0.3)
+            check(app_runs_within(nano, 10), "an unanswered PIN prompt times out into the application")
+            nano.close()
+
         try:
-            a, port = gate(pin="0000", watch=lambda p: application_starts_within(p, 15))
+            a, port = gate(pin="0000")
             check(False, "a wrong PIN must not open the update mode")
             port.close()
         except flash.WrongPin:
             check(True, "a wrong PIN starts the application instead")
-        a = LAST[-1]
-        decided = a.verdict - a.pin_sent
-        check(decided >= 6, f"the wrong PIN is only noticed after the bar ({decided:.1f} s after sending it)")
-        nano = serial.Serial(NANO, 9600, timeout=0.3)
-        check(app_runs_within(nano, 10), "the application runs after a wrong PIN")
-        nano.close()
+        # asked the way users do (a fresh process, no baud rate games on a port that was in the bootloader)
+        ok = False
+        for _ in range(8):
+            hello = subprocess.run([TRUSTCTL, "--device", NANO, "--no-daemon", "hello"], capture_output=True, text=True)
+            if hello.stdout.startswith("TrustIssue"):
+                ok = True
+                break
+            time.sleep(2)
+        check(ok, "the application runs after a wrong PIN (trustctl hello)")
 
         a, port = gate(pin="4711")
         decided = a.verdict - a.pin_sent

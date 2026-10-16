@@ -122,6 +122,21 @@ It needs `trustctl` in the `PATH` (with the device known to it, see above) and s
 confirmed, refused or the device timed out. Bind it to a key in your window manager.
 The code never appears on a command line: it goes to `xdotool`, `wtype`, `xclip`, `xsel` or `wl-copy` through stdin.
 
+### A tray icon for Windows
+
+`tools/user/trustctl-tray/` is the Windows counterpart of `trustctl-menu`: a tray icon, an optional global hotkey, and a
+dmenu-like picker. The hotkey or a click on the icon lists the keys with a text field that filters as you type (several
+words must all match, names that start with the first word come first; Up, Down, Enter or a click choose, Esc closes).
+The device then waits for the button, a balloon says so, and the code is typed into the window that was active before (an
+optional Enter after it) or copied to the clipboard. The icon's menu has `Settings...`: the path of `trustctl.exe`, an
+optional port such as `COM5`, the hotkey (click the field and press the keys), typing or clipboard, and starting with Windows.
+The settings are in `%APPDATA%\trustctl\tray.ini`; the code is never written anywhere or put on a command line.
+
+Build it on Windows with `tools\user\trustctl-tray\build.cmd`: it uses the C# compiler that ships with Windows (.NET
+Framework 4, no SDK to install) and writes `trustctl-tray.exe` next to the source. `tools/user/trustctl-tray/test.sh` compiles the
+source with Mono on Linux and runs the tests of the filter, argument quoting, hotkey and settings code. The windows
+themselves have not been run yet (no Windows machine here): please try it and report what is off.
+
 ## Security model in short
 
 - The main threat is a compromised host (malware on the laptop). Physical access is handled in layers, see

@@ -1,6 +1,6 @@
 // Trust Issues test rig, runs on the Arduino Uno.
 //
-// Presses the Nano's button (Uno D4 through 1k to Nano D2) and pulls the
+// Presses the Nano's button (Uno D4 through 1k to Nano A3) and pulls the
 // Nano's reset line (Uno D10 to Nano RST) with exact timings.
 // Both pins are only ever driven low or released (input), never high.
 //

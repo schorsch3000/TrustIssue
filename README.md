@@ -26,8 +26,8 @@ the device either: the bootloader only opens after a gesture on the button.
 ## Hardware
 
 Arduino Nano (ATmega328P, 16 MHz), SSD1306 128x32 OLED on I2C (A4 SDA, A5 SCL, address 0x3C), a
-push button from D2 to GND. For development a second Arduino (an Uno) acts as ISP programmer and as
-the "finger": its D4 goes through 1 kOhm to the Nano's D2, its D10 to the Nano's RST, and D11 to D13
+push button from A3 to GND (A3 to A5, 5V and GND are all on the analog side of the Nano). For development a second Arduino (an Uno) acts as ISP programmer and as
+the "finger": its D4 goes through 1 kOhm to the Nano's A3, its D10 to the Nano's RST, and D11 to D13
 to the Nano's D11 to D13 (full table in `CLAUDE.md`).
 
 ## Setting up a device

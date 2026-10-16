@@ -1,6 +1,6 @@
 // Trust Issues bootloader for the ATmega328P at 16 MHz, 2 KB boot section.
 //
-// Normal start: button (D2, to GND) not held and a firmware present: jump to
+// Normal start: button (A3, to GND) not held and a firmware present: jump to
 // the application at once. The bootloader does not listen on serial then.
 //
 // Button held at reset: the update gate. The host cannot press the button, so
@@ -34,7 +34,7 @@
 
 #define BOOT_START 0x7800UL
 #define PAGE_BYTES SPM_PAGESIZE
-#define BUTTON_BIT PD2
+#define BUTTON_BIT PC3  // A3: on the analog side of the Nano, next to the I2C pins A4 and A5
 #define OLED_ADDRESS 0x3C
 #define OLED_CONTRAST 0x20
 
@@ -86,7 +86,7 @@ static void reboot(void) {
 
 // ---- button
 
-static bool button(void) { return !(PIND & _BV(BUTTON_BIT)); }
+static bool button(void) { return !(PINC & _BV(BUTTON_BIT)); }
 
 static void tick(void) {
   _delay_ms(10);
@@ -418,7 +418,7 @@ static void update_mode(void) {
 int main(void) {
   MCUSR = 0;
   wdt_disable();
-  PORTD |= _BV(BUTTON_BIT);  // pull-up
+  PORTC |= _BV(BUTTON_BIT);  // pull-up
   _delay_ms(5);  // pull-up settled
   bool held = button();
   bool firmware = pgm_read_word(0) != 0xFFFF;

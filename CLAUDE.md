@@ -39,9 +39,10 @@ Wiring:
 | GND         | OLED GND, button leg 2                       |
 | A4 (SDA)    | OLED SDA                                     |
 | A5 (SCL)    | OLED SCL                                     |
-| D2          | button leg 1 (`INPUT_PULLUP`, pressed = LOW) |
+| A3          | button leg 1 (`INPUT_PULLUP`, pressed = LOW) |
 
 - No external resistors: I2C pull-ups are on the display module, button uses the internal pull-up.
+- The button is on **A3** (firmware 0.1.2 and the bootloader; it was D2 before). Reason: on the Nano the analog header row carries A3, A4 (SDA), A5 (SCL), 5V and GND, so the display and the button are wired on one side of the board. A6 and A7 would be the next pins over, but they are analog-only on the ATmega328P (no digital input, no pull-up), so they cannot be used. A0 to A3 are normal digital pins (PC0 to PC3). The bootloader reads `PINC` bit 3, the same size as the old `PIND` bit 2.
 - Check the module's silkscreen for pin order (often GND-VCC-SCL-SDA, not always).
 - Keep D10-D13 free (ICSP: reset, MOSI, MISO, SCK). D13 is also the onboard LED.
 - A 4-pin tactile switch: wire diagonally opposite legs.
@@ -282,8 +283,8 @@ Old Arduinos are being collected as the development setup (the original Nano has
 | Uno D11 | Nano D11 | MOSI |
 | Uno D12 | Nano D12 | MISO |
 | Uno D13 | Nano D13 | SCK |
-| Uno D4 | 1 kΩ resistor, then Nano D2 | simulated button press |
-| Nano D2 | push button, other leg to Nano GND | physical button |
+| Uno D4 | 1 kΩ resistor, then Nano A3 | simulated button press |
+| Nano A3 | push button, other leg to Nano GND | physical button |
 | Nano A4 | display SDA | I2C data |
 | Nano A5 | display SCL | I2C clock |
 | Nano 5V (or 3V3, see the module's label) | display VCC | display power |
@@ -328,7 +329,7 @@ Implemented and tested: the CLI without the daemon.
 
 - `tools/user/` holds the tools for people who use the device (`trustctl-menu`, `dummy-keys.html`, `font2png.py`, `png2font.py`, `c64rom2font.py`, `final_lock.sh`); `tools/build/` holds what builds, releases and tests the project (end-to-end tests, `release.sh`, `embed_firmware.sh`, `embed_fonts.py`, `gen_params.py`, `extract_u8x8_font.py`, `flash.py`, `test_trustctl_menu.sh`). Scripts are run from the repository root, e.g. `tools/build/release.sh`.
 - `arduino-cli` (with `arduino:avr`), `avrdude`, and PlatformIO are installed; the user is in the `dialout` group.
-- Board: `arduino:avr:nano:cpu=atmega328old` is used for building (the bootloader is our own, so the choice only affects the compile settings). Serial ports of the dev rig: Nano `/dev/ttyUSB0`, Uno `/dev/ttyUSB1`; check them before every upload, they can re-enumerate.
+- Board: `arduino:avr:nano:cpu=atmega328old` is used for building (the bootloader is our own, so the choice only affects the compile settings). Serial ports of the dev rig: Nano `/dev/ttyUSB0`, Uno `/dev/ttyUSB1`; check them before every upload, they can re-enumerate. Both are CH340 chips with the same USB ids, so tell them apart by behaviour: the Uno (rig sketch) answers `RELEASE` with `OK` at 115200 baud, the Nano answers `HELLO` at 9600. The tests take the ports as arguments (`core_test.py NANO UNO`, `boot_test.py NANO UNO --pin`, `trustctl_e2e.py --device NANO --rig UNO`).
 
 ## Status
 

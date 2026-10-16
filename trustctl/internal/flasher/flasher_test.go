@@ -81,8 +81,7 @@ func (f *fakeBootloader) serve(c net.Conn) {
 				if string(line) == f.pin {
 					f.unlocked = true
 				} else {
-					f.app = true
-					c.Write([]byte("TrustIssue 0.1.0 proto 1\n"))
+					f.app = true // the application: silent at this baud rate
 				}
 			} else {
 				if cmd[0] == 0x30 {
@@ -247,7 +246,7 @@ func TestWrongPin(t *testing.T) {
 	defer host.Close()
 	go (&fakeBootloader{pin: "4711"}).serve(dev)
 	p := flasher.New(pipePort{host})
-	p.PinPause = 10 * time.Millisecond
+	p.PinPause, p.PinDecision = 10*time.Millisecond, 600*time.Millisecond
 	err := p.WaitForBootloader(5*time.Second, nil, func() (string, error) { return "0815", nil })
 	if !errors.Is(err, flasher.ErrWrongPIN) {
 		t.Fatalf("expected ErrWrongPIN, got %v", err)

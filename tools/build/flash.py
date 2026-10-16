@@ -130,9 +130,11 @@ def open_gate_and_sync(args, rig=None):
     else:
         print("Follow the display: release the button, wait for the bar to drain, then tap, tap, and press again and hold for 2 s.")
     deadline = time.time() + args.wait
-    answered = False
+    answered = 0
     while time.time() < deadline:
-        if answered and b"TrustIssue" in port.read(port.in_waiting):
+        # a wrong PIN starts the application, which says nothing at this baud rate: the update mode
+        # opens about 7 s after the PIN, so silence for 12 s means it did not
+        if answered and time.time() > answered + 12:
             args.verdict = time.time()
             raise WrongPin()
         port.reset_input_buffer()
@@ -144,10 +146,16 @@ def open_gate_and_sync(args, rig=None):
             args.verdict = time.time()
             return port
         if b"?" in reply and getattr(args, "pin", None) is not None:  # the device asks for its PIN
-            port.write(b"\x02" + args.pin.encode() + b"\n")
-            args.pin_sent = time.time()  # for the tests: how long the device takes to decide
+            port.write(b"\x02")
+            time.sleep(0.2)  # the device only listens between its prompts: the UART holds just 3 bytes
+            port.write(args.pin.encode() + b"\n")
+            port.flush()
+            args.pin_sent = answered = time.time()  # the tests want to know how long the device takes to decide
+            if getattr(args, "watch", None) and args.watch(port):  # the test saw the application start
+                args.verdict = time.time()
+                raise WrongPin()
             time.sleep(5)  # it decides after about 7 s; polls would only pile up
-            args.pin, answered = None, True
+            args.pin = None
             continue
         time.sleep(0.2)
     raise SystemExit("the bootloader did not open (gate not passed?)")

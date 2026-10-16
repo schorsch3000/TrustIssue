@@ -101,6 +101,7 @@ check(d.confirmed("TOKEN 0 35", hold="2300") == "ERR DENIED", "TOKEN 2.3 s is de
 # past the window the request is denied at once, not only at the release; the press that
 # is still going does not count for the next request
 import threading
+time.sleep(1.6)  # the result screen of the previous denial ("Too long", 1.2 s) must be gone: a press would end it
 d.send("TOKEN 0 35")
 check(d.line() == "PENDING", "request for the overshoot test")
 started = time.time()

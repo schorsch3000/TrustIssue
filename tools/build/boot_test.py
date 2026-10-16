@@ -135,7 +135,9 @@ port.reset_input_buffer()
 port.write(bytes([0x74, 0x00, 0x80, ord("F"), 0x20]))
 time.sleep(1)
 leak = port.read(port.in_waiting or 1)
-check(len(leak) < 16, f"READ_PAGE returns no flash data ({len(leak)} bytes came back)")
+# (what comes back, if anything, is the restarted application's banner heard at the wrong baud rate)
+check(not (len(leak) >= 130 and leak[0] == flash.INSYNC and leak[129] == flash.OK),
+      f"READ_PAGE returns no page of flash data ({len(leak)} bytes came back)")
 
 time.sleep(9)  # no traffic (the unknown command probably reset the chip already): the update mode ends after 8 s
 
@@ -143,9 +145,26 @@ nano = serial.Serial(NANO, 9600, timeout=0.3)
 time.sleep(3)
 print("-- after all that")
 check(app_runs(nano), "the device restarted into its application (the firmware was not damaged)")
-def gate(pin=None):
+LAST = []
+
+
+def application_starts_within(port, seconds):
+    """Watches a port (switched to the application's 9600 baud) for the first HELLO answer."""
+    port.baudrate = 9600
+    end = time.time() + seconds
+    while time.time() < end:
+        port.reset_input_buffer()
+        port.write(b"HELLO\n")
+        if port.readline().startswith(b"TrustIssue"):
+            return True
+        time.sleep(0.2)
+    return False
+
+
+def gate(pin=None, watch=None):
     """Opens the update mode through the gesture (and the PIN); returns (args, port) or raises WrongPin."""
-    a = argparse.Namespace(port=NANO, baud=115200, wait=60, rig=None, pin=pin)
+    a = argparse.Namespace(port=NANO, baud=115200, wait=60, rig=None, pin=pin, watch=watch)
+    LAST.append(a)  # the timing is read from it even when the gate raises
     return a, flash.open_gate_and_sync(a, rig)
 
 
@@ -170,11 +189,12 @@ if PIN_TESTS:
         check(True, "a PIN was written through the gate")
 
         try:
-            a, port = gate(pin="0000")
+            a, port = gate(pin="0000", watch=lambda p: application_starts_within(p, 15))
             check(False, "a wrong PIN must not open the update mode")
             port.close()
         except flash.WrongPin:
             check(True, "a wrong PIN starts the application instead")
+        a = LAST[-1]
         decided = a.verdict - a.pin_sent
         check(decided >= 6, f"the wrong PIN is only noticed after the bar ({decided:.1f} s after sending it)")
         nano = serial.Serial(NANO, 9600, timeout=0.3)

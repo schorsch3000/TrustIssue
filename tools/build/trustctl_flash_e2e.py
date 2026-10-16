@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """End-to-end test of `trustctl flash` and `trustctl calibrate` on the real device.
 
-  tools/build/trustctl_flash_e2e.py [--bin trustctl/bin/trustctl] [--device /dev/ttyUSB0] [--rig /dev/ttyUSB1]
+  tools/build/trustctl_flash_e2e.py [--bin trustctl/bin/trustctl] [--device /dev/ttyUSB0] [--rig /dev/ttyUSB1]  [--pin-only]
 
 It flashes the calibration firmware, tries contrast, logo and font on it, then
 flashes the core firmware with those settings patched in. The Uno rig performs
@@ -26,6 +26,7 @@ parser.add_argument("--rig", default="/dev/ttyUSB1")
 parser.add_argument("--calibration-hex", default="calibration")
 parser.add_argument("--core-hex", default="core")
 parser.add_argument("--font", help="with --flash-only: flash this font too (and let the profile remember it)")
+parser.add_argument("--pin-only", action="store_true", help="only test the update PIN through trustctl (sets and removes it)")
 parser.add_argument("--flash-only", action="store_true", help="only flash the core firmware, patched with ~/.config/trustctl/device.json")
 args = parser.parse_args()
 failures = 0
@@ -79,6 +80,25 @@ if "--flash-only" in sys.argv:  # just flash the core firmware with the real pro
     code, out, err = run("flash", args.core_hex, "--countdown", "1", *(["--font", args.font] if args.font else []), gate=True)
     print(out or err[-3:])
     sys.exit(code)
+
+if "--pin-only" in sys.argv:  # the update PIN through trustctl (about 3 minutes); the PIN is removed again
+    print("-- the update PIN")
+    code, out, err = run("flash", "pin", "--set-pin", "--countdown", "1", gate=True, stdin="4711\n4711\n")
+    check(code == 0 and "Done" in out, "flash pin --set-pin sets the PIN", f"{code} {out} {err[-3:]}")
+    code, out, err = run("flash", "pin", "--set-pin", "--countdown", "1", stdin="4711\n4712\n")
+    check(code != 0 and "differ" in " ".join(err), "two different entries change nothing", f"{code} {err[-2:]}")
+    code, out, err = run("flash", "pin", "--clear-pin", "--countdown", "1", gate=True, stdin="0000\n")
+    check(code != 0 and "did not accept the PIN" in " ".join(err), "a wrong PIN is reported and nothing is flashed", f"{code} {err[-3:]}")
+    time.sleep(3)
+    code, out, err = run("flash", "pin", "--clear-pin", "--countdown", "1", gate=True, stdin="4711\n")
+    check(code == 0 and "The PIN was accepted" in " ".join(err), "the right PIN is accepted and --clear-pin removes it", f"{code} {out} {err[-3:]}")
+    time.sleep(3)
+    code, out, err = run("flash", "pin", "--set-pin", "--countdown", "1", stdin="123\n123\n")
+    check(code != 0 and "4 to 15" in " ".join(err), "a PIN shorter than 4 is refused", f"{code} {err[-2:]}")
+    code, out, err = run("hello")
+    check(code == 0 and out.startswith("TrustIssue"), "the application runs afterwards", f"{code} {out}")
+    print("ALL PASSED" if not failures else f"{failures} FAILED")
+    sys.exit(1 if failures else 0)
 
 print("-- flash the calibration firmware")
 code, out, err = run("flash", args.calibration_hex, "--no-patch", "--countdown", "1", gate=True)

@@ -72,10 +72,16 @@ type Programmer struct {
 	// PinPause is how long polling stops after the PIN was sent: the device needs about 7 s to
 	// decide and the polls would only pile up in its receive buffer.
 	PinPause time.Duration
+	// PinDecision is how long after sending the PIN the bootloader is given to open. A wrong PIN
+	// starts the application, which at this baud rate cannot be told from silence, so silence for
+	// this long is taken as a wrong PIN. The bootloader decides after about 7 s.
+	PinDecision time.Duration
 }
 
 // New returns a programmer on an open port.
-func New(port Port) *Programmer { return &Programmer{port: port, PinPause: 5 * time.Second} }
+func New(port Port) *Programmer {
+	return &Programmer{port: port, PinPause: 5 * time.Second, PinDecision: 12 * time.Second}
+}
 
 // readFull reads n bytes within the timeout.
 func (p *Programmer) readFull(n int, timeout time.Duration) ([]byte, error) {
@@ -131,9 +137,8 @@ func (p *Programmer) WaitForBootloader(wait time.Duration, onTry func(), pin fun
 		}
 		// anything that arrived meanwhile is leftover of an earlier attempt
 		p.port.SetReadTimeout(time.Millisecond)
-		stale := make([]byte, 64)
-		n, _ := p.port.Read(stale)
-		if !answered.IsZero() && bytes.Contains(stale[:n], []byte("TrustIssue")) { // the application's banner
+		p.port.Read(make([]byte, 64))
+		if !answered.IsZero() && time.Since(answered) > p.PinDecision {
 			return ErrWrongPIN
 		}
 		p.port.Write([]byte{0x30, eop})
@@ -152,12 +157,14 @@ func (p *Programmer) WaitForBootloader(wait time.Duration, onTry func(), pin fun
 			if err := ValidatePIN(text); err != nil {
 				return err
 			}
-			p.port.Write(append(append([]byte{pinStart}, text...), '\n'))
+			// The bootloader only listens between its prompts (the UART holds just 3 bytes): the start
+			// byte ends the prompting, the rest follows once it has had time to finish its wait.
+			p.port.Write([]byte{pinStart})
+			time.Sleep(250 * time.Millisecond)
+			p.port.Write(append([]byte(text), '\n'))
 			answered = time.Now()
 			time.Sleep(p.PinPause)
 			continue
-		case !answered.IsZero() && bytes.HasPrefix(reply, []byte("Tr")):
-			return ErrWrongPIN
 		}
 		time.Sleep(100 * time.Millisecond)
 	}

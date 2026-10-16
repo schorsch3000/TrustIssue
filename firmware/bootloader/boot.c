@@ -47,7 +47,6 @@
 // The optional update PIN: the last page of the application area. Up to 15
 // characters followed by 0xFF up to the end of the page; a blank page (0xFF first) means no PIN is set.
 #define PIN_ADDRESS 0x7780U
-#define PIN_MAX 15
 #define PIN_START 0x02   // the host's PIN line is STX, the characters, then LF
 #define PIN_PROMPT '?'   // sent every 100 ms until the host answers
 #define CHECK_TICKS 5    // 128 columns x 5 ticks x 10 ms: the bar drains in about 7 s
@@ -336,16 +335,16 @@ static bool pin_gate(void) {
 
   show(M_UPDATE, M_PIN, 0, 0, false);
   uart_on();
-  do {  // ask until the host answers
+  for (uint8_t received = 0; received != PIN_START;) {  // sync polls before the start byte are junk
     putch(PIN_PROMPT);
     wait_level(true, 10);
-  } while (!(UCSR0A & _BV(RXC0)));
-  while (getch() != PIN_START) {}  // junk before the start byte is ignored
+    while ((UCSR0A & _BV(RXC0)) && received != PIN_START) received = UDR0;
+  }
   uint8_t difference = 0;
   uint8_t position = 0;  // compared as the characters arrive; nothing is stored
   for (uint8_t c; (c = getch()) != '\n';) {
     difference |= c ^ pgm_read_byte_near(PIN_ADDRESS + position);
-    if (position < PIN_MAX) position++;  // longer entries meet the 0xFF after the PIN
+    position++;  // an entry longer than the PIN differs at its end: the page is 0xFF there
   }
   difference |= pgm_read_byte_near(PIN_ADDRESS + position) ^ 0xFF;  // the PIN ends here
   show(M_UPDATE, M_WAIT, 0, 0, false);  // the same screen as the first wait

@@ -12,6 +12,26 @@ the device either: the bootloader only opens after a gesture on the button.
 
 `CLAUDE.md` holds the design decisions and the detailed state of the project.
 
+## Why not a YubiKey?
+
+If a service supports FIDO2/WebAuthn, use a YubiKey (or any security key) there: it is phishing-resistant, which a
+TOTP code never is, and it is better engineered than this project. Trust Issues is for the many services that only
+offer TOTP, and it differs from a YubiKey's OATH feature in a few ways:
+
+- **You see what you approve.** The display shows the key name and the local date and time of the code, and a code
+  needs a deliberate 1 to 2 second hold. A YubiKey has no display: the host decides which credential and which time
+  to ask for, and a touch is a context-free tap that malware can time. Without a touch requirement set per
+  credential, a compromised host can read codes without any gesture.
+- **Open and auditable.** The firmware, the bootloader and the host tool are all here and under the GPL. Updates need
+  a physical gesture and can be protected with a PIN; a YubiKey's firmware cannot be updated or inspected by its owner.
+- **Cheap and replaceable.** An Arduino Nano and a small display cost a fraction of a YubiKey, and keys are not bound
+  to a vendor's app (the host side is a small command line tool and menus).
+- **What you give up.** A YubiKey is a certified secure element that resists physical attacks; an ATmega328P does not
+  (see "Physical access" below). It also only does TOTP: no FIDO2, no smartcard or PGP functions. And it is a
+  do-it-yourself build.
+
+Both can be used together; they solve different parts of the problem.
+
 ## What is in here
 
 | Path                   | What                                                                                                                                                                       |

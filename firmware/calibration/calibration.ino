@@ -13,6 +13,7 @@
 //   FLIP <0|1>                 rotate 180 degrees
 //   INVERT <0|1>
 //   POWER <0|1>                display off / on
+//   ROWS <32|64>               display height; with 64 only the top half is used (the lower half is blanked)
 //   LOGO <offset> <32 hex>     16 bitmap bytes at byte offset (multiple of 16)
 //   RAW <hex bytes>            raw controller command bytes (max 24)
 //   FONTDATA <offset> <32 hex> 16 bytes of a font (772 bytes, U8x8 format) into RAM
@@ -71,7 +72,7 @@ static void handleLine(char *text) {
   }
 
   if (!strcmp_P(text, PSTR("HELLO"))) {
-    reply(F("TrustIssue-Calibration 0.2 display 128x32"));
+    reply(F("TrustIssue-Calibration 0.3 display 128x32 or 128x64 (ROWS)"));
   } else if (!strcmp_P(text, PSTR("CLEAR"))) {
     display.clear();
     reply(F("OK"));
@@ -107,6 +108,21 @@ static void handleLine(char *text) {
   } else if (!strcmp_P(text, PSTR("INVERT"))) {
     uint8_t command = atoi(args) ? 0xA7 : 0xA6;
     sendRaw(&command, 1);
+    reply(F("OK"));
+  } else if (!strcmp_P(text, PSTR("ROWS"))) {
+    int rows = atoi(args);
+    if (rows != 32 && rows != 64) {
+      reply(F("ERR badarg"));
+      return;
+    }
+    // multiplex ratio and COM pin configuration of the panel; the same bytes sit in the device parameter block
+    uint8_t height[] = {0xA8, (uint8_t)(rows - 1), 0xDA, (uint8_t)(rows == 64 ? 0x12 : 0x02)};
+    sendRaw(height, 4);
+    if (rows == 64) {
+      static const uint8_t blank[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+      for (uint8_t row = 4; row < 8; row++)
+        for (uint8_t column = 0; column < 16; column++) display.drawTile(column, row, 1, (uint8_t *)blank);
+    }
     reply(F("OK"));
   } else if (!strcmp_P(text, PSTR("POWER"))) {
     display.setPowerSave(atoi(args) ? 0 : 1);
@@ -177,7 +193,7 @@ void setup() {
   display.setFont(u8x8_font_chroma48medium8_r);
   display.drawString(0, 0, "Trust Issues");
   display.drawString(0, 1, "calibration");
-  Serial.println(F("TrustIssue-Calibration 0.2 display 128x32"));
+  Serial.println(F("TrustIssue-Calibration 0.3 display 128x32 or 128x64 (ROWS)"));
 }
 
 void loop() {

@@ -293,6 +293,9 @@ func describe(p profile.Profile) string {
 	if p.Font != "" {
 		parts = append(parts, "font "+p.Font)
 	}
+	if p.Rows == 64 {
+		parts = append(parts, "display 128x64")
+	}
 	if len(parts) == 0 {
 		return "nothing"
 	}

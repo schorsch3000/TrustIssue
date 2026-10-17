@@ -19,6 +19,7 @@ const (
 	offFlags        = 5
 	offContrastFull = 6
 	offContrastDim  = 7
+	offDisplay      = 8 // 0xA8 <mux> 0xDA <COM pins>, sent to the display as they are
 	offFont         = 0x10
 	offLogo         = 0x314
 
@@ -29,6 +30,7 @@ const (
 
 	flagFont = 0x01
 	flagLogo = 0x02
+	flagTall = 0x04 // a 128x64 display: only the top half is used
 )
 
 // Patch says what to change; nil leaves the firmware's default.
@@ -37,11 +39,12 @@ type Patch struct {
 	ContrastDim  *uint8
 	Font         []byte
 	Logo         []byte
+	Rows         int // 32 or 64, the height of the display; 0 leaves the firmware's default (32)
 }
 
 // Empty reports whether nothing would change.
 func (p Patch) Empty() bool {
-	return p.ContrastFull == nil && p.ContrastDim == nil && p.Font == nil && p.Logo == nil
+	return p.ContrastFull == nil && p.ContrastDim == nil && p.Font == nil && p.Logo == nil && p.Rows == 0
 }
 
 // Present reports whether the image carries a parameter block.
@@ -75,6 +78,17 @@ func Apply(img *hexfile.Image, p Patch) error {
 	}
 	if p.ContrastDim != nil {
 		img.Write(BlockAddress+offContrastDim, []byte{*p.ContrastDim})
+	}
+	switch p.Rows {
+	case 0:
+	case 32:
+		img.Write(BlockAddress+offDisplay, []byte{0xA8, 0x1F, 0xDA, 0x02})
+		flags &^= flagTall
+	case 64:
+		img.Write(BlockAddress+offDisplay, []byte{0xA8, 0x3F, 0xDA, 0x12})
+		flags |= flagTall
+	default:
+		return fmt.Errorf("a display has 32 or 64 rows, not %d", p.Rows)
 	}
 	if p.Font != nil {
 		if err := ValidateFont(p.Font); err != nil {

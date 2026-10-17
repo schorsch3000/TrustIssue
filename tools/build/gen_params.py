@@ -9,10 +9,12 @@ font, the logo and the contrast values into the hex file before flashing.
 Layout (all offsets in bytes from the start of the block):
   0x000  "TIPB"  magic
   0x004  version (1)
-  0x005  flags: bit0 font valid, bit1 logo valid
+  0x005  flags: bit0 font valid, bit1 logo valid, bit2 display has 64 rows (only the top 32 are used)
   0x006  contrast for the full phase
   0x007  contrast for the dim phase
-  0x008  reserved (8 bytes, 0xFF)
+  0x008  display: the SSD1306 commands 0xA8 <multiplex ratio> 0xDA <COM pins>, sent verbatim by the bootloader and the
+         core firmware: 0xA8 0x1F 0xDA 0x02 for 128x32 (default), 0xA8 0x3F 0xDA 0x12 for 128x64
+  0x00C  reserved (4 bytes, 0xFF)
   0x010  font: 772 bytes, U8x8 format (4 byte header, 96 glyphs of 8 bytes, characters 32..127)
   0x314  logo: 512 bytes, 128x32, SSD1306 page layout (8 pixels per byte, LSB at the top)
   0x514  end
@@ -29,6 +31,7 @@ block[4] = 1
 block[5] = 0x01  # font valid, no logo
 block[6] = 0x20  # contrast full
 block[7] = 0x00  # contrast dim
+block[8:12] = bytes([0xA8, 0x1F, 0xDA, 0x02])  # 128x32
 block[0x10:0x10 + 772] = font
 block[0x314:0x314 + 512] = bytes(512)
 lines = []

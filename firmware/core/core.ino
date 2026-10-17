@@ -19,7 +19,7 @@
 
 // ---------------------------------------------------------------- settings
 
-static const char VERSION[] PROGMEM = "0.1.4";
+static const char VERSION[] PROGMEM = "0.1.5";
 static const uint8_t BUTTON_PIN = A3;  // Nano analog side, next to the I2C pins; the bootloader reads the same pin
 static const uint8_t DISPLAY_ADDRESS = 0x3C;
 static const uint8_t DEFAULT_CONFIG = 0;
@@ -53,9 +53,10 @@ static const uint16_t TOKEN_SHOW_MS = 5000;  // "Done" and the code, so it can b
 
 // The block PARAMS (params_default.h) sits at flash address 0x7000 and is
 // patched by `trustctl flash`: contrast values, the font and the idle logo.
-static const uint16_t PARAM_FLAGS = 5;  // bit0 font valid, bit1 logo valid
+static const uint16_t PARAM_FLAGS = 5;  // bit0 font valid, bit1 logo valid, bit2 128x64 display
 static const uint16_t PARAM_CONTRAST_FULL = 6;
 static const uint16_t PARAM_CONTRAST_DIM = 7;
+static const uint16_t PARAM_DISPLAY = 8;  // 0xA8 <mux> 0xDA <COM pins>: 128x32 (default) or 128x64
 static const uint16_t PARAM_FONT = 0x10;
 static const uint16_t PARAM_LOGO = 0x314;
 
@@ -873,6 +874,12 @@ void setup() {
   tc_store_begin(&EEPROM_OPS, DEFAULT_CONFIG);
   oled.begin();
   oled.setBusClock(400000);
+  for (uint8_t i = 0; i < 4; i++) sendDisplayCommand(param(PARAM_DISPLAY + i));  // the display's height
+  if (param(PARAM_FLAGS) & 0x04) {  // 128x64: only the top half is used, the lower half must not show random memory
+    static const uint8_t blank[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    for (uint8_t row = 4; row < 8; row++)
+      for (uint8_t column = 0; column < 16; column++) oled.drawTile(column, row, 1, (uint8_t *)blank);
+  }
   oled.setContrast(param(PARAM_CONTRAST_FULL));
   applyConfig(tc_store_config());
   showIdle();

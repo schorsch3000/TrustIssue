@@ -64,7 +64,7 @@ run() { # run [VAR=value...] -- arguments: runs the script with the fakes; sets 
   envs=""
   while [ "$1" != -- ]; do envs="$envs $1"; shift; done
   shift
-  out=$(env PATH="$fakes:$basic" $envs "$script" "$@" 2>"$work/stderr")
+  out=$(env -u DISPLAY -u WAYLAND_DISPLAY PATH="$fakes:$basic" $envs "$script" "$@" 2>"$work/stderr")
   status=$?
 }
 
@@ -121,7 +121,7 @@ run CHOICE= -- chooser=dmenu
 check "nothing chosen: exit status 1" test $status = 1
 check "nothing chosen: the device is not asked" missing token.name
 
-run -- chooser=dmenu target=type
+run DISPLAY=:0 -- chooser=dmenu target=type
 check "type: typed through stdin, not on the command line" equals xdotool.in "123456"
 check "type: the xdotool command" equals xdotool.args "type --clearmodifiers --file -"
 check "type without enter presses nothing" missing xdotool.keys

@@ -29,6 +29,7 @@ namespace TrustctlTray
         public string Hotkey = "";          // "Ctrl+Alt+T"; empty = no hotkey
         public string Action = "type";      // type | copy
         public bool PressEnter = false;     // after typing
+        public bool Sort = false;           // list the keys sorted by name instead of in the device's slot order
         public int DelayMs = 300;           // before typing (time to let go of the hotkey)
 
         public static string FilePath
@@ -58,6 +59,7 @@ namespace TrustctlTray
                     case "hotkey": s.Hotkey = value; break;
                     case "action": if (value == "type" || value == "copy") s.Action = value; break;
                     case "enter": s.PressEnter = value == "1" || value.ToLowerInvariant() == "true" || value.ToLowerInvariant() == "yes"; break;
+                    case "sort": s.Sort = value == "1" || value.ToLowerInvariant() == "true" || value.ToLowerInvariant() == "yes"; break;
                     case "delay": if (int.TryParse(value, out number) && number >= 0 && number <= 10000) s.DelayMs = number; break;
                 }
             }
@@ -74,6 +76,7 @@ namespace TrustctlTray
                 "hotkey=" + Hotkey + "\r\n" +
                 "action=" + Action + "\r\n" +
                 "enter=" + (PressEnter ? "1" : "0") + "\r\n" +
+                "sort=" + (Sort ? "1" : "0") + "\r\n" +
                 "delay=" + DelayMs + "\r\n");
         }
     }
@@ -96,6 +99,22 @@ namespace TrustctlTray
                 if (name.Length > 0) names.Add(name);
             }
             return names;
+        }
+
+        // By name, case ignored; keys whose names differ only in case keep the device's order.
+        public static List<string> SortByName(List<string> names)
+        {
+            List<string> sorted = new List<string>(names);
+            // List.Sort is not stable: sort the positions together with the names
+            List<KeyValuePair<int, string>> indexed = new List<KeyValuePair<int, string>>();
+            for (int i = 0; i < sorted.Count; i++) indexed.Add(new KeyValuePair<int, string>(i, sorted[i]));
+            indexed.Sort(delegate(KeyValuePair<int, string> a, KeyValuePair<int, string> b)
+            {
+                int c = string.Compare(a.Value, b.Value, StringComparison.OrdinalIgnoreCase);
+                return c != 0 ? c : a.Key.CompareTo(b.Key);
+            });
+            for (int i = 0; i < indexed.Count; i++) sorted[i] = indexed[i].Value;
+            return sorted;
         }
 
         // The names that contain every word of the filter, case-insensitive; names that start with the first
@@ -370,6 +389,7 @@ namespace TrustctlTray
         readonly RadioButton type = new RadioButton();
         readonly RadioButton copy = new RadioButton();
         readonly CheckBox enter = new CheckBox();
+        readonly CheckBox sort = new CheckBox();
         readonly NumericUpDown delay = new NumericUpDown();
         readonly CheckBox autostart = new CheckBox();
         public Settings Result;
@@ -423,7 +443,7 @@ namespace TrustctlTray
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(520, 392);
+            ClientSize = new Size(520, 404);
             Font = new Font("Segoe UI", 9f);
 
             Caption("Path of trustctl.exe", 12);
@@ -451,9 +471,14 @@ namespace TrustctlTray
             hotkey.KeyDown += HotkeyKeyDown;
             Hint("Click the field, then press the keys (a modifier is needed). Backspace clears it.", 150, 134);
 
+            sort.Text = "Sort the keys by name";
+            sort.Location = new Point(12, 160);
+            sort.AutoSize = true;
+            sort.Checked = s.Sort;
+
             GroupBox what = new GroupBox();
             what.Text = "When the device has given the code";
-            what.SetBounds(12, 180, 496, 130);
+            what.SetBounds(12, 192, 496, 130);
             type.Text = "Type it into the window that was active before";
             type.Location = new Point(12, 22);
             type.AutoSize = true;
@@ -485,21 +510,21 @@ namespace TrustctlTray
             enter.Enabled = delay.Enabled = type.Checked;
 
             autostart.Text = "Start with Windows";
-            autostart.Location = new Point(12, 324);
+            autostart.Location = new Point(12, 336);
             autostart.AutoSize = true;
             autostart.Checked = AutostartEnabled();
 
             Button ok = new Button();
             ok.Text = "OK";
-            ok.SetBounds(352, 352, 75, 28);
+            ok.SetBounds(352, 364, 75, 28);
             ok.Click += delegate { Accept(); };
             Button cancel = new Button();
             cancel.Text = "Cancel";
-            cancel.SetBounds(433, 352, 75, 28);
+            cancel.SetBounds(433, 364, 75, 28);
             cancel.DialogResult = DialogResult.Cancel;
             AcceptButton = ok;
             CancelButton = cancel;
-            Controls.AddRange(new Control[] { path, browse, device, hotkey, what, autostart, ok, cancel });
+            Controls.AddRange(new Control[] { path, browse, device, hotkey, sort, what, autostart, ok, cancel });
         }
 
         void HotkeyKeyDown(object sender, KeyEventArgs e)
@@ -522,6 +547,7 @@ namespace TrustctlTray
             s.Hotkey = hotkey.Text;
             s.Action = copy.Checked ? "copy" : "type";
             s.PressEnter = enter.Checked;
+            s.Sort = sort.Checked;
             s.DelayMs = (int)delay.Value;
             Result = s;
             AutostartWanted = autostart.Checked;
@@ -643,6 +669,7 @@ namespace TrustctlTray
                 return;
             }
             List<string> names = Logic.ParseList(list.Output);
+            if (settings.Sort) names = Logic.SortByName(names);
             if (names.Count == 0)
             {
                 Error("The device holds no keys.");

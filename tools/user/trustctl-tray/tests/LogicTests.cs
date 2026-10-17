@@ -29,6 +29,9 @@ static class LogicTests
         Check(Join(Logic.Filter(keys, "my hub")) == "my GitHub", "every word must match");
         Check(Logic.Filter(keys, "zzz").Count == 0, "no match");
 
+        Check(Join(Logic.SortByName(new List<string> { "GitLab", "aws", "GitHub", "Amazon", "github" })) == "Amazon|aws|GitHub|github|GitLab", "SortByName ignores case and keeps the device order for equal names: " + Join(Logic.SortByName(new List<string> { "GitLab", "aws", "GitHub", "Amazon", "github" })));
+        Check(Logic.SortByName(new List<string>()).Count == 0, "SortByName of nothing");
+
         Check(Logic.QuoteArgument("token") == "token", "plain argument unchanged");
         Check(Logic.QuoteArgument("my GitHub") == "\"my GitHub\"", "space is quoted");
         Check(Logic.QuoteArgument("say \"hi\"") == "\"say \\\"hi\\\"\"", "quote is escaped");
@@ -64,13 +67,14 @@ static class LogicTests
         s.Action = "copy";
         s.PressEnter = true;
         s.DelayMs = 450;
+        s.Sort = true;
         string file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "trustctl-tray-test-" + Guid.NewGuid().ToString("N") + ".ini");
         s.Save(file);
         Settings back = Settings.Load(file);
-        Check(back.TrustctlPath == s.TrustctlPath && back.Device == "COM5" && back.Hotkey == "Ctrl+Alt+T" && back.Action == "copy" && back.PressEnter && back.DelayMs == 450, "settings round trip");
+        Check(back.TrustctlPath == s.TrustctlPath && back.Device == "COM5" && back.Hotkey == "Ctrl+Alt+T" && back.Action == "copy" && back.PressEnter && back.DelayMs == 450 && back.Sort, "settings round trip");
         System.IO.File.WriteAllText(file, "action=evil\ndelay=99999\ntrustctl=\n#x=1\ngarbage\n");
         back = Settings.Load(file);
-        Check(back.Action == "type" && back.DelayMs == 300 && back.TrustctlPath == "trustctl.exe", "bad values fall back to the defaults");
+        Check(!back.Sort && back.Action == "type" && back.DelayMs == 300 && back.TrustctlPath == "trustctl.exe", "bad values fall back to the defaults");
         System.IO.File.Delete(file);
         Check(Settings.Load(file).TrustctlPath == "trustctl.exe", "a missing file gives the defaults");
 

@@ -1,12 +1,14 @@
 #!/bin/sh
 # trustctl-menu: pick a key by name in a dmenu-like launcher and get its code.
 #
-#   trustctl-menu [chooser=PROGRAM] [target=stdout|type|copy] [delay=MS] [enter] \
+#   trustctl-menu [chooser=PROGRAM] [target=stdout|type|copy] [delay=MS] [enter] [sort] \
 #                 [clipboard=clipboard|primary|secondary] [-- CHOOSER-ARGUMENTS...]
 #
 #   chooser=PROGRAM    dmenu, or a drop-in such as rofi, wofi, bemenu, fuzzel; a name from the
 #                      PATH or a full path (chooser=/bin/rofi). Without it the first of rofi,
 #                      dmenu, wofi, bemenu, fuzzel that is installed is used.
+#   sort               list the keys sorted by name, ignoring case (also sort=1; sort=0 turns it off);
+#                      without it they come in the device's slot order
 #   target=stdout      print the code (the default)
 #   target=type        type the code into the focused window with xdotool (wtype on Wayland)
 #     delay=MS           wait this many milliseconds before typing (time to let go of the hotkey)
@@ -22,7 +24,7 @@
 # Exit status: 0 done, 1 nothing chosen, 2 an error.
 set -u
 
-usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; }
 
 notify() { # notify TEXT: a desktop notification, if there is a way to show one
   command -v notify-send >/dev/null 2>&1 && notify-send -a trustctl -t 8000 "trustctl" "$1" >/dev/null 2>&1
@@ -63,6 +65,7 @@ chooser=""
 target=stdout
 delay=0
 enter=0
+sort=0
 clipboard=clipboard
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -75,6 +78,12 @@ while [ $# -gt 0 ]; do
       case ${1#enter=} in
         0|no|false|off|"") enter=0 ;;
         *) enter=1 ;;
+      esac ;;
+    sort) sort=1 ;;
+    sort=*)
+      case ${1#sort=} in
+        0|no|false|off|"") sort=0 ;;
+        *) sort=1 ;;
       esac ;;
     clipboard=*) clipboard=${1#clipboard=} ;;
     -h|--help|help) usage; exit 0 ;;
@@ -109,6 +118,7 @@ esac
 names=$(trustctl list 2>&1) || die "trustctl list failed: $names"
 names=$(printf '%s\n' "$names" | sed 's/^ *[0-9][0-9]*  //')
 [ -n "$names" ] || die "there are no keys on the device"
+[ "$sort" = 1 ] && names=$(printf '%s\n' "$names" | LC_ALL=C sort -f)  # by name, case ignored (names are ASCII)
 
 if [ -n "$chooser_flag" ]; then
   choice=$(printf '%s\n' "$names" | "$chooser_path" "$chooser_flag" "$@")

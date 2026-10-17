@@ -114,6 +114,7 @@ trustctl-menu                                        # first launcher found: rof
 trustctl-menu chooser=rofi target=copy               # into the clipboard
 trustctl-menu chooser=/bin/rofi target=copy clipboard=primary
 trustctl-menu target=type delay=300 enter            # type it into the focused window (xdotool, or wtype on Wayland)
+trustctl-menu sort                                   # list the keys sorted by name (default: the device's slot order)
 trustctl-menu chooser=rofi -- -p token -theme-str 'window {width: 20%;}'   # after -- the launcher's own arguments
 ```
 
@@ -129,7 +130,7 @@ dmenu-like picker. The hotkey or a click on the icon lists the keys with a text 
 words must all match, names that start with the first word come first; Up, Down, Enter or a click choose, Esc closes).
 The device then waits for the button, a balloon says so, and the code is typed into the window that was active before (an
 optional Enter after it) or copied to the clipboard. The icon's menu has `Settings...`: the path of `trustctl.exe`, an
-optional port such as `COM5`, the hotkey (click the field and press the keys), typing or clipboard, and starting with Windows.
+optional port such as `COM5`, the hotkey (click the field and press the keys), "Sort the keys by name" (otherwise they come in the device's slot order), typing or clipboard, and starting with Windows.
 The settings are in `%APPDATA%\trustctl\tray.ini`; the code is never written anywhere or put on a command line.
 
 Build it on Windows with `tools\user\trustctl-tray\build.cmd`: it uses the C# compiler that ships with Windows (.NET

@@ -15,7 +15,7 @@ missing() { [ ! -e "$work/$1" ]; }
 
 # a PATH with the basic tools only, plus fakes that record what they are called with
 basic="$work/basic"; fakes="$work/fakes"; mkdir "$basic" "$fakes"
-for tool in sed awk mktemp basename tail rm sleep cat date head tr; do
+for tool in sed awk mktemp basename tail rm sleep cat date head tr sort; do
   ln -s "$(command -v $tool)" "$basic/$tool"
 done
 fake() { # fake NAME BODY [stdin]: an executable that logs its arguments to NAME.args (and its stdin to NAME.in if asked)
@@ -88,6 +88,20 @@ check "arguments after -- go to the chooser, after -dmenu" equals rofi.args "-dm
 
 run -- chooser="$fakes/dmenu" -- -l 5
 check "a full path works and dmenu gets no extra flag" equals dmenu.args "-l 5"
+run -- chooser=dmenu sort
+check "sort: the names come sorted, case ignored" equals dmenu.in "AWS root
+GitHub
+GitLab work"
+run -- chooser=dmenu sort=1
+check "sort=1 sorts too" equals dmenu.in "AWS root
+GitHub
+GitLab work"
+run -- chooser=dmenu sort=0
+check "sort=0 keeps the device's order" equals dmenu.in "GitHub
+GitLab work
+AWS root"
+run -- chooser=dmenu sort enter=0 target=stdout
+check "sort combines with the other parameters" test "$out" = 123456
 run -- chooser=wofi
 check "wofi gets --dmenu" equals wofi.args "--dmenu"
 

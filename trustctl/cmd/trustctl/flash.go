@@ -69,6 +69,9 @@ func flashCommand(opt options, args []string, stdout, stderr io.Writer) error {
 	if err != nil || path == "" {
 		return fmt.Errorf("flash needs the serial port: use --device PATH (probing would reset other boards)")
 	}
+	if serialdev.IsDummy(path) {
+		return fmt.Errorf("flash needs a real device: DUMMY is only a simulation")
+	}
 
 	if *setPin && *clearPin {
 		return usageError("flash: --set-pin and --clear-pin exclude each other")

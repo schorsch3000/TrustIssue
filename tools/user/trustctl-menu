@@ -116,7 +116,7 @@ esac
 
 # ---- the key names (the list prints "SLOT  NAME")
 names=$(trustctl list 2>&1) || die "trustctl list failed: $names"
-names=$(printf '%s\n' "$names" | sed 's/^ *[0-9][0-9]*  //')
+names=$(printf '%s\n' "$names" | sed -n 's/^ *[0-9][0-9]*  //p')  # only the key lines; notices on stderr (e.g. DUMMY device) are dropped
 [ -n "$names" ] || die "there are no keys on the device"
 [ "$sort" = 1 ] && names=$(printf '%s\n' "$names" | LC_ALL=C sort -f)  # by name, case ignored (names are ASCII)
 

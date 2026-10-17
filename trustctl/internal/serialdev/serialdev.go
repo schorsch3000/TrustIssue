@@ -3,6 +3,7 @@ package serialdev
 
 import (
 	"fmt"
+	"io"
 	"runtime"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"go.bug.st/serial"
 
 	"trustissues/trustctl/internal/protocol"
+	"trustissues/trustctl/internal/sim"
 )
 
 // Baud is the speed of the device's serial protocol.
@@ -21,6 +23,27 @@ type Device struct {
 	Banner string
 	Client *protocol.Client
 	port   serial.Port
+	closer io.Closer // the simulated device has no port
+}
+
+// DummyPath is the device name of the simulated device that lives in memory: "--device DUMMY".
+const DummyPath = "DUMMY"
+
+// IsDummy says whether a device name asks for the simulated device (any case).
+func IsDummy(path string) bool { return strings.EqualFold(path, DummyPath) }
+
+// OpenDummy returns a fresh simulated device that accepts every confirmation. Behind the daemon it keeps its
+// keys from one command to the next, until the daemon stops.
+func OpenDummy() (*Device, error) {
+	conn, _ := sim.New(sim.AcceptAll)
+	client := protocol.NewClient(conn)
+	banner, err := client.WaitBanner(time.Second)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+	client.ReplyTimeout = 3 * time.Second
+	return &Device{Path: DummyPath, Banner: banner, Client: client, closer: conn}, nil
 }
 
 // Open connects to the device at path. The first open after plugging in resets
@@ -64,7 +87,12 @@ func Open(path string, timeout time.Duration) (*Device, error) {
 }
 
 // Close releases the port.
-func (d *Device) Close() error { return d.port.Close() }
+func (d *Device) Close() error {
+	if d.closer != nil {
+		return d.closer.Close()
+	}
+	return d.port.Close()
+}
 
 // Candidates lists the serial ports that could be the device.
 func Candidates() ([]string, error) {

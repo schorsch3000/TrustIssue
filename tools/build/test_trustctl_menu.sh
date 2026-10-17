@@ -51,7 +51,7 @@ fake gdbus ':'
 cat > "$fakes/trustctl" <<FAKE
 #!/bin/sh
 case "\$1" in
-  list) [ -n "\${NOKEYS-}" ] && exit 0; printf ' 0  GitHub\n 1  GitLab work\n12  AWS root\n' ;;
+  list) [ -n "\${NOKEYS-}" ] && exit 0; [ -n "\${NOTICE-}" ] && echo '(a notice on stderr)' >&2; printf ' 0  GitHub\n 1  GitLab work\n12  AWS root\n' ;;
   token) printf '%s\n' "\$2" > "$work/token.name"
          if [ -n "\${FAIL-}" ]; then echo 'trustctl: device: nobody confirmed on the device in time' >&2; exit 2; fi
          echo 123456 ;;
@@ -102,6 +102,10 @@ GitLab work
 AWS root"
 run -- chooser=dmenu sort enter=0 target=stdout
 check "sort combines with the other parameters" test "$out" = 123456
+run NOTICE=1 -- chooser=dmenu
+check "a notice that trustctl list prints on stderr is not a key name" equals dmenu.in "GitHub
+GitLab work
+AWS root"
 run -- chooser=wofi
 check "wofi gets --dmenu" equals wofi.args "--dmenu"
 

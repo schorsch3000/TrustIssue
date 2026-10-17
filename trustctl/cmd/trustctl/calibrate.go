@@ -115,6 +115,9 @@ func calibrateCommand(opt options, args []string, stdout, stderr io.Writer) erro
 	if err != nil || path == "" {
 		return fmt.Errorf("calibrate needs the serial port: use --device PATH")
 	}
+	if serialdev.IsDummy(path) {
+		return fmt.Errorf("calibrate needs a real device: DUMMY is only a simulation")
+	}
 	stopDaemon()
 	dev, err := serialdev.OpenCalibration(path)
 	if err != nil {

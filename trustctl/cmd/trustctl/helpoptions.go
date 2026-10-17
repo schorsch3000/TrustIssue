@@ -20,7 +20,7 @@ type option struct {
 var globalOptions = []option{
 	{"--device PATH", envDevice, configKeyDevice + " = PATH",
 		"none: trustctl needs a device, or --autoprobe",
-		"The serial port of the device, for example /dev/ttyUSB0 or COM3. With a running daemon: the daemon holds one device, a different one needs \"trustctl daemon stop\" first."},
+		"The serial port of the device, for example /dev/ttyUSB0 or COM3. DUMMY (any case) is a simulated device with no hardware: it accepts every confirmation and keeps its keys between commands as long as the daemon runs (idle time, or \"trustctl daemon stop\", resets it). With a running daemon: the daemon holds one device, a different one needs \"trustctl daemon stop\" first."},
 	{"--autoprobe", "", configKeyAutoprobe + " = true",
 		"off",
 		"Open every serial port that could be the device until one answers. Opening a port resets whatever Arduino is on it, so this is opt-in."},

@@ -126,21 +126,28 @@ To try it with fake keys, open `tools/user/dummy-keys.html` in a browser.
 
 ### Trying it without a device
 
-`trustctl --simulate` (or `TRUSTCTL_SIMULATE=1`) talks to a simulated device inside the process instead of a serial port, so you
-can try the command line right after building it, with no hardware and no `--device`:
+`trustctl --device DUMMY` uses a simulated device instead of a serial port, so you can try the whole thing right after
+building `trustctl`, with no hardware:
 
 ```
-echo 'otpauth://totp/GitHub:alice@example.com?secret=JBSWY3DPEHPK3PXP&issuer=GitHub' | trustctl --simulate add
-echo JBSWY3DPEHPK3PXP | trustctl --simulate add "My Key"
-trustctl --simulate tz set +5:30
-trustctl --simulate config set rotate=on
+echo JBSWY3DPEHPK3PXP | trustctl --device DUMMY add GitHub
+echo 'otpauth://totp/Example:bob?secret=JBSWY3DPEHPK3PXP&issuer=Example' | trustctl --device DUMMY add
+trustctl --device DUMMY list
+trustctl --device DUMMY token github      # a real TOTP code for that secret, compare it with any authenticator
+trustctl --device DUMMY del GitHub
 ```
 
-The simulator follows the firmware's rules (names, secrets, parameters, the error messages), prints the same prompts as
-a real device, and accepts every confirmation without anybody holding a button. The limits: it is a fresh, empty device
-for every command, nothing is stored, and there is no display, so keys added by one command are gone for the next. That
-makes it good for trying `add` (secret from stdin, an `otpauth://` URI that supplies the name, the name rules) and the
-settings commands, but not for a full add, list, token round trip. `trustctl help-options` lists every option.
+The dummy device follows the firmware's rules (names, secrets, parameters, the error messages) and prints the same
+prompts as a real one, but accepts every confirmation without anybody holding a button. It lives in the background
+daemon, so its keys stay from one command to the next, until the daemon stops: after the idle time (5 minutes by
+default) or with `trustctl daemon stop`, which also gives you a fresh empty device. Nothing is ever stored on disk.
+`DUMMY` also works as `TRUSTCTL_DEVICE=DUMMY` or `device = DUMMY` in the config file, which lets `trustctl-menu` and the
+tab completion run against it. It cannot be used with `flash` or `calibrate`, and while the daemon holds the dummy
+device a real one needs `trustctl daemon stop` first.
+
+For one-shot experiments `trustctl --simulate` (or `TRUSTCTL_SIMULATE=1`) is simpler: a fresh, empty simulated device
+inside the process for every command, nothing kept between commands (so it suits `add`, `tz` and `config`, but not a
+round trip). `--device DUMMY --no-daemon` behaves the same way. `trustctl help-options` lists every option.
 
 ### A menu for Linux and BSD
 

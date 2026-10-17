@@ -58,7 +58,8 @@ commands:
 NAME is a key name (any case), its slot number, or a unique beginning of a name.
 
 options (before or after the command):
-  --device PATH             serial port of the device (or TRUSTCTL_DEVICE, or "device =" in the config file)
+  --device PATH             serial port of the device (or TRUSTCTL_DEVICE, or "device =" in the config file);
+                            --device DUMMY is a simulated device that keeps its keys while the daemon runs
   --autoprobe               try all serial ports; this resets every board it opens
   --simulate                use a simulated device that confirms everything
   --no-daemon               talk to the device directly (TRUSTCTL_NO_DAEMON=1, or "daemon = false" in the config file)
@@ -224,6 +225,9 @@ func takeGlobalOptions(args []string, opt *options) []string {
 // devicePath resolves which serial port to use ("" means: probe).
 func devicePath(opt options, cfg config) (string, error) {
 	path := firstNonEmpty(opt.device, os.Getenv(envDevice), cfg.device)
+	if serialdev.IsDummy(path) {
+		path = serialdev.DummyPath
+	}
 	if path == "" && !opt.autoprobe && !cfg.autoprobe {
 		return "", errors.New("no device given: use --device PATH, TRUSTCTL_DEVICE, \"device = PATH\" in " + configPath() + ", or --autoprobe")
 	}
@@ -231,6 +235,9 @@ func devicePath(opt options, cfg config) (string, error) {
 }
 
 func openDevice(path string, probe bool) (*serialdev.Device, error) {
+	if serialdev.IsDummy(path) {
+		return serialdev.OpenDummy()
+	}
 	if path != "" {
 		return serialdev.Open(path, 3*time.Second)
 	}
@@ -257,17 +264,27 @@ func connect(opt options, stderr io.Writer) (*protocol.Client, func(), error) {
 	}
 	probe := opt.autoprobe || cfg.autoprobe
 	if opt.noDaemon || cfg.noDaemon || os.Getenv(envNoDaemon) != "" {
+		if serialdev.IsDummy(path) {
+			fmt.Fprintln(stderr, dummyNoDaemonNotice)
+		}
 		dev, err := openDevice(path, probe)
 		if err != nil {
 			return nil, nil, err
 		}
 		return dev.Client, func() { dev.Close() }, nil
 	}
-	return connectDaemon(path, probe, cfg)
+	return connectDaemon(path, probe, cfg, stderr)
 }
 
+// What the DUMMY device says about itself, once per daemon (a message per command would end up in the key list of
+// scripts that read stderr, like trustctl-menu does).
+const (
+	dummyNotice         = "(DUMMY device: a simulated one that accepts every confirmation; its keys are forgotten when the daemon stops, after the idle time or with: trustctl daemon stop)"
+	dummyNoDaemonNotice = "(DUMMY device without the daemon: a fresh, empty simulated device for this command only)"
+)
+
 // connectDaemon talks to the background daemon and starts it if it is not running.
-func connectDaemon(path string, probe bool, cfg config) (*protocol.Client, func(), error) {
+func connectDaemon(path string, probe bool, cfg config, stderr io.Writer) (*protocol.Client, func(), error) {
 	conn, err := daemon.Dial()
 	if err != nil {
 		args := []string{"--idle", cfg.idleTimeout.String()}
@@ -278,6 +295,9 @@ func connectDaemon(path string, probe bool, cfg config) (*protocol.Client, func(
 		}
 		if conn, err = daemon.Start(args); err != nil {
 			return nil, nil, err
+		}
+		if serialdev.IsDummy(path) {
+			fmt.Fprintln(stderr, dummyNotice)
 		}
 	}
 	client := protocol.NewClient(conn)

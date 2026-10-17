@@ -124,6 +124,24 @@ first).
 
 To try it with fake keys, open `tools/user/dummy-keys.html` in a browser.
 
+### Trying it without a device
+
+`trustctl --simulate` (or `TRUSTCTL_SIMULATE=1`) talks to a simulated device inside the process instead of a serial port, so you
+can try the command line right after building it, with no hardware and no `--device`:
+
+```
+echo 'otpauth://totp/GitHub:alice@example.com?secret=JBSWY3DPEHPK3PXP&issuer=GitHub' | trustctl --simulate add
+echo JBSWY3DPEHPK3PXP | trustctl --simulate add "My Key"
+trustctl --simulate tz set +5:30
+trustctl --simulate config set rotate=on
+```
+
+The simulator follows the firmware's rules (names, secrets, parameters, the error messages), prints the same prompts as
+a real device, and accepts every confirmation without anybody holding a button. The limits: it is a fresh, empty device
+for every command, nothing is stored, and there is no display, so keys added by one command are gone for the next. That
+makes it good for trying `add` (secret from stdin, an `otpauth://` URI that supplies the name, the name rules) and the
+settings commands, but not for a full add, list, token round trip. `trustctl help-options` lists every option.
+
 ### A menu for Linux and BSD
 
 `tools/user/trustctl-menu` is a small POSIX shell script: it lists the keys in a dmenu-like launcher, asks the

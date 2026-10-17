@@ -27,8 +27,8 @@ offer TOTP, and it differs from a YubiKey's OATH feature in a few ways:
 - **Cheap and replaceable.** An Arduino Nano and a small display cost a fraction of a YubiKey, and keys are not bound
   to a vendor's app (the host side is a small command line tool and menus).
 - **What you give up.** A YubiKey is a certified secure element that resists physical attacks; an ATmega328P does not
-  (see "Physical access" below). It also only does TOTP: no FIDO2, no smartcard or PGP functions. And it is a
-  do-it-yourself build.
+  (see "Physical access" below). It also only does TOTP: no FIDO2, no smartcard or PGP functions. It holds fewer
+  keys than a YubiKey 5's OATH application (20 here, 32 there, 64 on newer firmware). And it is a do-it-yourself build.
 
 Both can be used together; they solve different parts of the problem.
 

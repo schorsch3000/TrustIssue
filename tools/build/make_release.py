@@ -9,7 +9,7 @@ What it does, in order:
   1. checks that you are on master with a clean tree, that X.Y.Z equals the firmware version (core.ino and the
      embedded copy), that the tag does not exist yet and that tag signing is set up;
   2. rebuilds the firmware and trustctl, runs the tests that need no device (the same as CI), then, on the dev rig
-     (Nano with a button, Uno as the finger), core_test, autowipe_test, trustctl_e2e, boot_test --pin and
+     (Nano with a button, Uno as the finger), flashes the firmware under test and runs core_test, autowipe_test, trustctl_e2e, boot_test --pin and
      trustctl_flash_e2e. The dev device must be empty, on UTC+0 and have the default settings: this is checked first
      (a device with keys is refused, so a production device is never touched);
   3. writes docs/test-reports/vX.Y.Z.md, commits it, creates the signed tag vX.Y.Z and verifies it;
@@ -120,6 +120,8 @@ rig = []
 if not args.host_only:
     n, u = args.nano, args.uno
     rig = [
+        Suite("flash the firmware under test through the bootloader gate (flash.py)", "rig",
+              ["tools/build/flash.py", "trustctl/internal/firmware/core.hex", "--port", n, "--rig", u]),
         Suite("core firmware: protocol, button gesture, storage, time (core_test)", "rig", ["tools/build/core_test.py", n, u]),
         Suite("autonomous wipe (autowipe_test)", "rig", ["tools/build/autowipe_test.py", n, u]),
         Suite("trustctl against the device (trustctl_e2e)", "rig", ["tools/build/trustctl_e2e.py", "--bin", trustctl_bin, "--device", n, "--rig", u]),

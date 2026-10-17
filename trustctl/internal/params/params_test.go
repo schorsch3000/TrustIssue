@@ -81,28 +81,3 @@ func TestApplyErrors(t *testing.T) {
 		t.Error("a short logo was accepted")
 	}
 }
-
-func TestApplyDisplayRows(t *testing.T) {
-	img := imageWithBlock()
-	if err := params.Apply(img, params.Patch{Rows: 64}); err != nil {
-		t.Fatal(err)
-	}
-	if got := img.Bytes(params.BlockAddress+8, 4); !bytes.Equal(got, []byte{0xA8, 0x3F, 0xDA, 0x12}) {
-		t.Fatalf("128x64 display commands: % X", got)
-	}
-	if img.Bytes(params.BlockAddress+5, 1)[0] != 0x01|0x04 {
-		t.Fatalf("flags %#x: the tall bit is missing, the font bit must stay", img.Bytes(params.BlockAddress+5, 1)[0])
-	}
-	if err := params.Apply(img, params.Patch{Rows: 32}); err != nil {
-		t.Fatal(err)
-	}
-	if got := img.Bytes(params.BlockAddress+8, 4); !bytes.Equal(got, []byte{0xA8, 0x1F, 0xDA, 0x02}) {
-		t.Fatalf("128x32 display commands: % X", got)
-	}
-	if img.Bytes(params.BlockAddress+5, 1)[0] != 0x01 {
-		t.Fatalf("flags %#x after going back to 32 rows", img.Bytes(params.BlockAddress+5, 1)[0])
-	}
-	if err := params.Apply(img, params.Patch{Rows: 48}); err == nil || !strings.Contains(err.Error(), "32 or 64") {
-		t.Fatalf("48 rows must be refused, got %v", err)
-	}
-}

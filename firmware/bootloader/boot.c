@@ -221,20 +221,17 @@ static bool oled_init(uint8_t config) {
     return false;
   }
   twi_stop();
-  // The reset values already are clock 0x80, offset 0 and start line 0, as are the entire display on (0xA4) and scrolling off (0x2E), so they are not sent.
-  static const uint8_t before[] PROGMEM = {0xAE, 0xA8, 0x1F, 0x8D, 0x14, 0x20, 0x02};
-  static const uint8_t after[] PROGMEM = {0xDA, 0x02, 0x81, OLED_CONTRAST, 0xD9, 0xF1, 0xDB, 0x40};
+  static const uint8_t before[] PROGMEM = {0xAE, 0xD5, 0x80, 0xA8, 0x1F, 0xD3, 0x00,
+                                           0x40, 0x8D, 0x14, 0x20, 0x02};
+  static const uint8_t after[] PROGMEM = {0xDA, 0x02, 0x81, OLED_CONTRAST, 0xD9,
+                                          0xF1, 0xDB, 0x40, 0x2E, 0xA4};
   oled_commands(before, sizeof(before), true);
   uint8_t rotate[] = {(config & 0x01) ? 0xA0 : 0xA1, (config & 0x01) ? 0xC0 : 0xC8};
   oled_commands(rotate, 2, false);
   oled_commands(after, sizeof(after), true);
-  // The device parameter block of the application has the display's own multiplex ratio and COM pins command
-  // (0xA8 mux 0xDA pins) at 0x7008: 128x32 by default, 128x64 (top half used) when trustctl patched it. A chip without
-  // the block reads 0xFF there, which the display ignores, so the values above stay.
-  oled_commands((const uint8_t *)0x7008, 4, true);
   uint8_t last[] = {(config & 0x02) ? 0xA7 : 0xA6, 0xAF};
   oled_commands(last, 2, false);
-  for (uint8_t row = 0; row < 8; row++) oled_row(row, 0, false);  // blank; rows 4 to 7 are the lower half of a 128x64 display
+  show(0, 0, 0, 0, false);
   return true;
 }
 

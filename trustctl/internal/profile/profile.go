@@ -22,7 +22,6 @@ type Profile struct {
 	Logo         string `json:"logo,omitempty"`
 	LogoInvert   bool   `json:"logo_invert,omitempty"`
 	Font         string `json:"font,omitempty"`
-	Rows         int    `json:"rows,omitempty"` // 64 for a 128x64 display (top half used); empty is 128x32
 }
 
 // DefaultPath is where the profile lives.
@@ -82,10 +81,6 @@ func contrast(v *int) (*uint8, error) {
 func (p Profile) Patch() (params.Patch, error) {
 	var patch params.Patch
 	var err error
-	if p.Rows != 0 && p.Rows != 32 && p.Rows != 64 {
-		return patch, fmt.Errorf("rows must be 32 or 64, not %d", p.Rows)
-	}
-	patch.Rows = p.Rows
 	if patch.ContrastFull, err = contrast(p.ContrastFull); err != nil {
 		return patch, err
 	}

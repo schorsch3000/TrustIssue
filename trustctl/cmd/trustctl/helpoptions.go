@@ -71,7 +71,6 @@ var profileKeys = []option{
 	{"calibrate contrast dim VALUE", "", `"contrast_dim": 0`, "0x00", "Contrast of the dimmed logo, 0 to 255."},
 	{"calibrate logo FILE.png", "", `"logo": "/path/logo.png"`, "no logo", "The idle logo, at most 128x32 pixels."},
 	{"calibrate logo FILE.png --invert", "", `"logo_invert": true`, "false", "Whether the logo is inverted."},
-	{"calibrate display 128x64", "", `"rows": 64`, "128x32", "The display height; a 128x64 display shows everything in its top half."},
 	{"calibrate font FILE.bin", "", `"font": "/path/font.bin"`, "the built-in Victoria font", "A 772 byte 8x8 font in U8x8 format."},
 }
 

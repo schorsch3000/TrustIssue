@@ -20,11 +20,10 @@ const calibrateUsage = `calibrate commands (the device must run the calibration 
   calibrate contrast full|dim VALUE   try a contrast (0-255, or 0x..) and remember it for "flash"
   calibrate logo FILE.png [--invert]  show the logo on the display and remember it for "flash"
   calibrate font NAME|FILE.bin        show a sample with a built-in font (see: font list) or a font file and remember it
-  calibrate display 128x32|128x64     the display height (a 128x64 uses only its top half) and remember it for "flash"
   calibrate rotate on|off             try the display rotated by 180 degrees (not remembered: "config set rotate=on" on the core firmware)
   calibrate invert on|off             try swapped light and dark pixels (not remembered: "config set invert=on")
   calibrate show                      what "flash" will patch into the firmware
-  calibrate forget logo|font|contrast|display drop a remembered setting
+  calibrate forget logo|font|contrast drop a remembered setting
 The settings are kept in ~/.config/trustctl/device.json (--profile PATH to use another file).
 `
 
@@ -97,7 +96,7 @@ func calibrateCommand(opt options, args []string, stdout, stderr io.Writer) erro
 		return nil
 	case "forget":
 		if len(rest) != 1 {
-			return usageError("calibrate forget needs logo, font, contrast or display")
+			return usageError("calibrate forget needs logo, font or contrast")
 		}
 		switch rest[0] {
 		case "logo":
@@ -106,10 +105,8 @@ func calibrateCommand(opt options, args []string, stdout, stderr io.Writer) erro
 			p.Font = ""
 		case "contrast":
 			p.ContrastFull, p.ContrastDim = nil, nil
-		case "display":
-			p.Rows = 0
 		default:
-			return usageError("calibrate forget needs logo, font, contrast or display")
+			return usageError("calibrate forget needs logo, font or contrast")
 		}
 		return p.Save(profilePath)
 	}
@@ -194,27 +191,6 @@ func calibrateCommand(opt options, args []string, stdout, stderr io.Writer) erro
 			return err
 		}
 		fmt.Fprintln(stderr, "The sample is on the display and the font is remembered for flashing.")
-	case "display":
-		if len(rest) != 1 {
-			return usageError("calibrate display 128x32|128x64")
-		}
-		rows := 0
-		switch rest[0] {
-		case "128x32", "32":
-			rows = 32
-		case "128x64", "64":
-			rows = 64
-		default:
-			return usageError("calibrate display: the size is 128x32 or 128x64, not %q", rest[0])
-		}
-		if err := c.send(fmt.Sprintf("ROWS %d", rows)); err != nil {
-			return err
-		}
-		p.Rows = rows
-		if rows == 32 {
-			p.Rows = 0 // the default
-		}
-		fmt.Fprintf(stderr, "The display is 128x%d now and is remembered for flashing. A 128x64 display uses only its top half.\n", rows)
 	case "rotate", "invert":
 		if len(rest) != 1 || (rest[0] != "on" && rest[0] != "off") {
 			return usageError("calibrate %s on|off", action)

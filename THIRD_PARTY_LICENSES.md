@@ -10,15 +10,15 @@ to the binaries as well.
 
 ## Overview
 
-| Part | Used in | License |
-| --- | --- | --- |
-| Arduino AVR core, `Wire`, `EEPROM` (Arduino LLC and others) | core and calibration firmware | LGPL 2.1 or later |
-| avr-libc | all firmware, bootloader | modified BSD (3 clause) |
-| U8g2 / U8x8 (Oliver Kraus) | calibration firmware only | BSD 2 clause (code); fonts see below |
-| `go.bug.st/serial` (Cristian Maglie) | `trustctl` | BSD 3 clause |
-| Go standard library, `golang.org/x/sys`, `golang.org/x/term` (The Go Authors) | `trustctl` | BSD 3 clause |
-| Victoria, Chroma48, Artos, Torus fonts (U8g2 font group "Open Game Art", from opengameart.org) | font data in the bootloader, the device parameter block and `trustctl` | CC0 1.0 (public domain) |
-| X11 "misc fixed" 5x8 | font data in `trustctl` | public domain |
+| Part                                                                                           | Used in                                                                | License                              |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------ |
+| Arduino AVR core, `Wire`, `EEPROM` (Arduino LLC and others)                                    | core and calibration firmware                                          | LGPL 2.1 or later                    |
+| avr-libc                                                                                       | all firmware, bootloader                                               | modified BSD (3 clause)              |
+| U8g2 / U8x8 (Oliver Kraus)                                                                     | calibration firmware only                                              | BSD 2 clause (code); fonts see below |
+| `go.bug.st/serial` (Cristian Maglie)                                                           | `trustctl`                                                             | BSD 3 clause                         |
+| Go standard library, `golang.org/x/sys`, `golang.org/x/term` (The Go Authors)                  | `trustctl`                                                             | BSD 3 clause                         |
+| Victoria, Chroma48, Artos, Torus fonts (U8g2 font group "Open Game Art", from opengameart.org) | font data in the bootloader, the device parameter block and `trustctl` | CC0 1.0 (public domain)              |
+| X11 "misc fixed" 5x8                                                                           | font data in `trustctl`                                                | public domain                        |
 
 ## Arduino core, Wire, EEPROM (LGPL 2.1 or later)
 
@@ -173,6 +173,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Not covered
 
-- `Demo-Logos/` (the demo logos) and `Case/` (3D models of a case) are not part of the licensed software. The case files
-  include third-party models (the Arduino Nano, a push button and an SSD1306 display) whose licenses are those of
-  their authors; this project does not relicense them.
+- `Demo-Logos/` (the demo logos) are AI generated and refined by the author. They fall under the project license
+  (GPL-3.0-or-later). Note that AI generated images may not be copyrightable in every jurisdiction.
+- `Case/` (3D models of a case) is work in progress and not committed yet. It will be added under the project license
+  once finished. The case files include third-party models (the Arduino Nano, a push button and an SSD1306 display)
+  whose licenses are those of their authors; this project does not relicense them.

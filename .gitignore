@@ -1,4 +1,4 @@
-build/
+firmware/*/build/
 __pycache__/
 firmware/bootloader/boot.elf
 firmware/bootloader/boot.hex

@@ -6,3 +6,4 @@ firmware/bootloader/boot_font.h
 trustctl/bin/
 dist/
 resume
+logs_*/

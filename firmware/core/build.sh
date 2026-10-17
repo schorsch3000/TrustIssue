@@ -9,7 +9,9 @@ cd "$(dirname "$0")"
 fqbn=arduino:avr:nano:cpu=atmega328old
 wipe="-DAUTONOMOUS_WIPE=1"
 [ "$AUTONOMOUS_WIPE" = 0 ] && wipe=""
-arduino-cli compile -b "$fqbn" --library ../trustcore \
+# --clean: arduino-cli otherwise reuses a cached copy of the Arduino core built with other flags (e.g. by the calibration
+# firmware), and the larger receive buffer is silently not built in.
+arduino-cli compile --clean -b "$fqbn" --library ../trustcore \
   --build-property "compiler.cpp.extra_flags=-DSERIAL_RX_BUFFER_SIZE=128 $wipe" \
   --build-property "compiler.c.elf.extra_flags=-Wl,--section-start=.paramblock=0x7000" \
   --output-dir "$PWD/build" .

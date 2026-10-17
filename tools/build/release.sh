@@ -14,6 +14,7 @@ export GOPATH="${GOPATH_RELEASE:-$HOME/go}" CGO_ENABLED=0
 firmware=$(cat "$root/trustctl/internal/firmware/VERSION")
 describe=$(git -C "$root" describe --tags --always --dirty 2>/dev/null || echo unknown)
 version="fw$firmware-$describe"
+[ "$describe" = "v$firmware" ] && version="fw$firmware"  # exactly on the release tag
 dist="$root/dist"
 mkdir -p "$dist"
 cd "$root/trustctl"

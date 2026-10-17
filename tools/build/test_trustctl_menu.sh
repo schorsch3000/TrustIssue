@@ -76,8 +76,10 @@ GitLab work
 AWS root"
 check "rofi gets -dmenu" equals rofi.args "-dmenu"
 
+# shellcheck disable=SC2089  # the quotes and backslashes are meant literally: a hostile key name
 weird='Z*$HOME `id` "q" '"'"'x'"'"' \\ [a]?'
 CHOICE=$weird
+# shellcheck disable=SC2090  # meant literally
 export CHOICE
 run -- chooser=rofi
 check "a name with shell characters reaches trustctl token unchanged" equals token.name "$weird"

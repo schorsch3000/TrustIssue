@@ -338,6 +338,17 @@ The project is under the **GPL-3.0-or-later** (`LICENSE`, Copyright (C) 2026 Dir
 - `Demo-Logos/` are AI generated and refined by the user, under the project license (user, 2026-10-17). `Case/` is work in progress and untracked; the user will commit it under the project license once done. It contains third-party models (Nano, push button, display) that keep their own licenses, so check those before committing.
 - `dist/` is a build output (and `~/bin/trustctl` may be a symlink into it): rebuild it with `tools/build/release.sh` after every firmware or flasher change. A stale release binary once flashed with the removed `SET_DEVICE` command (`command 0x42 was refused`) because it predated the PIN bootloader.
 
+## CI and releases
+
+Written 2026-10-17, **not yet run on GitHub** (the workflows were only parsed and every step's command was run locally). `docs/RELEASING.md` is the user-facing version.
+
+- `.github/workflows/build.yml` (reusable): job `test` (gofmt, go vet, `go test`, `firmware/test/run.sh`, shellcheck `-S warning`, `test_trustctl_menu.sh`, `test_onboard_usbtiny.sh`, the tray helper tests under Mono, a firmware build that must be byte-identical to the committed `trustctl/internal/firmware` images (arduino:avr 1.8.8 and U8g2 2.36.19 are pinned; it was identical locally), `smoke_dummy.py`), job `tray` (Windows runner, `build.cmd` with the csc that ships with Windows), job `package` (`release.sh --quick`, `package.py`, artifact `archives`).
+- `ci.yml`: push to master and pull requests run `build.yml`; on master the job `nightly` replaces the rolling prerelease `nightly` (tag moved with force, release deleted and recreated) with the archives, an attestation and the commit list.
+- `release.yml`: tag `vX.Y.Z` runs `check` (tag matches the firmware VERSION, is on master, has `docs/test-reports/vX.Y.Z.md`, and verifies the signature against `.github/allowed_signers`), then `build.yml`, then `publish` (attestation, GitHub release with notes from `tools/build/release_notes.sh`, the test report attached).
+- `tools/build/package.py VERSION`: reproducible archives from `dist/` (`.tar.gz`, `.zip` for Windows with `trustctl-tray.exe`, plus a firmware zip with `core.hex`, `calibration.hex`, `boot.hex`) and `SHA256SUMS`. `tools/build/release_notes.sh [REF]`: commit list since the previous release tag.
+- `tools/build/make_release.py X.Y.Z --nano PORT --uno PORT`: checks, runs the CI tests and the five rig suites, refuses a device that has keys / is not UTC+0 / has non-default settings (the machine's `/dev/ttyUSB0` may be a production device: only read-only commands are used before that check), writes and commits `docs/test-reports/vX.Y.Z.md`, makes a signed tag (SSH signing), asks before `git push --atomic origin master TAG`. `--host-only` is a dry run.
+- Actions are pinned by SHA. Attestations: `gh attestation verify FILE --repo schorsch3000/TrustIssue`.
+
 ## Tooling and environment
 
 - `tools/user/` holds the tools for people who use the device (`trustctl-menu`, `dummy-keys.html`, `font2png.py`, `png2font.py`, `c64rom2font.py`, `final_lock.sh`); `tools/build/` holds what builds, releases and tests the project (end-to-end tests, `release.sh`, `embed_firmware.sh`, `embed_fonts.py`, `gen_params.py`, `extract_u8x8_font.py`, `flash.py`, `test_trustctl_menu.sh`). Scripts are run from the repository root, e.g. `tools/build/release.sh`.

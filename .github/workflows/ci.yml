@@ -1,0 +1,56 @@
+# Every push to master (and every pull request): tests, then a rolling prerelease "nightly".
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  nightly:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: nightly
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: archives
+          path: archives
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: archives/*
+      - name: Replace the rolling prerelease
+        run: |
+          {
+            echo "Rolling prerelease of the latest commit on master ($(git rev-parse --short HEAD)). Not a release: the tests that need the device were not run for it."
+            echo
+            echo "Check a download with \`sha256sum -c SHA256SUMS\` or \`gh attestation verify FILE --repo $GITHUB_REPOSITORY\`."
+            echo
+            tools/build/release_notes.sh HEAD
+          } > notes.md
+          gh release delete nightly --cleanup-tag --yes || true
+          git tag -f nightly
+          git push -f origin nightly
+          gh release create nightly --prerelease --verify-tag --title "nightly ($(git rev-parse --short HEAD))" --notes-file notes.md archives/*

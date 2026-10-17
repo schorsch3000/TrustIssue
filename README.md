@@ -60,7 +60,9 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
    development lock bits and verifies them. The burn starts with a chip erase, so the keys are gone, unless you add
    `--keep-eeprom`. `tools/user/unlock.sh <uno port> --yes` is the way back from the final lock bits
    (`final_lock.sh`): a chip erase that destroys flash and EEPROM, followed by `flash_bootloader.sh`.
-1. **Host tool.** `cd trustctl && go build -o bin/trustctl ./cmd/trustctl` (a static binary; Go 1.25+, which
+1. **Host tool.** Download the archive for your system from the
+   [releases](https://github.com/schorsch3000/TrustIssue/releases) (it holds `trustctl` and the tools from `tools/user`; the
+   `nightly` prerelease is the latest commit), or build it: `cd trustctl && go build -o bin/trustctl ./cmd/trustctl` (a static binary; Go 1.25+, which
    the module fetches by itself).
 1. **Firmware.** `trustctl --device /dev/ttyUSB0 flash` (the core firmware is built into the `trustctl` binary;
    for development `flash FILE.hex` takes your own build, e.g. from `firmware/core/build.sh`). It tells you what to do on
@@ -249,6 +251,8 @@ avr-libc, U8g2 and Go libraries, CC0 and public domain fonts). Their notices, wh
 
 - `firmware/test/run.sh`: host tests of the portable core.
 - `cd trustctl && go test ./...`: the host tool against a simulated device.
+- `tools/build/smoke_dummy.py`: a built `trustctl` against its simulated device. CI (`.github/workflows`) runs all of this
+  on every push to master, without the device.
 - With the rig: `tools/build/core_test.py`, `tools/build/boot_test.py`, `tools/build/autowipe_test.py`,
   `tools/build/trustctl_e2e.py`, `tools/build/trustctl_flash_e2e.py` (the Uno does the button gestures).
 
@@ -260,3 +264,9 @@ avr-libc, U8g2 and Go libraries, CC0 and public domain fonts). Their notices, wh
 `tools/build/embed_firmware.sh` (builds both firmwares, copies the images, takes the version from `firmware/core/core.ino`) and
 cross-compiles all platforms into `dist/` with `SHA256SUMS`. Commit the embedded images with the code; a test fails if the
 embedded version differs from the source. Bump `VERSION` in `core.ino` for every firmware change that is released.
+
+Every push to master runs the tests that need no device and updates the rolling prerelease `nightly` (archives with `trustctl`
+for all platforms, `tools/user`, the Windows tray tool and a firmware archive). A tag `vX.Y.Z` makes a full release with the
+list of commit messages and the test report. The tag is made by `tools/build/make_release.py X.Y.Z --nano PORT --uno PORT`,
+which runs every test including the rig tests first. See `docs/RELEASING.md`. Every archive has a build provenance
+attestation: `gh attestation verify FILE --repo schorsch3000/TrustIssue`.

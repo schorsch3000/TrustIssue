@@ -68,9 +68,17 @@ class Rig:
     """The Uno test rig: presses the button with exact timings."""
 
     def __init__(self, path):
-        self.port = serial.Serial(path, 115200, timeout=30)
-        time.sleep(2.5)
-        self.port.reset_input_buffer()
+        self.port = serial.Serial(path, 115200, timeout=1)
+        # opening the port resets the Uno; its start-up takes between 2 and 4 s: ask until it answers
+        deadline = time.time() + 15
+        while True:
+            self.port.reset_input_buffer()
+            self.port.write(b"RELEASE\n")
+            if self.port.readline().decode().strip() == "OK":
+                break
+            if time.time() > deadline:
+                raise SystemExit("rig: no answer")
+        self.port.timeout = 30
 
     def command(self, text):
         self.port.write((text + "\n").encode())

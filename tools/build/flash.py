@@ -21,6 +21,8 @@ import time
 
 import serial
 
+from rig import Rig  # noqa: E402  (the button finger: firmware/rigisp)
+
 PAGE = 128
 FLASH_END = 0x7800  # the bootloader's own section starts here
 
@@ -64,33 +66,6 @@ def pages_of(data):
     return sorted(pages.items())
 
 
-class Rig:
-    """The Uno test rig: presses the button with exact timings."""
-
-    def __init__(self, path):
-        self.port = serial.Serial(path, 115200, timeout=1)
-        # opening the port resets the Uno; its start-up takes between 2 and 4 s: ask until it answers
-        deadline = time.time() + 15
-        while True:
-            self.port.reset_input_buffer()
-            self.port.write(b"RELEASE\n")
-            if self.port.readline().decode().strip() == "OK":
-                break
-            if time.time() > deadline:
-                raise SystemExit("rig: no answer")
-        self.port.timeout = 30
-
-    def command(self, text):
-        self.port.write((text + "\n").encode())
-        if self.port.readline().decode().strip() != "OK":
-            raise SystemExit(f"rig: {text} failed")
-
-    def command_in_background(self, text):
-        thread = threading.Thread(target=self.command, args=(text,))
-        thread.start()
-        return thread
-
-
 class WrongPin(Exception):
     """The device took the PIN and started the application instead of the update mode."""
 
@@ -126,8 +101,12 @@ def open_gate_and_sync(args, rig=None):
             print(f"  {n}...", flush=True)
             time.sleep(1)
     port = serial.Serial(args.port, args.baud, timeout=0.2)
-    port.dtr = False  # a DTR pulse resets the device (opening alone may not: DTR can stay up between runs)
+    # a DTR pulse resets the device (opening alone may not: DTR can stay up between runs); RTS with it, because on
+    # some CH340 boards the reset capacitor hangs on RTS and DTR alone does nothing
+    port.dtr = False
+    port.rts = False
     time.sleep(0.1)
+    port.rts = True
     port.dtr = True
     pressing = None
     if rig:

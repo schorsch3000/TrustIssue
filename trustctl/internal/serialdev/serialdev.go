@@ -163,7 +163,7 @@ func OpenCalibration(path string) (*Device, error) {
 }
 
 // OpenBootloaderPort opens the port at the bootloader's speed and resets the
-// device with a DTR pulse. Whether the bootloader opens depends on the button:
+// device with a DTR (and RTS) pulse. Whether the bootloader opens depends on the button:
 // it must be held while the reset happens.
 func OpenBootloaderPort(path string) (serial.Port, error) {
 	disableHangup(path)
@@ -174,11 +174,17 @@ func OpenBootloaderPort(path string) (serial.Port, error) {
 	return port, nil
 }
 
-// Reset pulses DTR, which resets an Arduino.
+// Reset pulses DTR, which resets an Arduino, and RTS with it: the reset capacitor of some CH340 boards hangs on RTS
+// and a DTR pulse alone does nothing there (found on a Nano clone of the test rig). Nothing on the usual boards
+// listens to RTS, so pulsing both costs nothing. A line the driver does not support is not an error.
 func Reset(port serial.Port) error {
+	rtsErr := port.SetRTS(false)
 	if err := port.SetDTR(false); err != nil {
 		return err
 	}
 	time.Sleep(100 * time.Millisecond)
+	if rtsErr == nil {
+		_ = port.SetRTS(true)
+	}
 	return port.SetDTR(true)
 }

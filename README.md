@@ -40,7 +40,7 @@ Both can be used together; they solve different parts of the problem.
 | `firmware/trustcore`   | portable C++ core (SHA-1, HMAC, TOTP, Base32, EEPROM storage, protocol parser, time) with host tests in `firmware/test`                                                    |
 | `firmware/bootloader`  | the button-gated bootloader (2 KB, from scratch)                                                                                                                           |
 | `firmware/calibration` | tiny firmware to try out contrast, logo and font on the display                                                                                                            |
-| `firmware/rig`         | the Uno test rig that presses the button and resets the Nano                                                                                                               |
+| `firmware/rigisp`      | the test rig: ArduinoISP plus a button finger, on a second Nano (see `tools/build/rig.py`)                                                                                  |
 | `trustctl`             | the host tool in Go: `list`, `token`, `add`, `del`, `tz`, `config`, `wipe`, `flash`, `calibrate`, `font extract`, `logo extract`, `daemon`                                 |
 | `tools/user`           | tools for people who use the device: `trustctl-menu`, `dummy-keys.html` (fake keys), `font2png.py`, `png2font.py`, `c64rom2font.py`, `final_lock.sh`, `onboard_usbtiny.sh` |
 | `tools/build`          | for building and testing the project: end-to-end tests (need the rig), `release.sh`, `embed_firmware.sh`, `embed_fonts.py`, `gen_params.py`, `flash.py`                    |
@@ -254,7 +254,7 @@ avr-libc, U8g2 and Go libraries, CC0 and public domain fonts). Their notices, wh
 - `tools/build/smoke_dummy.py`: a built `trustctl` against its simulated device. CI (`.github/workflows`) runs all of this
   on every push to master, without the device.
 - With the rig: `tools/build/core_test.py`, `tools/build/boot_test.py`, `tools/build/autowipe_test.py`,
-  `tools/build/trustctl_e2e.py`, `tools/build/trustctl_flash_e2e.py` (the Uno does the button gestures).
+  `tools/build/trustctl_e2e.py`, `tools/build/trustctl_flash_e2e.py` (the rig does the button gestures; `tools/build/rig.py` finds it, and `make_release.py` provisions the device through it and runs all of them, plus `locked_test.py` for the lock bits).
 
 ## Releases
 

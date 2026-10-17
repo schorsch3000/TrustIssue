@@ -15,6 +15,7 @@ to the binaries as well.
 | Arduino AVR core, `Wire`, `EEPROM` (Arduino LLC and others)                                    | core and calibration firmware                                          | LGPL 2.1 or later                    |
 | avr-libc                                                                                       | all firmware, bootloader                                               | modified BSD (3 clause)              |
 | U8g2 / U8x8 (Oliver Kraus)                                                                     | calibration firmware only                                              | BSD 2 clause (code); fonts see below |
+| ArduinoISP example sketch (Randall Bohn), basis of `firmware/rigisp`                            | the test rig only (not in any release binary)                          | BSD (see below)                      |
 | `go.bug.st/serial` (Cristian Maglie)                                                           | `trustctl`                                                             | BSD 3 clause                         |
 | Go standard library, `golang.org/x/sys`, `golang.org/x/term` (The Go Authors)                  | `trustctl`                                                             | BSD 3 clause                         |
 | Victoria, Chroma48, Artos, Torus fonts (U8g2 font group "Open Game Art", from opengameart.org) | font data in the bootloader, the device parameter block and `trustctl` | CC0 1.0 (public domain)              |
@@ -91,6 +92,12 @@ U8g2's own `LICENSE` says that its fonts are licensed under different conditions
 (https://github.com/olikraus/u8g2/wiki/fntgrp). The calibration firmware contains only the `chroma48medium8` font
 (group "Open Game Art", CC0). Earlier builds also carried fonts from groups with other terms (Press Start 2P, PC Senior,
 PxPlus IBM CGA, Amstrad CPC extended); they were removed so that nothing with a restrictive license is redistributed.
+
+## ArduinoISP (BSD), test rig only
+
+`firmware/rigisp/rigisp.ino` is the ArduinoISP example sketch of the Arduino project, Copyright (c) 2008-2011 Randall Bohn,
+under the BSD license (https://opensource.org/licenses/bsd-license.php), with the text commands of the Trust Issues rig added.
+It runs on the test rig, not on the device, and is not part of any release binary.
 
 ## Fonts (CC0 and public domain)
 

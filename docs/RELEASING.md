@@ -18,10 +18,12 @@ of your git commits) and, so GitHub shows "Verified", under Settings, SSH and GP
 
 1. Bump `VERSION` in `firmware/core/core.ino` (and the expectation in `tools/build/core_test.py`) if the firmware version
    changes, run `tools/build/embed_firmware.sh`, commit. The tag `vX.Y.Z` must equal the firmware version.
-2. Connect the **empty dev device** (Nano with the button) and the rig (Uno). Never a production device: the script refuses a
-   device that holds keys, is not on UTC+0 or does not have the default settings.
-3. `tools/build/make_release.py X.Y.Z --nano /dev/ttyUSB0 --uno /dev/ttyUSB1`
-   runs the tests of CI, then the rig tests, writes `docs/test-reports/vX.Y.Z.md`, commits it, creates and verifies the signed
+2. Connect the rig (a Nano running `firmware/rigisp`, wired to the dev device as in `CLAUDE.md`, "The test rig") and the dev
+   device. The script finds the rig by itself and erases and reprovisions the device wired to it over ISP (chip erase,
+   bootloader, the firmware under test), so the device starts empty with the default settings. A device that is not
+   wired to the rig, a production device on the same machine, is never touched.
+3. `tools/build/make_release.py X.Y.Z`
+   runs the tests of CI, then the rig tests (`--dry-run` does that without committing or tagging), writes `docs/test-reports/vX.Y.Z.md`, commits it, creates and verifies the signed
    tag and asks before it pushes master and the tag together.
 4. The tag starts `.github/workflows/release.yml`: it checks the tag (signature, on master, version, report present), runs
    the tests again, builds, attests and publishes the release with the commit list and the report.

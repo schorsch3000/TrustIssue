@@ -18,6 +18,8 @@ import time
 
 import serial
 
+import rig as rig_module
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--bin", default="trustctl/bin/trustctl")
 parser.add_argument("--device", default="/dev/ttyUSB0")
@@ -28,14 +30,11 @@ SECRET_B32 = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
 SECRET = b"12345678901234567890"
 failures = 0
 
-rig = serial.Serial(args.rig, 115200, timeout=30)
-time.sleep(2.5)
-rig.reset_input_buffer()
+rig = rig_module.Rig(args.rig)
 
 
 def press(ms):
-    rig.write(f"SEQ {ms}\n".encode())
-    rig.readline()
+    rig.command(f"SEQ {ms}")
 
 
 def trustctl(*cmd, stdin=None, holds=()):

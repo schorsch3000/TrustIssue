@@ -11,6 +11,8 @@ import time
 
 import serial
 
+import rig as rig_module
+
 ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 SLOW = "--slow" in sys.argv
 NANO = ARGS[0] if len(ARGS) > 0 else "/dev/ttyUSB0"
@@ -35,10 +37,9 @@ def check(ok, what, detail=""):
 class Device:
     def __init__(self):
         self.nano = serial.Serial(NANO, 9600, timeout=3)
-        self.rig = serial.Serial(UNO, 115200, timeout=30)
-        time.sleep(3.5)  # both boards reset when the ports open; the bootloader waits
+        self.rig = rig_module.Rig(UNO)  # waits until the rig answers
+        time.sleep(3.5)  # the Nano resets when its port opens; its bootloader waits
         self.nano.reset_input_buffer()
-        self.rig.reset_input_buffer()
 
     def line(self):
         return self.nano.readline().decode("ascii", "replace").strip()
@@ -51,8 +52,7 @@ class Device:
         return self.line()
 
     def press(self, sequence):
-        self.rig.write(f"SEQ {sequence}\n".encode())
-        assert self.rig.readline().decode().strip() == "OK"
+        self.rig.command(f"SEQ {sequence}")
 
     def confirmed(self, text, hold="1500"):
         """Sends a command that needs the button; returns the final reply."""

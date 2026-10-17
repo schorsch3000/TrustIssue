@@ -191,6 +191,15 @@ What is not covered:
 
 All of this only holds for a finished device: until the lock bits are set the programming header can read everything.
 
+## License
+
+Trust Issues is free software: you can redistribute it and modify it under the terms of the GNU General Public License,
+version 3 or (at your option) any later version. See `LICENSE`. Copyright (C) 2026 Dirk Heilig.
+
+The firmware and `trustctl` use third-party code and fonts under compatible licenses (LGPL 2.1+ Arduino core, BSD-licensed
+avr-libc, U8g2 and Go libraries, CC0 and public domain fonts). Their notices, which binary releases must carry, are in
+`THIRD_PARTY_LICENSES.md`.
+
 ## Tests
 
 - `firmware/test/run.sh`: host tests of the portable core.

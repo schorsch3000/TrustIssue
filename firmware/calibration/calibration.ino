@@ -13,7 +13,6 @@
 //   FLIP <0|1>                 rotate 180 degrees
 //   INVERT <0|1>
 //   POWER <0|1>                display off / on
-//   FONT <n>                   select candidate font n and draw a lookalike sample
 //   LOGO <offset> <32 hex>     16 bitmap bytes at byte offset (multiple of 16)
 //   RAW <hex bytes>            raw controller command bytes (max 24)
 //   FONTDATA <offset> <32 hex> 16 bytes of a font (772 bytes, U8x8 format) into RAM
@@ -27,16 +26,6 @@ static const uint8_t DISPLAY_ADDRESS = 0x3C;
 static const uint16_t BITMAP_BYTES = 512;  // 128 x 32 / 8
 
 U8X8_SSD1306_128X32_UNIVISION_HW_I2C display(U8X8_PIN_NONE);
-
-static const uint8_t *const fonts[] = {
-    u8x8_font_chroma48medium8_r, u8x8_font_amstrad_cpc_extended_r,
-    u8x8_font_artossans8_r,      u8x8_font_artosserif8_r,
-    u8x8_font_pcsenior_r,        u8x8_font_pressstart2p_r,
-    u8x8_font_pxplusibmcga_r,    u8x8_font_pxplusibmcgathin_r,
-    u8x8_font_torussansbold8_r,  u8x8_font_victoriabold8_r,
-    u8x8_font_victoriamedium8_r, u8x8_font_5x8_r,
-};
-static const uint8_t FONT_COUNT = sizeof(fonts) / sizeof(fonts[0]);
 
 // A font uploaded by trustctl, for trying it out before it is flashed into the
 // device parameter block (see tools/build/gen_params.py). 49 chunks of 16 bytes.
@@ -121,21 +110,6 @@ static void handleLine(char *text) {
     reply(F("OK"));
   } else if (!strcmp_P(text, PSTR("POWER"))) {
     display.setPowerSave(atoi(args) ? 0 : 1);
-    reply(F("OK"));
-  } else if (!strcmp_P(text, PSTR("FONT"))) {
-    int index = atoi(args);
-    if (index < 0 || index >= FONT_COUNT) {
-      reply(F("ERR badarg"));
-      return;
-    }
-    display.setFont(fonts[index]);
-    display.clear();
-    display.drawString(0, 0, "Il1 O0oQ 5S 8B");
-    display.drawString(0, 1, "GitHub paypa1");
-    display.drawString(0, 2, "rn m vv cl .:-");
-    display.setCursor(0, 3);
-    display.print(F("font "));
-    display.print(index);
     reply(F("OK"));
   } else if (!strcmp_P(text, PSTR("LOGO"))) {
     char *data = strchr(args, ' ');

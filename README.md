@@ -42,6 +42,7 @@ Both can be used together; they solve different parts of the problem.
 | `firmware/calibration` | tiny firmware to try out contrast, logo and font on the display                                                                                                            |
 | `firmware/rigisp`      | the test rig: ArduinoISP plus a button finger, on a second Nano (see `tools/build/rig.py`)                                                                                  |
 | `trustctl`             | the host tool in Go: `list`, `token`, `add`, `del`, `tz`, `config`, `wipe`, `flash`, `calibrate`, `font extract`, `logo extract`, `daemon`                                 |
+| `trustctl/cmd/trustctl-import` | `trustctl-import`: imports a Google Authenticator export with a webcam (a local web page, see below) |
 | `tools/user`           | tools for people who use the device: `trustctl-menu`, `dummy-keys.html` (fake keys), `font2png.py`, `png2font.py`, `c64rom2font.py`, `final_lock.sh`, `onboard_usbtiny.sh` |
 | `tools/build`          | for building and testing the project: end-to-end tests (need the rig), `release.sh`, `embed_firmware.sh`, `embed_fonts.py`, `gen_params.py`, `flash.py`                    |
 
@@ -183,6 +184,26 @@ The settings are in `%APPDATA%\trustctl\tray.ini`; the code is never written any
 Build it on Windows with `tools\user\trustctl-tray\build.cmd`: it uses the C# compiler that ships with Windows (.NET
 Framework 4, no SDK to install) and writes `trustctl-tray.exe` next to the source. `tools/user/trustctl-tray/test.sh` compiles the
 source with Mono on Linux and runs the tests of the filter, argument quoting, hotkey and settings code. It was tried on Windows by the user and works (hotkey, picker, button confirmation, typing the code).
+
+### Importing from Google Authenticator
+
+`trustctl-import` (`trustctl/cmd/trustctl-import`, its own small binary, `tools/build/build_trustctl.sh` builds it next to
+`trustctl`) moves the accounts of a Google Authenticator export onto the device. Run it, and it opens a page in your browser
+(a server on `127.0.0.1` that only that page can use, stopped with the Quit button or Ctrl-C). In Authenticator choose
+"Transfer accounts", then "Export accounts", and show the QR code to the webcam; several codes are read one after the other.
+The page then lists the accounts with a checkbox and an editable name each: untick what you do not need, correct the names
+(the device's name rules are checked as you type), and press "Import selected". Every key is stored with `trustctl add`, so
+every key still needs its button press on the device. Accounts the device cannot hold (HOTP, SHA256 or SHA512, secrets over
+20 bytes) are listed greyed out with the reason.
+
+```
+trustctl-import                              # finds trustctl next to itself or in the PATH
+trustctl-import --trustctl ./trustctl -- --device /dev/ttyUSB0   # after -- come options for trustctl
+trustctl-import --no-browser                 # only print the address to open
+```
+
+The secrets stay in the `trustctl-import` process and the pipe to `trustctl`; the page only ever sees names. An export QR
+code holds every secret in the clear: do this on a computer you trust, and close the Authenticator screen afterwards.
 
 ## Security model in short
 

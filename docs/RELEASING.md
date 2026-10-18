@@ -16,19 +16,23 @@ of your git commits) and, so GitHub shows "Verified", under Settings, SSH and GP
 
 ## Every release
 
-1. Bump `VERSION` in `firmware/core/core.ino` (and the expectation in `tools/build/core_test.py`) if the firmware version
-   changes, run `tools/build/embed_firmware.sh`, commit. The tag `vX.Y.Z` must equal the firmware version.
-2. Connect the rig (a Nano running `firmware/rigisp`, wired to the dev device as in `CLAUDE.md`, "The test rig") and the dev
-   device. The script finds the rig by itself and erases and reprovisions the device wired to it over ISP (chip erase,
-   bootloader, the firmware under test), so the device starts empty with the default settings. A device that is not
-   wired to the rig, a production device on the same machine, is never touched.
-3. `tools/build/make_release.py X.Y.Z`
-   runs the tests of CI, then the rig tests (`--dry-run` does that without committing or tagging), writes `docs/test-reports/vX.Y.Z.md`, commits it, creates and verifies the signed
-   tag and asks before it pushes master and the tag together.
-4. The tag starts `.github/workflows/release.yml`: it checks the tag (signature, on master, version, report present), runs
-   the tests again, builds, attests and publishes the release with the commit list and the report.
+The rig sits on the rig machine (a Raspberry Pi, `tools/rig/README.md`), which tests every `master` commit by itself and posts the
+status `device-tests` on it. A release tags a commit it has already tested, so the tagged commit is exactly what was tested.
 
-`tools/build/make_release.py X.Y.Z --host-only` is a dry run without the rig; it commits and tags nothing.
+1. Bump `VERSION` in `firmware/core/core.ino` (and the expectation in `tools/build/core_test.py`) if the firmware version
+   changes, run `tools/build/embed_firmware.sh`, commit and push. The tag `vX.Y.Z` must equal the firmware version.
+2. Wait until the commit shows green CI and `device-tests: success` on GitHub (about 15 minutes).
+3. `tools/build/make_release.py X.Y.Z --report-host trustissue-test@homedisplay`
+   checks both, copies that commit's report from the rig machine with `scp`, makes the signed tag on `HEAD`, verifies it and asks
+   before it pushes the tag. Then it commits the report as `docs/test-reports/vX.Y.Z.md` (after the tag, so the tag stays on the
+   tested commit) and asks before it pushes `master`.
+4. The tag starts `.github/workflows/release.yml`: it checks the tag (signature, on master, version, `device-tests: success`
+   for the tagged commit), runs the tests again, builds, attests and publishes the release with the commit list and a link to
+   the report.
+
+With a rig attached to your own machine instead, `tools/build/make_release.py X.Y.Z` runs everything here (the tests of CI, the
+rig tests) and commits the report before the tag (`--dry-run`: no commit, tag or push; `--host-only`: no rig). The workflow
+accepts that too, if the tagged commit only adds the report to a tested commit.
 
 ## CI
 

@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 """Makes a release: runs every test (the rig tests too), writes the test report, tags.
 
+  tools/build/make_release.py X.Y.Z --report-host USER@HOST         the usual way: tag the commit the rig machine tested
   tools/build/make_release.py X.Y.Z [--rig PORT] [--yes]
   tools/build/make_release.py X.Y.Z --dry-run [--report FILE]       everything, the rig too, but nothing is committed or tagged
   tools/build/make_release.py X.Y.Z --host-only [--report FILE]     dry run: only the tests that need no device,
                                                                      report to a file, nothing is committed or tagged
 
-What it does, in order:
+--report-host USER@HOST (the rig machine, see tools/rig/README.md): no tests run here. HEAD must be pushed, CI must be green for it and the rig
+machine must have posted device-tests: success for it (GitHub says so). The script copies that commit's report from the machine with scp,
+makes the signed tag on HEAD itself (the tagged commit is exactly the tested one, no report commit in between), asks, pushes the tag, then
+commits the report as docs/test-reports/vX.Y.Z.md, asks again and pushes master. The release workflow links the report in the release
+notes (no asset upload: that would need write access to the repository for whoever runs this).
+
+The rest of this text is about running the tests here, with a rig attached to this machine. What it does, in order:
   1. checks that you are on master with a clean tree, that X.Y.Z equals the firmware version (core.ino and the
      embedded copy), that the tag does not exist yet and that tag signing is set up;
   2. rebuilds the firmware and trustctl, runs the tests that need no device (the same as CI), then, on the rig
@@ -40,6 +47,7 @@ import rig as rig_module  # noqa: E402
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("version", help="X.Y.Z, without the v")
+parser.add_argument("--report-host", help="USER@HOST of the rig machine: tag the commit it tested and take its report (no tests run here)")
 parser.add_argument("--rig", help="serial port of the rig Nano (default: look at every serial port)")
 parser.add_argument("--dry-run", action="store_true", help="with the rig, but nothing is committed, tagged or pushed; the report goes to a file")
 parser.add_argument("--rig-only", action="store_true", help="only the rig: provision and run the rig suites (what the Pi does for CI); nothing is committed or tagged, the report goes to --report")
@@ -76,8 +84,11 @@ def die(msg):
 
 
 # ---- 0. preflight: every tool the chosen jobs call, before anything is done
-rig_module.require_tools(rig=not args.host_only, build_bootloader=not args.rig_only or not args.bootloader,
-                         host=not args.rig_only, git=True)
+if args.report_host:
+    rig_module.require_tools(rig=False, git=True, scp=True)
+else:
+    rig_module.require_tools(rig=not args.host_only, build_bootloader=not args.rig_only or not args.bootloader,
+                             host=not args.rig_only, git=True)
 
 # ---- 1. preconditions ------------------------------------------------------------------------------------------
 if out("git", "rev-parse", "--abbrev-ref", "HEAD") != "master" and not no_git:
@@ -102,6 +113,60 @@ if not no_git:
         die("origin/master has commits you do not have")
 
 tested_commit = out("git", "rev-parse", "HEAD")
+
+
+def release_from_host():
+    """Tags the commit the rig machine tested and takes its report; see the docstring."""
+    import json
+    import urllib.request
+
+    def api(path):
+        request = urllib.request.Request(f"https://api.github.com/repos/schorsch3000/TrustIssue/{path}", headers={"User-Agent": "make_release"})
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return json.load(response)
+
+    sha = tested_commit
+    if out("git", "rev-list", "--count", "origin/master..HEAD") != "0":
+        die("HEAD is not pushed yet: push it, wait for CI and the rig machine, then run this again")
+    runs = api(f"commits/{sha}/check-runs?per_page=100")["check_runs"]
+    bad = [f"{r['name']}: {r['status']}/{r['conclusion']}" for r in runs if r["status"] != "completed" or r["conclusion"] not in ("success", "skipped", "neutral")]
+    if not runs or bad:
+        die("CI is not green for HEAD yet: " + (", ".join(bad) or "no check runs found"))
+    states = [s for s in api(f"commits/{sha}/statuses") if s["context"] == "device-tests"]
+    if not states or states[0]["state"] != "success":
+        die(f"the rig machine has not posted device-tests: success for HEAD yet ({states[0]['state'] + ': ' + states[0]['description'] if states else 'no status'})")
+    print(f"CI is green and the rig machine says: {states[0]['description']}", flush=True)
+
+    report = os.path.join(ROOT, "docs", "test-reports", f"{tag}.md")
+    os.makedirs(os.path.dirname(report), exist_ok=True)
+    fetch = subprocess.run(["scp", "-q", f"{args.report_host}:reports/{sha}.md", report], capture_output=True, text=True)
+    if fetch.returncode:
+        die(f"could not copy reports/{sha}.md from {args.report_host}: {fetch.stderr.strip()}")
+    text = open(report).read()
+    if sha not in text or "FAILED" in text.split("## Not covered")[0]:
+        os.remove(report)
+        die("the report does not name HEAD, or it contains a failed suite: not tagging")
+    print(f"report: {report}", flush=True)
+
+    out("git", "tag", "-s", tag, sha, "-m", f"trustctl and firmware {version}")
+    print(out("git", "-c", "gpg.ssh.allowedSignersFile=.github/allowed_signers", "tag", "-v", tag, check=False) or "tag created")
+    print(f"\nThe signed tag {tag} is on {sha[:7]}, exactly the commit that was tested.")
+    if input(f"Push the tag now (git push origin {tag}; this starts the release workflow)? [y/N] ").strip().lower() != "y":
+        print(f"Not pushed. To undo: git tag -d {tag}; rm {report}")
+        sys.exit(1)
+    print(out("git", "push", "origin", tag))
+    out("git", "add", report)
+    out("git", "commit", "-m", f"Test report for {version} (device tests on the rig, commit {sha[:7]})")
+    print(f"The report is committed after the tag. Release notes link to docs/test-reports/{tag}.md on master.")
+    if input("Push master with the report now? [y/N] ").strip().lower() == "y":
+        print(out("git", "push", "origin", "master"))
+    else:
+        print("Not pushed: git push origin master")
+    sys.exit(0)
+
+
+if args.report_host:
+    release_from_host()
 
 
 # ---- 2. the tests ----------------------------------------------------------------------------------------------

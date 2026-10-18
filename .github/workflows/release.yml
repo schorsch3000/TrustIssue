@@ -1,5 +1,5 @@
-# A tag vMAJOR.MINOR.PATCH makes a full release. The tag comes from tools/build/make_release.py,
-# which ran all tests (rig included) and committed the test report first.
+# A tag vMAJOR.MINOR.PATCH makes a full release. The tag comes from tools/build/make_release.py and sits on a commit that the
+# rig machine tested (commit status device-tests: success); the test report is committed right after the tag and linked in the notes.
 name: release
 
 on:
@@ -12,11 +12,16 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: read
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: The tag must be a signed tag of a master commit that matches the firmware version and has a test report
+      - name: The tag must be a signed tag of a master commit that matches the firmware version and was tested on the rig
         run: |
           tag=${GITHUB_REF_NAME}
           echo "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::bad tag $tag"; exit 1; }
@@ -24,7 +29,16 @@ jobs:
           git fetch origin master
           git merge-base --is-ancestor "$tag^{commit}" origin/master || { echo "::error::$tag is not on master"; exit 1; }
           [ "$tag" = "v$(cat trustctl/internal/firmware/VERSION)" ] || { echo "::error::$tag does not match the firmware version $(cat trustctl/internal/firmware/VERSION)"; exit 1; }
-          [ -f "docs/test-reports/$tag.md" ] || { echo "::error::docs/test-reports/$tag.md is missing: run tools/build/make_release.py"; exit 1; }
+          sha=$(git rev-parse "$tag^{commit}")
+          rig_state() { gh api "repos/$GITHUB_REPOSITORY/commits/$1/statuses" --jq '[.[] | select(.context=="device-tests")][0].state'; }
+          if [ "$(rig_state "$sha")" != success ]; then
+            # a release made with a rig at hand adds only the report to the commit that was tested: then the parent counts
+            parent=$(git rev-parse "$sha^")
+            if git diff --name-only "$parent" "$sha" | grep -qv '^docs/test-reports/' || [ "$(rig_state "$parent")" != success ]; then
+              echo "::error::no device-tests: success on $sha (the rig machine has not tested it, or it failed): tools/build/make_release.py tags only tested commits"
+              exit 1
+            fi
+          fi
           git -c gpg.ssh.allowedSignersFile=.github/allowed_signers tag -v "$tag"
 
   build:
@@ -54,11 +68,16 @@ jobs:
       - name: Create the release
         run: |
           tag=${GITHUB_REF_NAME}
-          cp "docs/test-reports/$tag.md" "archives/test-report-$tag.md"
+          if [ -f "docs/test-reports/$tag.md" ]; then  # a release made with a rig at hand has the report in the tagged commit
+            cp "docs/test-reports/$tag.md" "archives/test-report-$tag.md"
+            report="The test report of this release, with the results of the tests that need the real device, is attached (\`test-report-$tag.md\`)."
+          else
+            report="The tests that need the real device ran on the rig for exactly this commit (status \`device-tests\`). The report: https://github.com/$GITHUB_REPOSITORY/blob/master/docs/test-reports/$tag.md (committed right after the tag)."
+          fi
           {
             echo "Release $tag (firmware $(cat trustctl/internal/firmware/VERSION))."
             echo
-            echo "The test report of this release, with the results of the tests that need the real device, is attached (\`test-report-$tag.md\`)."
+            echo "$report"
             echo "trustctl for macOS and the BSDs is cross-compiled but has not been run by the author."
             echo
             echo "Check a download with \`sha256sum -c SHA256SUMS\` or \`gh attestation verify FILE --repo $GITHUB_REPOSITORY\`."

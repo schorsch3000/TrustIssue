@@ -45,7 +45,7 @@ class RigNotFound(Exception):
 # what each tool is called on Debian, for the hint
 APT = {"avrdude": "avrdude", "make": "make", "git": "git", "go": "golang-go", "gofmt": "golang-go", "shellcheck": "shellcheck",
        "g++": "g++", "arduino-cli": "(arduino-cli, see https://arduino.github.io/arduino-cli)", "sed": "sed", "tr": "coreutils",
-       "tail": "coreutils", "sh": "dash"}
+       "tail": "coreutils", "sh": "dash", "scp": "openssh-client"}
 
 
 def find_avr_gcc():
@@ -53,13 +53,15 @@ def find_avr_gcc():
     return shutil.which("avr-gcc") or next(iter(glob.glob(os.path.expanduser("~/.arduino15/packages/arduino/tools/avr-gcc/*/bin/avr-gcc"))), None)
 
 
-def missing_tools(rig=True, build_bootloader=False, host=False, git=False):
+def missing_tools(rig=True, build_bootloader=False, host=False, git=False, scp=False):
     """Everything the chosen jobs call that is not there, as readable lines. Empty when all is in place."""
     tools = []
     if rig:
         tools += ["avrdude", "sh", "sed", "tr", "tail"]
     if git or host:
         tools += ["git"]
+    if scp:
+        tools += ["scp"]
     if build_bootloader or host:
         tools += ["make"]
     if host:
@@ -69,10 +71,11 @@ def missing_tools(rig=True, build_bootloader=False, host=False, git=False):
         problems.append("tools/user/flash_bootloader.sh (run this from a complete checkout)")
     if (build_bootloader or host) and not find_avr_gcc():
         problems.append("avr-gcc (the Arduino AVR core: arduino-cli core install arduino:avr, or Debian: sudo apt install gcc-avr avr-libc)")
-    try:
-        import serial  # noqa: F401
-    except ImportError:
-        problems.append("the python module serial (Debian: sudo apt install python3-serial)")
+    if rig or host:
+        try:
+            import serial  # noqa: F401
+        except ImportError:
+            problems.append("the python module serial (Debian: sudo apt install python3-serial)")
     return problems
 
 

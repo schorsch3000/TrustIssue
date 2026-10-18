@@ -1,4 +1,4 @@
-// Trust Issues test rig: ArduinoISP plus the button finger. Runs on the rig Arduino (Nano or Uno).
+// Trust Issue test rig: ArduinoISP plus the button finger. Runs on the rig Arduino (Nano or Uno).
 //
 // This is the ArduinoISP example sketch (Copyright (c) 2008-2011 Randall Bohn, BSD license, see
 // https://opensource.org/licenses/bsd-license.php and THIRD_PARTY_LICENSES.md) with one addition:
@@ -170,7 +170,7 @@
 // #define BAUDRATE	1000000
 
 
-// ---- Trust Issues rig additions ----
+// ---- Trust Issue rig additions ----
 #define RIG_VERSION "0.2"
 #define RIG_BUTTON_PIN 4  // through 1 kOhm to the device's A3
 
@@ -672,7 +672,7 @@ void read_signature() {
 
 
 
-// ---- Trust Issues rig additions: the text commands ----
+// ---- Trust Issue rig additions: the text commands ----
 static void rig_pull(uint8_t pin) {
   digitalWrite(pin, LOW);
   pinMode(pin, OUTPUT);
@@ -747,7 +747,7 @@ static void rig_command() {
 void avrisp() {
   uint8_t ch = getch();
   switch (ch) {
-    case '!':  // a Trust Issues rig command
+    case '!':  // a Trust Issue rig command
       rig_command();
       break;
     case '0':  // signon

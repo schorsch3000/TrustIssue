@@ -1,6 +1,6 @@
 # First programming (ISP)
 
-A new Nano needs the Trust Issues **bootloader** and the **firmware** once, through the six pin ICSP
+A new Nano needs the Trust Issue **bootloader** and the **firmware** once, through the six pin ICSP
 header. This is the one step that cannot be done over USB, because the stock Nano bootloader is
 replaced by one that only opens after a gesture on the button. Afterwards every update goes over USB
 with `trustctl flash`, see {doc}`flashing`.

@@ -1,5 +1,5 @@
 [Unit]
-Description=Trust Issues rig CI: test the newest master commit on the rig
+Description=Trust Issue rig CI: test the newest master commit on the rig
 
 [Service]
 Type=oneshot

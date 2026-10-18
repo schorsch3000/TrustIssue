@@ -19,7 +19,7 @@ gh attestation verify trustctl-linux-amd64.tar.gz --repo schorsch3000/TrustIssue
 
 ```console
 $ trustctl version
-trustctl 0.2.0, built-in firmware 0.2.0
+trustctl 0.2.1, built-in firmware 0.2.1
 ```
 
 ## Build from source

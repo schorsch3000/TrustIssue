@@ -178,7 +178,7 @@ def calibration_stills(outdir):
         made.append(name + ".png")
 
     chroma = open(os.path.join(FONT_DIR, "chroma48medium8.bin"), "rb").read()
-    home = text_frame(chroma, ["Trust Issues", "calibration"])
+    home = text_frame(chroma, ["Trust Issue", "calibration"])
     logo = logo_bytes()
     save("calibrate-home", home)
     save("calibrate-rotate", transformed(home, flip=True))

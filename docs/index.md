@@ -1,4 +1,4 @@
-# Trust Issues
+# Trust Issue
 
 A hardware TOTP vault for people who don't trust their computers.
 
@@ -27,6 +27,23 @@ has been held.*
 
 The project is on [GitHub](https://github.com/schorsch3000/TrustIssue): source, releases, issues.
 
+## Who it is for
+
+Trust Issue is for technically comfortable people who want a DIY, physically mediated TOTP vault: you
+solder a few wires, flash a microcontroller and use a command line. It is **not** a drop-in replacement for a
+certified security key (see {ref}`why-not-a-yubikey`), and it does not make TOTP phishing-resistant.
+
+## What you get
+
+- **The hardware device and firmware:** an Arduino Nano with a small OLED and one button, a button-gated
+  bootloader and the firmware, with a 3D printable case.
+- **`trustctl`, the command line interface:** add, list and delete keys, get codes, flash and calibrate the
+  device, in one static binary for every common platform.
+- **Desktop integrations and import tools:** a launcher menu for Linux and the BSDs, a Windows tray tool and an
+  importer for Google Authenticator exports.
+- **Documentation for developers and people building compatible tools:** the serial protocol, the storage
+  layout, the security model, build and test instructions, and a host simulation of the firmware.
+
 ## Where to start
 
 
@@ -47,10 +64,11 @@ The project is on [GitHub](https://github.com/schorsch3000/TrustIssue): source, 
 :::
 
 
+(why-not-a-yubikey)=
 ## Why not a YubiKey?
 
 If a service supports FIDO2/WebAuthn, use a security key there: it is phishing-resistant, which a TOTP
-code never is, and it is better engineered than this project. Trust Issues is for the many services
+code never is, and it is better engineered than this project. Trust Issue is for the many services
 that only offer TOTP. It differs from a YubiKey's OATH feature in a few ways:
 
 - **You see what you approve.** The display shows the key name and the local date and time of the code,

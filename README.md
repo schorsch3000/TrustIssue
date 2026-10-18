@@ -1,4 +1,4 @@
-# Trust Issues
+# Trust Issue
 
 A hardware TOTP vault for people who don't trust their computers.
 
@@ -17,7 +17,7 @@ the device either: the bootloader only opens after a gesture on the button.
 ## Why not a YubiKey?
 
 If a service supports FIDO2/WebAuthn, use a YubiKey (or any security key) there: it is phishing-resistant, which a
-TOTP code never is, and it is better engineered than this project. Trust Issues is for the many services that only
+TOTP code never is, and it is better engineered than this project. Trust Issue is for the many services that only
 offer TOTP, and it differs from a YubiKey's OATH feature in a few ways:
 
 - **You see what you approve.** The display shows the key name and the local date and time of the code, and a code
@@ -263,7 +263,7 @@ All of this only holds for a finished device: until the lock bits are set the pr
 
 ## License
 
-Trust Issues is free software: you can redistribute it and modify it under the terms of the GNU General Public License,
+Trust Issue is free software: you can redistribute it and modify it under the terms of the GNU General Public License,
 version 3 or (at your option) any later version. See `LICENSE`. Copyright (C) 2026 Dirk Heilig.
 
 The firmware and `trustctl` use third-party code and fonts under compatible licenses (LGPL 2.1+ Arduino core, BSD-licensed

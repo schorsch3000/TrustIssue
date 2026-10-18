@@ -1,5 +1,5 @@
 #!/bin/sh
-# Puts the Trust Issues bootloader on a chip over ISP and sets the fuses and the development
+# Puts the Trust Issue bootloader on a chip over ISP and sets the fuses and the development
 # lock bits the design wants (low fuse 0xFF, high fuse 0xDA: BOOTRST, 2 KB boot section, EESAVE
 # unprogrammed; extended fuse 0xFD; lock byte 0xCF: the boot section cannot be overwritten from
 # the application, ISP read-out still open). Works on a blank chip, on a development device and,

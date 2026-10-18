@@ -1,6 +1,6 @@
-# Wiring a Trust Issues device
+# Wiring a Trust Issue device
 
-A Trust Issues device is an Arduino Nano, a small OLED display and one push button. Everything is
+A Trust Issue device is an Arduino Nano, a small OLED display and one push button. Everything is
 wired on one side of the Nano, the side with the analog pins (labels `A0` to `A7`), so the wires
 stay tidy and short. There are only five connections to the Nano plus the button.
 
@@ -95,7 +95,7 @@ else than the Nano.
 
 ## Programming header (once, for a new Nano)
 
-A new Nano needs the Trust Issues bootloader and firmware once, through the six-pin ICSP header
+A new Nano needs the Trust Issue bootloader and firmware once, through the six-pin ICSP header
 on the board (the small 2x3 pin block near the end of the board opposite the USB connector). A
 USBtinyISP programmer does it with `tools/user/onboard_usbtiny.sh`. The six signals are:
 

@@ -16,7 +16,7 @@ defaults.
 trustctl flash calibration
 ```
 
-It shows `Trust Issues` and `calibration`. Keys, timezone and settings survive: the calibration
+It shows `Trust Issue` and `calibration`. Keys, timezone and settings survive: the calibration
 firmware never touches the EEPROM, and flashing never erases the chip. Go back with
 `trustctl flash` when you are done, so the new values get patched into the core firmware.
 

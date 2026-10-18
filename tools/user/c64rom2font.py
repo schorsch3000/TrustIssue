@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert a C64 character ROM into Trust Issues font files (772 bytes, U8x8 format).
+"""Convert a C64 character ROM into Trust Issue font files (772 bytes, U8x8 format).
 
   tools/user/c64rom2font.py ROMFILE [--set upper|lower] [--outdir DIR]
 

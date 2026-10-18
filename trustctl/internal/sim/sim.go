@@ -1,4 +1,4 @@
-// Package sim is a simulated Trust Issues device. It speaks the serial protocol
+// Package sim is a simulated Trust Issue device. It speaks the serial protocol
 // like the firmware does (same validation, same replies), but the button is a
 // callback, so trustctl can be developed and tested without hardware.
 package sim

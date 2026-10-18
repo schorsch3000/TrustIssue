@@ -1,4 +1,4 @@
-// Trust Issues calibration firmware.
+// Trust Issue calibration firmware.
 //
 // Lets the host try out the display (text, contrast, rotation, inversion,
 // raw controller commands, logo bitmaps) without any secrets involved.
@@ -175,7 +175,7 @@ void setup() {
   Serial.begin(9600);
   display.begin();
   display.setFont(u8x8_font_chroma48medium8_r);
-  display.drawString(0, 0, "Trust Issues");
+  display.drawString(0, 0, "Trust Issue");
   display.drawString(0, 1, "calibration");
   Serial.println(F("TrustIssue-Calibration 0.2 display 128x32"));
 }

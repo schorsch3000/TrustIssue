@@ -1,4 +1,4 @@
-// Trust Issues bootloader for the ATmega328P at 16 MHz, 2 KB boot section.
+// Trust Issue bootloader for the ATmega328P at 16 MHz, 2 KB boot section.
 //
 // Normal start: button (A3, to GND) not held and a firmware present: jump to
 // the application at once. The bootloader does not listen on serial then.

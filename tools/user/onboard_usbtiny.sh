@@ -1,6 +1,6 @@
 #!/bin/sh
 # Onboards a fresh (or old) Arduino Nano in one go with a USBtinyISP programmer on the ICSP
-# header: chip erase, the Trust Issues bootloader AND the core firmware, the fuses and the
+# header: chip erase, the Trust Issue bootloader AND the core firmware, the fuses and the
 # development lock bits. Afterwards the device works; it needs no button gesture and no second
 # Arduino. Look and feel (font, logo, contrast) are patched in later with `trustctl flash`.
 #

@@ -1,4 +1,4 @@
-// trustctl-import stores the accounts of a Google Authenticator export on a Trust Issues device.
+// trustctl-import stores the accounts of a Google Authenticator export on a Trust Issue device.
 //
 // It opens a page on a local web server (127.0.0.1, random port and token) in the browser: the
 // browser shows the webcam and finds the QR codes of the export, then lists the accounts with a

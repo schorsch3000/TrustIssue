@@ -1,4 +1,4 @@
-# Trust Issues bootloader for the ATmega328P (16 MHz), 2 KB boot section at 0x7800.
+# Trust Issue bootloader for the ATmega328P (16 MHz), 2 KB boot section at 0x7800.
 AVR_BIN ?= $(firstword $(wildcard $(HOME)/.arduino15/packages/arduino/tools/avr-gcc/*/bin))
 CC = $(AVR_BIN)/avr-gcc
 OBJCOPY = $(AVR_BIN)/avr-objcopy

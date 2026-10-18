@@ -6,7 +6,7 @@ A checklist for a freshly built device.
 
    ```console
    $ trustctl hello
-   TrustIssue 0.2.0 proto 1 caps=autowipe nopin unlocked
+   TrustIssue 0.2.1 proto 1 caps=autowipe nopin unlocked
    WARNING: this device has no update PIN.
    Anyone who can press its button can flash a firmware that reads the keys out (the evil maid).
    (trustctl flash pin --set-pin sets one)

@@ -6,7 +6,7 @@ computer can never reflash the device, whatever it does with the serial port.
 
 ```console
 $ trustctl --device /dev/ttyUSB0 flash
-Flashing the built-in core firmware 0.2.0.
+Flashing the built-in core firmware 0.2.1.
 Flashing 192 pages (24576 bytes) through the bootloader of /dev/ttyUSB0.
 HOLD THE BUTTON on the device and keep holding it.
 Resetting the device in 4...

@@ -1,6 +1,6 @@
 # License
 
-Trust Issues is free software: you can redistribute it and modify it under the terms of the GNU General
+Trust Issue is free software: you can redistribute it and modify it under the terms of the GNU General
 Public License, version 3 or (at your option) any later version. Copyright (C) 2026 Dirk Heilig.
 
 The firmware and `trustctl` use third-party code and fonts under compatible licenses (the LGPL 2.1+ Arduino

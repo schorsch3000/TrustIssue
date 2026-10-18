@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turn a PNG sheet (as written by font2png.py) into a Trust Issues font file.
+"""Turn a PNG sheet (as written by font2png.py) into a Trust Issue font file.
 
   tools/user/png2font.py sheet.png font.bin [--scale N]
 

@@ -11,7 +11,7 @@ with `\n` (a `\r` is ignored); a line can be at most 99 characters.
 ## Commands
 
 ```text
-HELLO                                  -> TrustIssue 0.2.0 proto 1 caps=autowipe nopin unlocked
+HELLO                                  -> TrustIssue 0.2.1 proto 1 caps=autowipe nopin unlocked
 LIST                                   -> KEY <id> <name> ... END
 ADD <base32> <algo> <digits> <period> <name...>
                                        -> PENDING ... OK <id> | ERR <code>

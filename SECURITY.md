@@ -1,6 +1,6 @@
 # Security policy
 
-Trust Issues exists to keep TOTP secrets away from a computer you don't trust, so security reports are welcome and taken seriously.
+Trust Issue exists to keep TOTP secrets away from a computer you don't trust, so security reports are welcome and taken seriously.
 
 ## Reporting a vulnerability
 

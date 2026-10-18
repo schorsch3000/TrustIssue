@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Flashes an Intel HEX file through the Trust Issues bootloader (STK500v1, flash only).
+"""Flashes an Intel HEX file through the Trust Issue bootloader (STK500v1, flash only).
 
   tools/build/flash.py firmware.hex [--port /dev/ttyUSB0] [--rig /dev/ttyUSB1] [--baud 115200]
                        [--pin PIN] [--set-pin NEWPIN | --clear-pin]

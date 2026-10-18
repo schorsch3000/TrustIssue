@@ -1,4 +1,4 @@
-// Package serialdev opens the Trust Issues device on a serial port.
+// Package serialdev opens the Trust Issue device on a serial port.
 package serialdev
 
 import (
@@ -71,7 +71,7 @@ func Open(path string, timeout time.Duration) (*Device, error) {
 	}
 	if err != nil {
 		port.Close()
-		return nil, fmt.Errorf("%s does not answer like a Trust Issues device: %w", path, err)
+		return nil, fmt.Errorf("%s does not answer like a Trust Issue device: %w", path, err)
 	}
 	client.ReplyTimeout = 3 * time.Second
 	if attempts == 1 && time.Since(start) < 120*time.Millisecond {
@@ -117,7 +117,7 @@ func Candidates() ([]string, error) {
 	return out, nil
 }
 
-// Probe opens every candidate port until one answers as a Trust Issues device.
+// Probe opens every candidate port until one answers as a Trust Issue device.
 // Opening a port resets whatever board is attached, so this is opt-in.
 func Probe() (*Device, error) {
 	candidates, err := Candidates()
@@ -129,7 +129,7 @@ func Probe() (*Device, error) {
 			return d, nil
 		}
 	}
-	return nil, fmt.Errorf("no Trust Issues device found among %d serial ports", len(candidates))
+	return nil, fmt.Errorf("no Trust Issue device found among %d serial ports", len(candidates))
 }
 
 // OpenCalibration connects to the calibration firmware (it is not the app and

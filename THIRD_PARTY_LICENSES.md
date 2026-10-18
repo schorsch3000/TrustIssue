@@ -1,6 +1,6 @@
 # Third-party licenses
 
-Trust Issues itself is free software under the GNU General Public License, version 3 or (at your option) any later
+Trust Issue itself is free software under the GNU General Public License, version 3 or (at your option) any later
 version (see `LICENSE`), Copyright (C) 2026 Dirk Heilig. It contains, links or ships the following third-party
 material. Each part keeps its own license; all of them are compatible with the GPL.
 
@@ -97,7 +97,7 @@ PxPlus IBM CGA, Amstrad CPC extended); they were removed so that nothing with a 
 ## ArduinoISP (BSD), test rig only
 
 `firmware/rigisp/rigisp.ino` is the ArduinoISP example sketch of the Arduino project, Copyright (c) 2008-2011 Randall Bohn,
-under the BSD license (https://opensource.org/licenses/bsd-license.php), with the text commands of the Trust Issues rig added.
+under the BSD license (https://opensource.org/licenses/bsd-license.php), with the text commands of the Trust Issue rig added.
 It runs on the test rig, not on the device, and is not part of any release binary.
 
 ## Fonts (CC0 and public domain)

@@ -1,4 +1,4 @@
-// Trust Issues core firmware: TOTP vault with serial protocol, display and button.
+// Trust Issue core firmware: TOTP vault with serial protocol, display and button.
 //
 // Build with firmware/core/build.sh (it enlarges the serial receive buffer).
 // Not implemented yet: idle logo, autonomous wipe, flash-patched device
@@ -19,7 +19,7 @@
 
 // ---------------------------------------------------------------- settings
 
-static const char VERSION[] PROGMEM = "0.2.0";
+static const char VERSION[] PROGMEM = "0.2.1";
 static const uint8_t BUTTON_PIN = A3;  // Nano analog side, next to the I2C pins; the bootloader reads the same pin
 static const uint8_t DISPLAY_ADDRESS = 0x3C;
 static const uint8_t DEFAULT_CONFIG = 0;
@@ -220,7 +220,7 @@ static void putInverted(uint8_t row, uint8_t column, PGM_P text) {
 // and a row of inverted warnings: UNLOCKED in the left 8 columns, NO PIN at the right end.
 static void showIdle() {
   clearScreen();
-  setRowCentered(0, "Trust Issues");
+  setRowCentered(0, "Trust Issue");
   if (tc_store_config() & TC_CFG_SHOWVERSION) {
     char version[17];
     snprintf_P(version, sizeof(version), PSTR("v%S"), (const __FlashStringHelper *)VERSION);

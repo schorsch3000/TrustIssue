@@ -33,13 +33,13 @@ capabilities and warnings:
 
 ```console
 $ trustctl hello
-TrustIssue 0.2.0 proto 1 caps=autowipe nopin unlocked
+TrustIssue 0.2.1 proto 1 caps=autowipe nopin unlocked
 ```
 
 `caps=autowipe` is a build option (the autonomous wipe is built in), `nopin` means no update PIN is set
 and `unlocked` that the lock bits and fuses are not those of a finished device. For the last two
 `hello` (and `add`) also print a warning in words on standard error. A finished device says only
-`TrustIssue 0.2.0 proto 1 caps=autowipe`. The same words are sent unprompted when the device starts.
+`TrustIssue 0.2.1 proto 1 caps=autowipe`. The same words are sent unprompted when the device starts.
 
 ## daemon
 

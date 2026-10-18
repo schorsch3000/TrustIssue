@@ -1,4 +1,4 @@
-// trustctl talks to a Trust Issues device: a TOTP vault that only hands out
+// trustctl talks to a Trust Issue device: a TOTP vault that only hands out
 // codes while somebody holds its button.
 package main
 

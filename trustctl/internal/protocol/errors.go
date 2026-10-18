@@ -1,4 +1,4 @@
-// Package protocol implements the host side of the Trust Issues serial protocol.
+// Package protocol implements the host side of the Trust Issue serial protocol.
 package protocol
 
 import "fmt"

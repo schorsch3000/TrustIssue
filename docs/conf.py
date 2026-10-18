@@ -1,7 +1,7 @@
-# Sphinx configuration of the Trust Issues documentation (built by Read the Docs, see .readthedocs.yaml).
+# Sphinx configuration of the Trust Issue documentation (built by Read the Docs, see .readthedocs.yaml).
 # Local build: pip install -r docs/requirements.txt && sphinx-build -W -b html docs docs/_build/html
 
-project = "Trust Issues"
+project = "Trust Issue"
 author = "Dirk Heilig"
 copyright = "2026 Dirk Heilig, GPL-3.0-or-later"
 
@@ -14,7 +14,7 @@ master_doc = "index"
 exclude_patterns = ["_build", "test-reports", "RELEASING.md", "Thumbs.db", ".DS_Store"]
 
 html_theme = "furo"
-html_title = "Trust Issues"
+html_title = "Trust Issue"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_theme_options = {

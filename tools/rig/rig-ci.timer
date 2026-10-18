@@ -3,7 +3,8 @@ Description=Poll GitHub for a new master commit to test on the rig
 
 [Timer]
 OnBootSec=2min
-OnUnitInactiveSec=5min
+# a calendar rule, not OnUnitInactiveSec: that one loses its anchor when the service file is reloaded and the timer then never fires
+OnCalendar=*:0/5
 Persistent=true
 
 [Install]

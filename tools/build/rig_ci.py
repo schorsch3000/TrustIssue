@@ -128,6 +128,11 @@ def main():
     log_path = os.path.join(REPORTS, f"{sha}.log")
     report_path = os.path.join(REPORTS, f"{sha}.md")
     try:
+        for kind, path in (("log", log_path), ("md", report_path)):  # ~/reports/latest.log: the newest run, whatever its hash
+            link = os.path.join(REPORTS, f"latest.{kind}")
+            if os.path.lexists(link):
+                os.remove(link)
+            os.symlink(os.path.basename(path), link)
         post_status(token, sha, "pending", "device tests are running on the rig", args.dry_run)
         # 3. download and check
         for key in ("sums", "trustctl", "firmware"):

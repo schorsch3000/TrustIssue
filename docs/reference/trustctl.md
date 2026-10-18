@@ -71,8 +71,10 @@ standard output, so `code=$(trustctl token github)` is safe.
 trustctl add [NAME] [--digits N] [--period S]
 ```
 
-Stores a key. The secret is read from **standard input**, never from the command line. On a terminal
-it is read as a masked star field; from a pipe it is one line. The input is either a Base32 secret or an
+Stores a key. The secret is **never a command line argument**. On a terminal `add` asks for it and shows a masked star
+field, which is the way to use it by hand. From a pipe it reads one line of standard input, which is meant for
+automation where the secret does not pass through a shell line or the process list (for example `pass show
+totp/github | trustctl add GitHub`); do not `echo` a secret into it, the shell would keep it in its history. The input is either a Base32 secret or an
 `otpauth://totp/...` URI.
 
 `NAME`
@@ -94,7 +96,8 @@ The secret may have up to 20 bytes (SHA-1 only; a longer secret, SHA-256 or SHA-
 rejected with a reason). The device stores 20 keys: a 21st gets `FULL`.
 
 ```console
-$ echo JBSWY3DPEHPK3PXP | trustctl add GitHub
+$ trustctl add GitHub
+Secret (Base32) or otpauth:// URI: ****************
 Adding "GitHub" (6 digits, 30 s): check the name on the display.
 Confirm on the device: hold the button for 1 to 2 seconds, then let go. A tap or a longer hold cancels.
 stored as slot 0
@@ -113,9 +116,11 @@ Errors found by `trustctl` before anything is sent, with the same rules as the d
 (the device checks them itself too, a violation is `ERR BADARG`):
 
 ```console
-$ echo JBSWY3DPEHPK3PXP | trustctl add "Bad  name"
+$ trustctl add "Bad  name"
+Secret (Base32) or otpauth:// URI: ****************
 trustctl: the name "Bad  name" contains two spaces in a row
-$ echo JBSWY3DPEHPK3PXP | trustctl add example:BOB@example.com
+$ trustctl add example:BOB@example.com
+Secret (Base32) or otpauth:// URI: ****************
 trustctl: device: a key with this name already exists (names are compared ignoring case)
 ```
 

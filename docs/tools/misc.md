@@ -8,7 +8,7 @@ A single HTML file (no network, no dependencies, its own SHA-1 and HMAC, checked
 vectors) that makes up dummy TOTP keys, so real keys never have to go onto an open development device. The
 keys are kept unencrypted in your browser's `localStorage`. It shows the live codes with a countdown,
 applies the device's name rules, offers *Copy add command* (`echo SECRET | trustctl add NAME --digits N
---period S`), the secret and an `otpauth://` URI, and checks a code you typed from the device (the
+--period S`; fine for fake keys, never do that with a real secret), the secret and an `otpauth://` URI, and checks a code you typed from the device (the
 current, previous or next window).
 
 ## final_lock.sh, unlock.sh, flash_bootloader.sh, onboard_usbtiny.sh

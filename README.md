@@ -114,8 +114,9 @@ trustctl autocomplete-fish | source         # fish
 
 ```
 trustctl list
-echo SECRET | trustctl add "GitHub"        # confirm on the device
-echo 'otpauth://totp/...' | trustctl add   # a URI carries its own name (issuer:account)
+trustctl add "GitHub"                      # asks for the secret (masked), then confirm on the device
+trustctl add                               # paste an otpauth:// URI: it carries its own name (issuer:account)
+pass show totp/github | trustctl add GitHub   # stdin is for automation only: never echo a secret (shell history, process list)
 trustctl token git                         # prints the code once you hold the button 1-2 s
 trustctl del GitHub
 trustctl wipe                              # hold 5-6 s
@@ -135,8 +136,8 @@ To try it with fake keys, open `tools/user/dummy-keys.html` in a browser.
 building `trustctl`, with no hardware:
 
 ```
-echo JBSWY3DPEHPK3PXP | trustctl --device DUMMY add GitHub
-echo 'otpauth://totp/Example:bob?secret=JBSWY3DPEHPK3PXP&issuer=Example' | trustctl --device DUMMY add
+trustctl --device DUMMY add GitHub        # type or paste JBSWY3DPEHPK3PXP (any Base32 string) at the prompt
+trustctl --device DUMMY add               # paste otpauth://totp/Example:bob?secret=JBSWY3DPEHPK3PXP&issuer=Example
 trustctl --device DUMMY list
 trustctl --device DUMMY token github      # a real TOTP code for that secret, compare it with any authenticator
 trustctl --device DUMMY del GitHub

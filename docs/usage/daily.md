@@ -4,23 +4,37 @@ This page is the short version. Every command is described in {doc}`../reference
 
 ## Add a key
 
-The secret never goes on the command line (it would show up in the process list and in your shell
-history). It is read from standard input:
+`trustctl add` asks for the secret on the terminal and shows it as stars while you type or paste it. That
+is the way to do it: the secret never appears on a command line, so it cannot end up in your shell history
+or in the process list.
 
 ```console
-$ echo JBSWY3DPEHPK3PXP | trustctl add GitHub
+$ trustctl add GitHub
+Secret (Base32) or otpauth:// URI: ****************
 Adding "GitHub" (6 digits, 30 s): check the name on the display.
 Confirm on the device: hold the button for 1 to 2 seconds, then let go. A tap or a longer hold cancels.
 stored as slot 0
 ```
 
-Or, to be asked on the terminal (the secret shows as stars), `trustctl add GitHub` with no pipe. An
-`otpauth://` URI, as in the QR code a service shows you, carries its own name, digits and period:
+Instead of the Base32 secret you can paste an `otpauth://` URI, as in the QR code a service shows you. It
+carries its own name, digits and period, so the name can be left out:
 
 ```console
-$ echo 'otpauth://totp/Example:bob@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Example' | trustctl add
+$ trustctl add
+Secret (Base32) or otpauth:// URI: ****************************************
 Using the name "Example:bob@example.com" from the URI.
 ```
+
+:::{warning}
+Do not put the secret on the command line, and do not `echo` it into a pipe by hand
+(`echo SECRET | trustctl add ...`): the shell keeps the line in its history, and while it runs the secret is
+visible in the process list. Reading from standard input is meant for **automation, where the secret is
+never a parameter**, for example from a password manager:
+
+```console
+$ pass show totp/github | trustctl add GitHub
+```
+:::
 
 On the device the display shows the name and the parameters. Hold the button and **let go while the bar is a
 checkerboard** (that is the 1 to 2 second window; before it is too early, after it too late, both are a

@@ -68,7 +68,8 @@ Arch).
 every confirmation. It lives in the background daemon, so its keys stay from one command to the next:
 
 ```console
-$ echo JBSWY3DPEHPK3PXP | trustctl --device DUMMY add GitHub
+$ trustctl --device DUMMY add GitHub
+Secret (Base32) or otpauth:// URI: ****************
 Adding "GitHub" (6 digits, 30 s): check the name on the display.
 Confirm on the device: hold the button for 1 to 2 seconds, then let go. A tap or a longer hold cancels.
 stored as slot 0

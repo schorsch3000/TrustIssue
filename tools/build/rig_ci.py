@@ -223,7 +223,7 @@ def main():
             check = subprocess.run(["gh", "attestation", "verify", os.path.join(work, wanted[key]), "--repo", REPO],
                                    capture_output=True, text=True, env=env, timeout=120)
             if check.returncode:
-                raise RuntimeError(f"attestation of {wanted[key]} not verified: {why((check.stderr or '') + (check.stdout or ''))}")
+                raise RuntimeError(f"attestation of the {key} download not verified: {why((check.stderr or '') + (check.stdout or ''))}")
         tree = os.path.join(work, "tree")
         git("worktree", "add", "--detach", "--quiet", tree, sha)
         with tarfile.open(os.path.join(work, wanted["trustctl"])) as tar:

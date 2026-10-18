@@ -28,44 +28,44 @@ characters (the 95 characters from space to `~`).
 
 **Numeric PIN** (10 possibilities per character):
 
-| Length    | Possibilities | Average time to guess | Worst case |
+| Length    | Possibilities | Average | Worst case |
 | --------- | ------------- | --------------------- | ---------- |
-| 4 digits  | 10^4          | about 21 hours        | 1.7 days   |
-| 5 digits  | 10^5          | about 9 days          | 17 days    |
-| 6 digits  | 10^6          | about 3 months        | 6 months   |
-| 8 digits  | 10^8          | about 24 years        | 48 years   |
-| 10 digits | 10^10         | about 2,400 years     | 4,800 years |
+| 4 digits  | 10^4          | ~21 hours        | 1.7 days   |
+| 5 digits  | 10^5          | ~9 days          | 17 days    |
+| 6 digits  | 10^6          | ~3 months        | 6 months   |
+| 8 digits  | 10^8          | ~24 years        | 48 years   |
+| 10 digits | 10^10         | ~2,400 years     | 4,800 years |
 
 **A password in a normal shape:** one capital letter, then lower case letters, then an ending. All letters
 random (26 possibilities each), 32 symbols on a normal keyboard (`!` to `/`, `:` to `@`, `[` to `` ` ``, `{` to `~`).
 Length is the total number of characters.
 
-| Shape                                    | Length | Possibilities | Average time to guess | Worst case      |
-| ---------------------------------------- | ------ | ------------- | --------------------- | --------------- |
-| Capital, lower case, ending in a digit   | 6      | 1.2 x 10^8    | about 28 years        | 56 years        |
-|                                          | 8      | 8.0 x 10^10   | about 19,000 years    | 38,000 years    |
-|                                          | 10     | 5.4 x 10^13   | about 13 million years | 26 million years |
-| Capital, lower case, digit, then a symbol | 6      | 1.5 x 10^8    | about 35 years        | 70 years        |
-|                                          | 8      | 9.9 x 10^10   | about 24,000 years    | 47,000 years    |
-|                                          | 10     | 6.7 x 10^13   | about 16 million years | 32 million years |
-| Capital, lower case, ending in a symbol  | 6      | 3.8 x 10^8    | about 90 years        | 181 years       |
-|                                          | 8      | 2.6 x 10^11   | about 61,000 years    | 120,000 years   |
-|                                          | 10     | 1.7 x 10^14   | about 41 million years | 83 million years |
+| Ending        | Length | Possibilities | Average     | Worst case  |
+| ------------- | ------ | ------------- | ----------- | ----------- |
+| digit         | 6      | 1.2 x 10^8    | ~28 years   | 56 years    |
+| digit         | 8      | 8.0 x 10^10   | ~19,000 years | 38,000 years |
+| digit         | 10     | 5.4 x 10^13   | ~13M years  | 26M years   |
+| digit, symbol | 6      | 1.5 x 10^8    | ~35 years   | 70 years    |
+| digit, symbol | 8      | 9.9 x 10^10   | ~24,000 years | 47,000 years |
+| digit, symbol | 10     | 6.7 x 10^13   | ~16M years  | 32M years   |
+| symbol        | 6      | 3.8 x 10^8    | ~90 years   | 181 years   |
+| symbol        | 8      | 2.6 x 10^11   | ~61,000 years | 120,000 years |
+| symbol        | 10     | 1.7 x 10^14   | ~41M years  | 83M years   |
 
 Even this plain shape is far out of reach once the letters are random. The catch is the word "random":
 `Sunshine7` is not. A person's password is drawn from a much smaller set (a dictionary word, a capital, a digit
-or two is on the order of 10^6 to 10^7 candidates), and at 15 seconds a guess that is still about 3 months to
+or two is on the order of 10^6 to 10^7 candidates), and at 15 seconds a guess that is still ~3 months to
 2 years on average. A longer pattern with random letters, or several unrelated words, keeps the margin large.
 
 **Random password** from all 95 printable characters (upper and lower case, digits, symbols):
 
-| Length        | Possibilities | Average time to guess        | Worst case                |
+| Length        | Possibilities | Average        | Worst case                |
 | ------------- | ------------- | ---------------------------- | ------------------------- |
-| 4 characters  | 8.1 x 10^7    | about 19 years               | 39 years                  |
-| 5 characters  | 7.7 x 10^9    | about 1,800 years            | 3,700 years               |
-| 6 characters  | 7.4 x 10^11   | about 175,000 years          | 350,000 years             |
-| 8 characters  | 6.6 x 10^15   | about 1.6 billion years      | 3.2 billion years         |
-| 10 characters | 6.0 x 10^19   | about 10^13 years            | 3 x 10^13 years           |
+| 4 characters  | 8.1 x 10^7    | ~19 years               | 39 years                  |
+| 5 characters  | 7.7 x 10^9    | ~1,800 years            | 3,700 years               |
+| 6 characters  | 7.4 x 10^11   | ~175,000 years          | 350,000 years             |
+| 8 characters  | 6.6 x 10^15   | ~1.6bn years      | 3.2bn years         |
+| 10 characters | 6.0 x 10^19   | ~10^13 years            | 3 x 10^13 years           |
 
 So a four character random password already beats a seven digit PIN by a wide margin, and from eight
 characters on the guessing attack is out of the question. The price is typing it: the PIN is entered on the

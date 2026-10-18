@@ -36,7 +36,7 @@ commands:
         --digits N --period S   only if the secret is given as plain Base32 (default 6, 30)
   del NAME                  delete a key (confirm on the device)
   tz [get|sync|set +H[:MM]] show or change the device's timezone offset
-  config [get|set FLAG=on|off ...]   flags: rotate invert logo autowipe
+  config [get|set FLAG=on|off ...]   flags: rotate invert logo autowipe show-version
   wipe                      erase all keys (hold the button 5 to 6 seconds)
   hello                     show what the device says about itself
   daemon [status|stop]      the background process that keeps the port open (started by the first command)
@@ -733,7 +733,7 @@ func timezone(c *protocol.Client, args []string, stdout, stderr io.Writer) error
 var configFlags = []struct {
 	name string
 	bit  uint8
-}{{"rotate", 0x01}, {"invert", 0x02}, {"logo", 0x04}, {"autowipe", 0x08}}
+}{{"rotate", 0x01}, {"invert", 0x02}, {"logo", 0x04}, {"autowipe", 0x08}, {"show-version", 0x10}}
 
 func configure(c *protocol.Client, args []string, stdout io.Writer) error {
 	flags, err := c.Config()
@@ -746,7 +746,7 @@ func configure(c *protocol.Client, args []string, stdout io.Writer) error {
 			if flags&f.bit != 0 {
 				state = "on"
 			}
-			fmt.Fprintf(stdout, "%-9s %s\n", f.name, state)
+			fmt.Fprintf(stdout, "%-13s %s\n", f.name, state)
 		}
 		return nil
 	}
@@ -762,7 +762,7 @@ func configure(c *protocol.Client, args []string, stdout io.Writer) error {
 			}
 		}
 		if !ok || bit == 0 || (value != "on" && value != "off") {
-			return usageError("cannot read %q, expected FLAG=on|off with FLAG one of rotate invert logo autowipe", change)
+			return usageError("cannot read %q, expected FLAG=on|off with FLAG one of rotate invert logo autowipe show-version", change)
 		}
 		if value == "on" {
 			flags |= bit

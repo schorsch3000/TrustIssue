@@ -79,6 +79,7 @@ var deviceSettings = []option{
 	{"config set invert=on|off", "", "", "off", "Swap lit and dark pixels of the display."},
 	{"config set logo=on|off", "", "", "off", "Show the idle logo, and for 5 s after power-up."},
 	{"config set autowipe=on|off", "", "", "off", "Allow wiping all keys with the button alone (a long hold at idle, then a gesture)."},
+	{"config set show-version=on|off", "", "", "off", "Show the firmware version in the title of the idle screen (TrustIssue 0.1.5)."},
 }
 
 // wrap breaks text into lines of at most width characters, each starting with indent.

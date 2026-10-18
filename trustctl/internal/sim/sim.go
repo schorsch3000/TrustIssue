@@ -186,7 +186,7 @@ func (d *Device) handle(line string) {
 		d.unlockedConfirm("SETTZ", rest, func() string { d.tz = q; return "OK" })
 	case "SETCFG":
 		v, err := strconv.ParseUint(rest, 16, 8)
-		if err != nil || len(rest) != 2 || v&^0x0F != 0 {
+		if err != nil || len(rest) != 2 || v&^0x1F != 0 {
 			d.say("ERR BADARG")
 			return
 		}

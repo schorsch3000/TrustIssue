@@ -121,7 +121,7 @@ _trustctl() {
       if [ "$npos" -eq 0 ]; then
         COMPREPLY=($(compgen -W "get set" -- "$cur"))
       elif [ "$sub" = set ]; then
-        COMPREPLY=($(compgen -W "rotate=on rotate=off invert=on invert=off logo=on logo=off autowipe=on autowipe=off" -- "$cur"))
+        COMPREPLY=($(compgen -W "rotate=on rotate=off invert=on invert=off logo=on logo=off autowipe=on autowipe=off show-version=on show-version=off" -- "$cur"))
       fi ;;
     daemon)
       [ "$npos" -eq 0 ] && COMPREPLY=($(compgen -W "status stop" -- "$cur")) ;;
@@ -221,7 +221,7 @@ _trustctl() {
           if (( CURRENT == 2 )); then
             _values 'config command' get set
           elif [[ $words[2] == set ]]; then
-            _values 'setting' rotate=on rotate=off invert=on invert=off logo=on logo=off autowipe=on autowipe=off
+            _values 'setting' rotate=on rotate=off invert=on invert=off logo=on logo=off autowipe=on autowipe=off show-version=on show-version=off
           fi
           ;;
         daemon)
@@ -365,7 +365,7 @@ complete -c trustctl -n '__trustctl_is add' -l digits -x -a '6 7 8' -d 'digits o
 complete -c trustctl -n '__trustctl_is add' -l period -x -a '30 60' -d 'seconds per code'
 complete -c trustctl -n '__trustctl_is tz 0' -a 'get sync set'
 complete -c trustctl -n '__trustctl_is config 0' -a 'get set'
-complete -c trustctl -n '__trustctl_is config 1; and test (__trustctl_args)[1] = set' -a 'rotate=on rotate=off invert=on invert=off logo=on logo=off autowipe=on autowipe=off'
+complete -c trustctl -n '__trustctl_is config 1; and test (__trustctl_args)[1] = set' -a 'rotate=on rotate=off invert=on invert=off logo=on logo=off autowipe=on autowipe=off show-version=on show-version=off'
 complete -c trustctl -n '__trustctl_is daemon 0' -a 'status stop'
 complete -c trustctl -n '__trustctl_is flash' -l no-patch -d 'flash the file as it is'
 complete -c trustctl -n '__trustctl_is flash' -l pin -d 'ask for the current update PIN first'

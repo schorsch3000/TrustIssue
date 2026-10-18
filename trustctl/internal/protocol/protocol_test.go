@@ -130,7 +130,7 @@ func TestTimezoneAndConfig(t *testing.T) {
 	if v, _ := c.Config(); v != 0x05 {
 		t.Fatalf("Config: %02x", v)
 	}
-	if err := c.SetConfig(0x10); !errors.Is(err, protocol.ErrBadArg) {
+	if err := c.SetConfig(0x20); !errors.Is(err, protocol.ErrBadArg) {
 		t.Errorf("reserved bit: %v", err)
 	}
 }

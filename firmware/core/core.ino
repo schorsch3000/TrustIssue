@@ -198,7 +198,13 @@ static void showLogo(uint8_t contrast) {
 
 static void showIdle() {
   clearScreen();
-  setRowP(1, PSTR("Trust Issues"));
+  if (tc_store_config() & TC_CFG_SHOWVERSION) {  // "TrustIssue 0.1.5": exactly 16 columns
+    char title[17];
+    snprintf_P(title, sizeof(title), PSTR("TrustIssue %S"), (const __FlashStringHelper *)VERSION);
+    setRow(1, title);
+  } else {
+    setRowP(1, PSTR("Trust Issues"));
+  }
   char count[17];
   snprintf_P(count, sizeof(count), PSTR("%u / %u keys"), tc_store_count(), (unsigned)TC_SLOT_COUNT);
   setRow(2, count);
@@ -281,6 +287,7 @@ static void showTokenHeader() {
 }
 
 // A row with two settings ("Rot:off Inv:on"); those that this request changes are inverted.
+// With bitA == 0 the first label is plain text without a value ("SETTINGS Ver:off").
 static void settingsRow(uint8_t row, PGM_P labelA, uint8_t bitA, PGM_P labelB, uint8_t bitB) {
   PGM_P labels[2] = {labelA, labelB};
   uint8_t bits[2] = {bitA, bitB};
@@ -292,8 +299,10 @@ static void settingsRow(uint8_t row, PGM_P labelA, uint8_t bitA, PGM_P labelB, u
     start[i] = position;
     strcpy_P(text + position, labels[i]);
     position += strlen(text + position);
-    strcpy_P(text + position, pending.config & bits[i] ? PSTR("on") : PSTR("off"));
-    position += strlen(text + position);
+    if (bits[i]) {
+      strcpy_P(text + position, pending.config & bits[i] ? PSTR("on") : PSTR("off"));
+      position += strlen(text + position);
+    }
     end[i] = position;
   }
   setRow(row, text);
@@ -331,7 +340,7 @@ static void showPending() {
       setRowP(3, PSTR("Hold 1-2 s"));
       break;
     case TC_CMD_SETCFG:
-      setRowP(0, PSTR("SETTINGS"));
+      settingsRow(0, PSTR("SETTINGS"), 0, PSTR("Ver:"), TC_CFG_SHOWVERSION);
       settingsRow(1, PSTR("Rot:"), TC_CFG_ROTATE, PSTR("Inv:"), TC_CFG_INVERT);
       settingsRow(2, PSTR("Logo:"), TC_CFG_LOGO, PSTR("Wp:"), TC_CFG_AUTOWIPE);
       setRowP(3, PSTR("Hold 1-2 s"));

@@ -66,7 +66,8 @@ int main() {
 
   check(parse("SETCFG 05", &c) == TC_PARSE_OK && c.config == 0x05, "SETCFG 05");
   check(parse("SETCFG 0f", &c) == TC_PARSE_OK && c.config == 0x0F, "SETCFG 0f");
-  expect("SETCFG 10", TC_PARSE_BADARG);  // reserved bit
+  check(parse("SETCFG 1f", &c) == TC_PARSE_OK && c.config == 0x1F, "SETCFG 1f");
+  expect("SETCFG 20", TC_PARSE_BADARG);  // reserved bit
   expect("SETCFG 5", TC_PARSE_BADARG);
   expect("SETCFG zz", TC_PARSE_BADARG);
 

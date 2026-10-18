@@ -29,6 +29,7 @@
 #define TC_CFG_INVERT 0x02
 #define TC_CFG_LOGO 0x04
 #define TC_CFG_AUTOWIPE 0x08
+#define TC_CFG_SHOWVERSION 0x10
 
 struct TcEeprom {
   uint8_t (*read)(uint16_t address);

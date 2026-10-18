@@ -39,6 +39,6 @@ struct TcCommand {
 TcParseResult tc_parse_command(char *line, TcCommand *command);
 
 // The configuration bits the device understands; others are rejected.
-#define TC_CONFIG_MASK 0x0F
+#define TC_CONFIG_MASK 0x1F
 
 #endif

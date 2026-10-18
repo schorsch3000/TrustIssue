@@ -34,7 +34,7 @@ device's parameter block, see {doc}`../setup/calibration`) it first shows the lo
 power-up too:
 
 ```{image} /_static/display/idle-logo.gif
-:alt: Power-up: the logo for 5 seconds, the idle screen, then the logo at full contrast, dimmed, and finally the display turns off.
+:alt: Power-up: the logo for 5 seconds, the idle screen, then the logo at full contrast, dimmed, and finally the display turns off. The sequence repeats with each of the demo logos in turn.
 ```
 
 Without the logo, the display simply turns off after the idle time. A button press wakes it:

@@ -24,6 +24,7 @@ import displaysim  # noqa: E402
 
 ROOT = displaysim.ROOT
 OUT = os.path.join(ROOT, "docs", "_static", "display")
+DEMO_LOGOS = sorted(os.path.join(ROOT, "Demo-Logos", f) for f in os.listdir(os.path.join(ROOT, "Demo-Logos")) if f.endswith(".png"))
 LOGO = os.path.join(ROOT, "Demo-Logos", "trust_issue_03.png")
 
 # The time all token screens show: 18 Oct 2026, 09:41:00 UTC (a time away from a 30 s boundary).
@@ -69,7 +70,7 @@ SCENARIOS = {
     "idle-sleep": dict(setup=keys(3), clip=["wait 11000", "tap 1500", "wait 100"], max_gap=2000,
                        note="The display turns off after 10 s; a press wakes it."),
     "idle-logo": dict(setup=keys(3) + set_config(CFG_LOGO), pre=["logo " + "{logo}", "contrast 0x20 0x00"],
-                      from_boot=True, max_gap=2500,
+                      from_boot=True, max_gap=2500, all_logos=True,
                       clip=["boot", "wait 5200", "wait 10500", "wait 30500", "wait 120500", "wait 500"],
                       note="Power-up: logo for 5 s, the idle screen, then the logo at full and dimmed contrast, then off."),
     "add": dict(cmd="echo SECRET | trustctl add GitHub",
@@ -193,9 +194,9 @@ def calibration_stills(outdir):
     return made
 
 
-def logo_bytes():
-    """The Demo logo as the 512 bytes of the display (the rule of trustctl: black is off, anything else on)."""
-    image = Image.open(LOGO).convert("RGBA")
+def logo_bytes(path=LOGO):
+    """A logo as the 512 bytes of the display (the rule of trustctl: black is off, anything else on)."""
+    image = Image.open(path).convert("RGBA")
     data = bytearray(512)
     for y in range(32):
         for x in range(128):
@@ -227,8 +228,19 @@ def run_scenario(name, spec, outdir, workdir):
         script = pre + load + ["record on"] + spec["clip"]
     else:
         script = pre + load + ["boot", "wait 100", "record on"] + spec["clip"]
-    events = displaysim.run_script(script)
-    states, stills = displaysim.timeline(events)
+    if spec.get("all_logos"):  # the same clip once per demo logo, one after the other
+        states = []
+        for number, path in enumerate(DEMO_LOGOS, 1):
+            with open(os.path.join(workdir, "logo.bin"), "wb") as f:
+                f.write(logo_bytes(path))
+            caption = "mark cap Demo logo %d of %d (%s)" % (number, len(DEMO_LOGOS), os.path.basename(path))
+            clip = displaysim.timeline(displaysim.run_script(pre + load + ["record on", caption] + spec["clip"]))[0]
+            offset = states[-1][0] + displaysim.FRAME_MS if states else 0
+            states += [(t + offset, state) for t, state in clip]
+        stills = {}
+    else:
+        events = displaysim.run_script(script)
+        states, stills = displaysim.timeline(events)
     made = []
     for shot, index in stills.items():
         if shot in spec.get("shot_at", {}):

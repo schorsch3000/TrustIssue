@@ -32,11 +32,23 @@ Letting go too early or too late is a *no*: the request is denied and the host g
 without waiting for you to let go ("Too long"). Nothing happens if nobody answers for 30 seconds
 ("Timeout").
 
+(reading-the-bar)=
 ### Reading the bar
 
-While the button is held, the whole display is a progress bar. Its full width is the **end** of the
-accept window. The part before the window is solid; from the start of the window on, the bar is a
-checkerboard. **Let go while the bar is a checkerboard.**
+While the button is held, the whole display is a progress bar. Its full width is the **end** of the accept window. The part before the window is solid; from the start of the window on, the bar is a checkerboard.
+
+```{image} /_static/display/target-zone.png
+:alt: The progress bar of a code request with the accept window marked: let go while the bar is a checkerboard. Before it is too early and denied; the end of the bar is the end of the window.
+:align: center
+```
+
+:::{important}
+**The checkerboard is the target.** While you hold the button, the bar fills from the left. Let go
+**while the bar is a checkerboard**, and only then. Letting go before it (solid bar) is too early and is
+denied; holding until the bar is full and beyond is too late and is denied too. The window is 1 to 2
+seconds for everything except the wipe (5 to 6 seconds, the checkerboard starts at five sixths of the bar).
+Neither "early" nor "late" is a near miss: they are a *no*.
+:::
 
 ```{image} /_static/display/token.gif
 :alt: A token request: the bar fills from left to right, solid first, then as a checkerboard from the middle on, and the button is released while the bar is a checkerboard.

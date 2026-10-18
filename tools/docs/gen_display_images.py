@@ -79,7 +79,7 @@ SCENARIOS = {
                 clip=["serial DEL 1", "wait 400", "hold 1500", "wait 1800"], shot_at={"del-confirm": 300}),
     "token": dict(setup=keys(3) + set_tz(8), cmd="trustctl token GitHub",
                   clip=["serial TOKEN 0 %d" % NOW, "wait 400", "hold 1500", "wait 5800"],
-                  shot_at={"token-confirm": 300, "token-code": 1500 + 400 + 600 + 300}),
+                  target_zone={"target-zone": 1850}, shot_at={"token-confirm": 300, "token-code": 1500 + 400 + 600 + 300}),
     "token-longname": dict(setup=add_key("Contoso: alice@example.com") + set_tz(8),
                            clip=["serial TOKEN 0 %d" % NOW, "wait 400", "mark shot token-longname"], gif=False),
     "tz-set": dict(setup=keys(1), cmd="trustctl tz set +2", clip=["serial SETTZ 8", "wait 400", "hold 1500", "wait 1800"], shot_at={"tz-confirm": 300}),
@@ -239,6 +239,9 @@ def run_scenario(name, spec, outdir, workdir):
         index = min(len(states) - 1, ms // displaysim.FRAME_MS)
         displaysim.write_png(os.path.join(outdir, shot + ".png"), states[index][1])
         made.append(shot + ".png")
+    for name_, ms in spec.get("target_zone", {}).items():
+        displaysim.write_target_zone(os.path.join(outdir, name_ + ".png"), states[min(len(states) - 1, ms // displaysim.FRAME_MS)][1])
+        made.append(name_ + ".png")
     if spec.get("gif", True):
         frames = displaysim.write_gif(os.path.join(outdir, name + ".gif"), states, spec.get("cmd"),
                                       max_gap=spec.get("max_gap", 1500))

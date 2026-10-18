@@ -235,3 +235,32 @@ def write_gif(path, states, command=None, max_gap=1500, tail=1500, speed=1.0):
 def write_png(path, state):
     """A still: only the display, no caption."""
     draw_display(state.frame, state.contrast).save(path, optimize=True)
+
+
+GREEN = (110, 220, 140)
+RED = (235, 120, 110)
+
+
+def write_target_zone(path, state, window_start=0.5):
+    """A still of the progress bar with the accept window marked under the display: left of the window
+    is too early, the checkerboard is the target, and the end of the bar is the end of the window."""
+    image = draw_display(state.frame, state.contrast)
+    width, height = image.size
+    labels = 78
+    picture = Image.new("RGB", (width, height + labels), BACKGROUND)
+    picture.paste(image, (0, 0))
+    d = ImageDraw.Draw(picture)
+    left, right = BEZEL, width - BEZEL
+    split = left + round((right - left) * window_start)
+    y = height + 6
+    for x0, x1, color, text in ((left, split, RED, "let go here: too early, denied"),
+                                (split, right, GREEN, "let go here: accepted")):
+        d.line((x0 + 2, y, x1 - 2, y), fill=color, width=4)
+        d.line((x0 + 2, y, x0 + 2, y - 8), fill=color, width=4)
+        d.line((x1 - 2, y, x1 - 2, y - 8), fill=color, width=4)
+        box = d.textbbox((0, 0), text, font=_font(17))
+        d.text(((x0 + x1) // 2 - (box[2] - box[0]) // 2, y + 12), text, font=_font(17), fill=color)
+    d.text((left, y + 40), "0 s", font=_font(15), fill=MUTED)
+    d.text((split - 14, y + 40), "1 s", font=_font(15), fill=MUTED)
+    d.text((right - 24, y + 40), "2 s", font=_font(15), fill=MUTED)
+    picture.save(path, optimize=True)

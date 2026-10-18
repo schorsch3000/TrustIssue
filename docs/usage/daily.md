@@ -22,8 +22,9 @@ $ echo 'otpauth://totp/Example:bob@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Ex
 Using the name "Example:bob@example.com" from the URI.
 ```
 
-On the device the display shows the name and the parameters; hold the button 1 to 2 seconds and let go
-while the bar is a checkerboard:
+On the device the display shows the name and the parameters. Hold the button and **let go while the bar is a
+checkerboard** (that is the 1 to 2 second window; before it is too early, after it too late, both are a
+*no*, see {ref}`reading-the-bar`):
 
 ```{image} /_static/display/add.gif
 :alt: trustctl add GitHub: the confirm screen, the button held for 1.5 seconds, Done.

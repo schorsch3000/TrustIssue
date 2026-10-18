@@ -19,15 +19,38 @@ microcontroller can do it, flash a firmware that dumps the EEPROM over serial, r
 and EEPROM, and nothing would show afterwards. With a PIN ({ref}`update-pin`, 4 to 15 characters), the
 bootloader asks for it after the gesture. The device gives no sign whether a guess was right until a fixed
 wait of about 7 seconds has passed, and nothing can read the PIN back, so **every guess costs the whole
-gate (about 8 s) plus that wait**:
+gate (about 8 s) plus that wait**.
 
-| PIN length | Average time to guess | Worst case |
-| ---------- | --------------------- | ---------- |
-| 4 digits   | about 21 hours        | 42 hours   |
-| 5 digits   | about 9 days          | 17 days    |
-| 6 digits   | about 3 months        | 6 months   |
+Each guess takes about 15 seconds (8 s gate plus 7 s wait), and on average half of all possibilities
+have to be tried. The tables assume a PIN that was chosen **at random**; a PIN a person made up (a date,
+a word) is found far sooner by trying likely candidates first. The PIN may be 4 to 15 printable ASCII
+characters (the 95 characters from space to `~`).
 
-(Each extra digit multiplies the time by ten; letters and symbols make it much longer per character.)
+**Numeric PIN** (10 possibilities per character):
+
+| Length    | Possibilities | Average time to guess | Worst case |
+| --------- | ------------- | --------------------- | ---------- |
+| 4 digits  | 10^4          | about 21 hours        | 1.7 days   |
+| 5 digits  | 10^5          | about 9 days          | 17 days    |
+| 6 digits  | 10^6          | about 3 months        | 6 months   |
+| 8 digits  | 10^8          | about 24 years        | 48 years   |
+| 10 digits | 10^10         | about 2,400 years     | 4,800 years |
+
+**Random password** from all 95 printable characters (upper and lower case, digits, symbols):
+
+| Length        | Possibilities | Average time to guess        | Worst case                |
+| ------------- | ------------- | ---------------------------- | ------------------------- |
+| 4 characters  | 8.1 x 10^7    | about 19 years               | 39 years                  |
+| 5 characters  | 7.7 x 10^9    | about 1,800 years            | 3,700 years               |
+| 6 characters  | 7.4 x 10^11   | about 175,000 years          | 350,000 years             |
+| 8 characters  | 6.6 x 10^15   | about 1.6 billion years      | 3.2 billion years         |
+| 10 characters | 6.0 x 10^19   | about 10^13 years            | 3 x 10^13 years           |
+
+So a four character random password already beats a seven digit PIN by a wide margin, and from eight
+characters on the guessing attack is out of the question. The price is typing it: the PIN is entered on the
+host at every update, within the 8 seconds the device waits (`trustctl flash --pin` asks before the gesture),
+and a password you keep in a password manager is a password malware on that host can reach. A random 6 to 8
+digit PIN or a short random password you can remember is a sensible middle.
 
 **Warnings.** A device without the final lock bits shows `UNLOCKED` on its idle screen, one without a
 PIN shows `NO PIN`, and `trustctl hello` and `add` warn in words.

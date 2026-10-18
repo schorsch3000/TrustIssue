@@ -42,6 +42,9 @@ Other environment variables that are read: `XDG_CONFIG_HOME` (where the config f
 live), `XDG_RUNTIME_DIR` (the daemon's socket and log; else a private directory under the temporary
 directory) and `HOME`.
 
+**Confirming on the device:** hold the button and let go **while the bar is a checkerboard**; too early and
+too late are both denied ({ref}`reading-the-bar`).
+
 ## Names and slots
 
 `NAME` in `token` and `del` is a key name in any case, its slot number, or a unique beginning of a name.

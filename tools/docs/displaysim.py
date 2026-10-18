@@ -21,12 +21,13 @@ SCALE = 6  # screen pixels per display pixel
 BEZEL = 24
 STRIP = 70  # height of the caption strip under the display
 FRAME_MS = 40  # a GIF frame every 40 ms (25 per second) while something changes
-BACKGROUND = (22, 24, 28)
+BACKGROUND = (232, 232, 228)  # off-gray page behind the display
+FRAME = (22, 24, 28)  # the dark edge of the display module
 PIXEL_OFF = (6, 8, 12)
 PIXEL_ON = (214, 236, 255)  # the usual blue-white of a small OLED
-TEXT = (210, 214, 220)
-MUTED = (140, 146, 156)
-ACCENT = (255, 190, 70)
+TEXT = (38, 40, 46)
+MUTED = (104, 108, 116)
+ACCENT = (168, 92, 0)
 FULL_CONTRAST = 0x20  # the contrast the project uses for "full"; anything above looks the same
 
 
@@ -153,6 +154,8 @@ def draw_display(frame_hex, contrast, with_bezel=True):
     if not with_bezel:
         return screen
     image = Image.new("RGB", (screen.width + 2 * BEZEL, screen.height + 2 * BEZEL), BACKGROUND)
+    ImageDraw.Draw(image).rounded_rectangle((BEZEL - 12, BEZEL - 12, BEZEL + screen.width + 11, BEZEL + screen.height + 11),
+                                            radius=10, fill=FRAME)
     image.paste(screen, (BEZEL, BEZEL))
     return image
 
@@ -183,7 +186,7 @@ def draw_picture(state, t, command=None):
         d.text((BEZEL, y + 28), "< " + state.reply, font=_font(17), fill=MUTED)
     # the button: a ring, filled while pressed, with the hold time next to it
     cx, cy, r = width - BEZEL - 150, y + 11, 11
-    d.ellipse((cx - r, cy - r, cx + r, cy + r), outline=MUTED, width=2, fill=ACCENT if state.button else BACKGROUND)
+    d.ellipse((cx - r, cy - r, cx + r, cy + r), outline=MUTED, width=2, fill=(236, 150, 30) if state.button else BACKGROUND)
     label = "button"
     if state.button:
         label = "held %.1f s" % ((t - state.pressed_at) / 1000)
@@ -237,8 +240,8 @@ def write_png(path, state):
     draw_display(state.frame, state.contrast).save(path, optimize=True)
 
 
-GREEN = (110, 220, 140)
-RED = (235, 120, 110)
+GREEN = (28, 135, 68)
+RED = (192, 58, 48)
 
 
 def write_target_zone(path, state, window_start=0.5):

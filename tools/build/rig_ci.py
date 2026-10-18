@@ -9,19 +9,26 @@ tools/rig/README.md) does this:
   2. does nothing if that commit was tested already;
   3. downloads that release's trustctl for this machine and its firmware archive (core.hex, boot.hex), checks them against
      SHA256SUMS, and checks out the test scripts at exactly that commit (it must be on master) in a separate worktree;
-  4. runs `make_release.py --rig-only`: provisions the device over ISP with those files and runs the rig suites;
+  4. switches the rig's power on (`/usr/local/bin/rig-power on`, if that exists), waits for its USB ports, runs
+     `make_release.py --rig-only`: provisions the device over ISP with those files and runs the rig suites, and switches the
+     power off again (`rig-power off`) NO MATTER HOW IT ENDS: a failing test, an exception, a SIGTERM (systemd's timeout), and
+     a stale "powered" marker of a run that was killed hard is cleaned up by the next poll;
   5. posts a commit status "device-tests" (success, failure, or error when the rig could not be found).
+
+Only one run at a time (a lock in the state directory, so a manual run and the timer cannot meet at the rig).
 
 Needs: python3 with pyserial, avrdude, git, and a fine-grained token with only "Commit statuses: read and write" on the
 repository, in ~/.config/trustissue-rig/token (mode 600). Reports and logs: ~/reports/<commit>.md and .log.
 Only the Python standard library is used besides pyserial (through rig.py).
 """
 import argparse
+import fcntl
 import hashlib
 import json
 import os
 import platform
 import shutil
+import signal
 import subprocess
 import sys
 import tarfile
@@ -36,6 +43,8 @@ HOME = os.path.expanduser("~")
 STATE = os.path.join(HOME, ".local", "state", "trustissue-rig")
 REPORTS = os.path.join(HOME, "reports")
 TOKEN_FILE = os.path.join(HOME, ".config", "trustissue-rig", "token")
+POWER = os.environ.get("TRUSTISSUE_RIG_POWER", "/usr/local/bin/rig-power")  # `rig-power on|off` switches the rig's supply
+POWER_MARKER = os.path.join(STATE, "powered")  # exists while the rig was switched on by a run that has not switched it off
 ARCH = {"x86_64": "amd64", "aarch64": "arm64", "armv7l": "arm", "armv6l": "arm", "i686": "386"}
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 
@@ -77,6 +86,30 @@ def sha256(path):
     return h.hexdigest()
 
 
+def power(state):
+    """Switches the rig on or off with rig-power, if there is one. The marker records that it is on, so that a run that was
+    killed without a chance to switch off is noticed by the next poll."""
+    if not os.path.exists(POWER):
+        return
+    print(f"rig_ci: rig-power {state}", flush=True)
+    result = subprocess.run([POWER, state], capture_output=True, text=True, timeout=60)
+    if result.returncode:
+        raise RuntimeError(f"{POWER} {state} failed: {(result.stderr or result.stdout).strip()}")
+    if state == "on":
+        open(POWER_MARKER, "w").close()
+    elif os.path.exists(POWER_MARKER):
+        os.remove(POWER_MARKER)
+
+
+def wait_for_rig_ports(timeout=90):
+    """After switching on: the two Nanos (the rig and the device) show up as serial ports, then they need a moment to boot."""
+    import rig
+    deadline = time.time() + timeout
+    while time.time() < deadline and len(rig.serial_ports()) < 2:
+        time.sleep(1)
+    time.sleep(4)
+
+
 def prune_reports(keep=100):
     """Keeps the reports and logs of the `keep` newest commits (by modification time) and deletes the rest. latest.* stays."""
     groups = {}
@@ -98,6 +131,19 @@ def main():
     args = parser.parse_args()
     os.makedirs(STATE, exist_ok=True)
     os.makedirs(REPORTS, exist_ok=True)
+    lock = open(os.path.join(STATE, "lock"), "w")  # held until the process ends
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("rig_ci: another run is in progress")
+        return
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))  # systemd's stop: leave through the finally blocks, which switch the power off
+    if os.path.exists(POWER_MARKER):  # a run was killed hard while the rig was on: nobody else is running (we hold the lock)
+        print("rig_ci: the rig was left switched on: switching it off", flush=True)
+        try:
+            power("off")
+        except Exception as e:
+            print(f"rig_ci: {e}", file=sys.stderr)
     removed = prune_reports()
     if removed:
         print(f"rig_ci: removed the reports of {removed} old commits (the newest 100 stay)", flush=True)
@@ -147,6 +193,7 @@ def main():
         return
 
     work = tempfile.mkdtemp(prefix="rig-ci-")
+    powered = False
     log_path = os.path.join(REPORTS, f"{sha}.log")
     report_path = os.path.join(REPORTS, f"{sha}.md")
     try:
@@ -176,7 +223,10 @@ def main():
         fw = next(os.path.join(work, "firmware", d) for d in os.listdir(os.path.join(work, "firmware")))
         version = open(os.path.join(fw, "VERSION")).read().strip()
 
-        # 4. the tests
+        # 4. the tests: the rig gets power only now, and loses it again whatever happens
+        powered = True  # set first: a failing rig-power on may have switched it on
+        power("on")
+        wait_for_rig_ports()
         command = [sys.executable, "tools/build/make_release.py", version, "--rig-only", "--yes",
                    "--trustctl", os.path.join(tree, "trustctl", "bin", "trustctl"),
                    "--core", os.path.join(fw, "core.hex"), "--bootloader", os.path.join(fw, "boot.hex"),
@@ -201,6 +251,11 @@ def main():
         post_status(token, sha, "error", f"rig CI error: {e}"[:140], args.dry_run)
         raise
     finally:
+        if powered:
+            try:
+                power("off")
+            except Exception as e:  # the marker stays: the next poll tries again
+                print(f"rig_ci: {e}", file=sys.stderr)
         try:
             git("worktree", "remove", "--force", os.path.join(work, "tree"))
         except Exception:

@@ -28,6 +28,16 @@ systemctl --user daemon-reload
 systemctl --user enable --now rig-ci.timer
 ```
 
+## Power
+
+If `/usr/local/bin/rig-power` exists (or the program named in `TRUSTISSUE_RIG_POWER`), the rig is switched on with `rig-power on` only when
+a commit is about to be tested (after the downloads), the run waits up to 90 s for the two USB serial ports, and the rig is switched off
+with `rig-power off` when the run is over, whatever happens: failed tests, exceptions, SIGTERM from systemd. A run that was killed
+hard (power cut, `kill -9`) leaves a marker `~/.local/state/trustissue-rig/powered`, and the next poll switches the rig off first.
+The user that runs the timer must be allowed to call `rig-power`. Only one run at a time: `rig_ci.py` holds a lock, so a manual run
+and the timer cannot meet at the rig. After updating, copy the changed service file again (`cp ~/TrustIssue/tools/rig/rig-ci.service
+~/.config/systemd/user/ && systemctl --user daemon-reload`).
+
 ## What it does
 
 Before anything is touched, `rig_ci.py` and `make_release.py` run a preflight (`rig.require_tools`) that names every missing tool at once, with the Debian package. On the Pi that is `avrdude`, `git`, `sed`, `tr`, `tail` and the python module `serial`; no compiler is needed, because the bootloader and firmware come from the download.

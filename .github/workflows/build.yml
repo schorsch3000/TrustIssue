@@ -44,6 +44,8 @@ jobs:
         run: tools/build/test_trustctl_menu.sh
       - name: onboard_usbtiny.sh tests (fake avrdude)
         run: tools/build/test_onboard_usbtiny.sh
+      - name: Rig CI tests (the rig power is switched off in every case)
+        run: tools/build/test_rig_ci.py
       - name: Tray tool tests (Mono)
         run: tools/user/trustctl-tray/test.sh
       - name: Build the firmware and the bootloader

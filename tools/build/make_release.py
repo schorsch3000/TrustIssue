@@ -194,6 +194,7 @@ host = [
     Suite("shellcheck", "host", sh("shellcheck -S warning tools/user/trustctl-menu tools/user/*.sh tools/build/*.sh firmware/*/build.sh && echo 'PASS  shellcheck'")),
     Suite("trustctl-menu tests (fake launchers)", "host", ["tools/build/test_trustctl_menu.sh"]),
     Suite("onboard_usbtiny.sh tests (fake avrdude)", "host", ["tools/build/test_onboard_usbtiny.sh"]),
+    Suite("rig CI tests: the rig is switched off in every case (fake rig-power)", "host", ["tools/build/test_rig_ci.py"]),
     Suite("tray tool helper tests (Mono)", "host", ["tools/user/trustctl-tray/test.sh"], needs="mcs"),
     Suite("firmware builds and equals the embedded images", "host", sh(
         "tools/build/embed_firmware.sh && make -B -C firmware/bootloader && "

@@ -143,6 +143,17 @@ A tiny separate firmware (replaces the I2C scanner as the first thing to flash) 
 - The whole display is the progress bar while the button is held: the full width is the END of the accept window (2 s, or 6 s for wipe), and the window's start is marked on the bar: up to the window start the bar is solid (inverted), from there on it is a checkerboard of 2x2 pixel squares (each pixel column XORed with 0x33 or 0xCC, alternating every two columns, so the text stays visible; a 1x1 checkerboard looked too fine). So the user sees where the window begins (at half width for 1-2 s, at 5/6 for 5-6 s) and releases while the bar is checkered. The wipe's own progress, after confirming, is a plain solid bar. Feasible with 4 text rows: the shadow buffer lets the fill invert the text tile by tile (16 steps trivially, finer steps with partial-column tiles), and each step only rewrites one column of 4 tiles. Run I2C at 400 kHz.
 - Large alert screens (decided): every result screen of the core firmware (`Done`, `Denied`, `Timeout`, `Too long`, the token code) is drawn in large letters, the 8x8 font doubled (`bigTile`). The confirm screens stay on the four small rows because they have to show the name, the date and the time. The wipe and countdown screens stay small too: their progress bar inverts the text through the shadow grid, which large letters do not have, and the bootloader has 8 spare bytes, so scaled text does not fit there. Not planned further.
 
+### Considered and rejected: a PIN to unlock tokens (2026-10-18)
+
+An unlock PIN (config flag) so that a thief cannot get codes. Rejected: typed on the host, malware sees it and can burn the
+attempt counter (a remote denial of service with a lockout or wipe), so it protects nothing against the main threat; typed on
+the device it needs a PIN entry UI on one button (about 5 s per digit with scroll-and-select), which is too awkward. What would
+have been needed, should it ever come back: changing or disabling the flag must itself demand the PIN (SETCFG only needs a
+1-2 s hold); session unlock with an idle auto-lock; the PIN in a second flash page (the application can read its own flash, the
+EEPROM is full: 20 x 51 + 4 = 1024 bytes) and the failure counter in the reserved bits 5-7 of the settings byte; a forgotten PIN
+makes the keys unusable (re-add from offline backups). A thief with the device also needs the account passwords, and the owner
+rotates them once it is missed.
+
 ## Application security rules
 
 - No command may ever return a stored secret (no read-back, no export).

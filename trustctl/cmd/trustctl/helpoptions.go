@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"trustissues/trustctl/internal/profile"
+	"trustissue/trustctl/internal/profile"
 )
 
 // option describes one setting in every place where it can be given.

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"trustissues/trustctl/internal/flasher"
-	"trustissues/trustctl/internal/hexfile"
+	"trustissue/trustctl/internal/flasher"
+	"trustissue/trustctl/internal/hexfile"
 )
 
 // pipePort adapts a net.Pipe to the Port interface (Read returns 0, nil on timeout).

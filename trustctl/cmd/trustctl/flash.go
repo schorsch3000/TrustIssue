@@ -13,15 +13,15 @@ import (
 	"time"
 
 	"golang.org/x/term"
-	"trustissues/trustctl/internal/daemon"
-	"trustissues/trustctl/internal/firmware"
-	"trustissues/trustctl/internal/flasher"
-	"trustissues/trustctl/internal/fonts"
-	"trustissues/trustctl/internal/hexfile"
-	"trustissues/trustctl/internal/params"
-	"trustissues/trustctl/internal/profile"
-	"trustissues/trustctl/internal/protocol"
-	"trustissues/trustctl/internal/serialdev"
+	"trustissue/trustctl/internal/daemon"
+	"trustissue/trustctl/internal/firmware"
+	"trustissue/trustctl/internal/flasher"
+	"trustissue/trustctl/internal/fonts"
+	"trustissue/trustctl/internal/hexfile"
+	"trustissue/trustctl/internal/params"
+	"trustissue/trustctl/internal/profile"
+	"trustissue/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/serialdev"
 )
 
 // stopDaemon asks a running daemon to let go of the serial port.

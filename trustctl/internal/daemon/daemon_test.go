@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"trustissues/trustctl/internal/daemon"
-	"trustissues/trustctl/internal/protocol"
-	"trustissues/trustctl/internal/sim"
+	"trustissue/trustctl/internal/daemon"
+	"trustissue/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/sim"
 )
 
 const secret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"

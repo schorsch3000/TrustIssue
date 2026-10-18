@@ -6,11 +6,11 @@ import (
 	"io"
 	"os"
 
-	"trustissues/trustctl/internal/fonts"
-	"trustissues/trustctl/internal/hexfile"
-	"trustissues/trustctl/internal/logo"
-	"trustissues/trustctl/internal/params"
-	"trustissues/trustctl/internal/profile"
+	"trustissue/trustctl/internal/fonts"
+	"trustissue/trustctl/internal/hexfile"
+	"trustissue/trustctl/internal/logo"
+	"trustissue/trustctl/internal/params"
+	"trustissue/trustctl/internal/profile"
 )
 
 func defaultFont() []byte {

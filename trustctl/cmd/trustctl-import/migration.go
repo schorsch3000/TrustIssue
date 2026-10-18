@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"trustissues/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/protocol"
 )
 
 const migrationPrefix = "otpauth-migration://"

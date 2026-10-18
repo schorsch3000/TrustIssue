@@ -8,7 +8,7 @@ import (
 	"io"
 	"time"
 
-	"trustissues/trustctl/internal/hexfile"
+	"trustissue/trustctl/internal/hexfile"
 )
 
 const (

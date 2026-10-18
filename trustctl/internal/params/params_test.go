@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"trustissues/trustctl/internal/hexfile"
-	"trustissues/trustctl/internal/params"
+	"trustissue/trustctl/internal/hexfile"
+	"trustissue/trustctl/internal/params"
 )
 
 func imageWithBlock() *hexfile.Image {

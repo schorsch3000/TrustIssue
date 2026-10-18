@@ -8,12 +8,12 @@ import (
 	"strconv"
 	"strings"
 
-	"trustissues/trustctl/internal/fonts"
-	"trustissues/trustctl/internal/logo"
-	"trustissues/trustctl/internal/params"
-	"trustissues/trustctl/internal/profile"
-	"trustissues/trustctl/internal/protocol"
-	"trustissues/trustctl/internal/serialdev"
+	"trustissue/trustctl/internal/fonts"
+	"trustissue/trustctl/internal/logo"
+	"trustissue/trustctl/internal/params"
+	"trustissue/trustctl/internal/profile"
+	"trustissue/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/serialdev"
 )
 
 const calibrateUsage = `calibrate commands (the device must run the calibration firmware, firmware/calibration):

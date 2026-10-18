@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"trustissues/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/protocol"
 )
 
 // resolve maps what the user typed to a key: an exact name (any case), else a

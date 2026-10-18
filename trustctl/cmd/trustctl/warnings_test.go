@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"trustissues/trustctl/internal/protocol"
-	"trustissues/trustctl/internal/sim"
+	"trustissue/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/sim"
 )
 
 // hello and add warn about each flag word of the device's HELLO line (unlocked, nopin), and only those.

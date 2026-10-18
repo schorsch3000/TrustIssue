@@ -11,7 +11,7 @@ import (
 	_ "embed"
 	"strings"
 
-	"trustissues/trustctl/internal/hexfile"
+	"trustissue/trustctl/internal/hexfile"
 )
 
 //go:embed core.hex

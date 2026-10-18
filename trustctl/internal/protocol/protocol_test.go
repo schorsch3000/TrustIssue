@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"trustissues/trustctl/internal/protocol"
-	"trustissues/trustctl/internal/sim"
+	"trustissue/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/sim"
 )
 
 // RFC 6238 secret "12345678901234567890"

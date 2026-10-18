@@ -7,7 +7,7 @@ import (
 	"image/png"
 	"testing"
 
-	"trustissues/trustctl/internal/logo"
+	"trustissue/trustctl/internal/logo"
 )
 
 func pixel(bitmap []byte, x, y int) bool { return bitmap[(y/8)*logo.Width+x]>>(y%8)&1 == 1 }

@@ -1,4 +1,4 @@
-module trustissues/trustctl
+module trustissue/trustctl
 
 go 1.26.0
 

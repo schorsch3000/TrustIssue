@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"trustissues/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/protocol"
 )
 
 func TestResolve(t *testing.T) {

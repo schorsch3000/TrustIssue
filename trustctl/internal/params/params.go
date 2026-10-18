@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"trustissues/trustctl/internal/hexfile"
+	"trustissue/trustctl/internal/hexfile"
 )
 
 const (

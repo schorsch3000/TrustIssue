@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"trustissues/trustctl/internal/serialdev"
+	"trustissue/trustctl/internal/serialdev"
 )
 
 func TestDevicePathNormalizesDummy(t *testing.T) {

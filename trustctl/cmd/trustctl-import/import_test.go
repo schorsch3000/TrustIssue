@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"trustissues/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/protocol"
 )
 
 // ---- a protobuf encoder for the tests

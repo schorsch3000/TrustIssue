@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"trustissues/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/protocol"
 )
 
 // Options configure Run.

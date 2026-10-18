@@ -15,11 +15,11 @@ import (
 
 	"golang.org/x/term"
 
-	"trustissues/trustctl/internal/daemon"
-	"trustissues/trustctl/internal/firmware"
-	"trustissues/trustctl/internal/protocol"
-	"trustissues/trustctl/internal/serialdev"
-	"trustissues/trustctl/internal/sim"
+	"trustissue/trustctl/internal/daemon"
+	"trustissue/trustctl/internal/firmware"
+	"trustissue/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/serialdev"
+	"trustissue/trustctl/internal/sim"
 )
 
 // version is set at release time: -ldflags "-X main.version=..."

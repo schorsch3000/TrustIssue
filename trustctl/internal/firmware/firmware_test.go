@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"testing"
 
-	"trustissues/trustctl/internal/flasher"
-	"trustissues/trustctl/internal/params"
+	"trustissue/trustctl/internal/flasher"
+	"trustissue/trustctl/internal/params"
 )
 
 func TestBuiltInImages(t *testing.T) {

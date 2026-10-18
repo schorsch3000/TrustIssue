@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"trustissues/trustctl/internal/fonts"
-	"trustissues/trustctl/internal/params"
+	"trustissue/trustctl/internal/fonts"
+	"trustissue/trustctl/internal/params"
 )
 
 func TestExtractFontAndLogo(t *testing.T) {

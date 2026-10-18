@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"trustissues/trustctl/internal/hexfile"
+	"trustissue/trustctl/internal/hexfile"
 )
 
 func TestParseAndPages(t *testing.T) {

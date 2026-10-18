@@ -10,8 +10,8 @@ import (
 
 	"go.bug.st/serial"
 
-	"trustissues/trustctl/internal/protocol"
-	"trustissues/trustctl/internal/sim"
+	"trustissue/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/sim"
 )
 
 // Baud is the speed of the device's serial protocol.

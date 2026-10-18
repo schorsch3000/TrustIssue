@@ -9,9 +9,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"trustissues/trustctl/internal/fonts"
-	"trustissues/trustctl/internal/logo"
-	"trustissues/trustctl/internal/params"
+	"trustissue/trustctl/internal/fonts"
+	"trustissue/trustctl/internal/logo"
+	"trustissue/trustctl/internal/params"
 )
 
 // Profile is stored as ~/.config/trustctl/device.json. Paths of the logo and

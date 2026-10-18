@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"trustissues/trustctl/internal/protocol"
+	"trustissue/trustctl/internal/protocol"
 )
 
 //go:embed web/index.html

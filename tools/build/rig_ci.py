@@ -131,7 +131,7 @@ def main():
     args = parser.parse_args()
     os.makedirs(STATE, exist_ok=True)
     os.makedirs(REPORTS, exist_ok=True)
-    lock = open(os.path.join(STATE, "lock"), "w")  # held until the process ends
+    lock = open(os.path.join(STATE, "run.lock"), "w")  # held until the process ends (not "lock": an old service file wraps the script in flock on that file)
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:

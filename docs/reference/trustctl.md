@@ -71,11 +71,17 @@ standard output, so `code=$(trustctl token github)` is safe.
 trustctl add [NAME] [--digits N] [--period S]
 ```
 
-Stores a key. The secret is **never a command line argument**. On a terminal `add` asks for it and shows a masked star
-field, which is the way to use it by hand. From a pipe it reads one line of standard input, which is meant for
-automation where the secret does not pass through a shell line or the process list (for example `pass show
-totp/github | trustctl add GitHub`); do not `echo` a secret into it, the shell would keep it in its history. The input is either a Base32 secret or an
-`otpauth://totp/...` URI.
+Stores a key. `add` asks for the secret on the terminal and shows it as a masked star field while you type or
+paste it. That is the way to use it by hand: the secret is **never a command line argument**, so it cannot end
+up in your shell history or in the process list. The input is either a Base32 secret or an `otpauth://totp/...`
+URI (as in the QR code a service shows you), which also brings the name, digits and period.
+
+:::{warning}
+Standard input is meant for **automation, where the secret is never a parameter**: when `add` reads from a pipe
+it takes one line from it, for example from a password manager (`pass show totp/github | trustctl add GitHub`).
+Do not `echo` a secret into it by hand (`echo SECRET | trustctl add ...`): the shell keeps the line in its
+history, and the secret is visible in the process list while it runs.
+:::
 
 `NAME`
 : The name shown on the device: 1 to 27 printable ASCII characters (space to `~`), no leading or trailing

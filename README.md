@@ -213,7 +213,7 @@ code holds every secret in the clear: do this on a computer you trust, and close
   token need the button, with the name or value on the display.
 - The bootloader only opens after a physical gesture and refuses to touch the EEPROM or itself.
   A held button at reset (the bait and switch) never opens it.
-- When a device is finished, set the read-out lock bits with `tools/user/final_lock.sh` (undo: `tools/user/unlock.sh`, which erases everything). Until then the idle screen shows an inverted `NOT LOCKED` and `trustctl hello` and `add` warn. The same goes for a missing update PIN (inverted `NO PIN` on the last row, `hello` and `add` warn).
+- When a device is finished, set the read-out lock bits with `tools/user/final_lock.sh` (undo: `tools/user/unlock.sh`, which erases everything). Until then the idle screen shows an inverted `UNLOCKED` and `trustctl hello` and `add` warn. The same goes for a missing update PIN (inverted `NO PIN` on the last row, `hello` and `add` warn).
 
 ### Physical access
 
@@ -235,7 +235,7 @@ What stops an attacker who has the finished device (lock bits set) in their hand
   of about 7 s has passed, and nothing can read the PIN back (the update mode has no flash read-back), so every guess
   costs the whole gate (about 8 s) plus that wait: a 4 digit PIN takes about 21 hours on average, 42 at worst; each
   additional digit multiplies that by ten. The PIN is only needed to flash; the device works without it.
-- **Warnings.** A device without the final lock bits shows `NOT LOCKED` on its idle screen, and `trustctl` warns.
+- **Warnings.** A device without the final lock bits shows `UNLOCKED` on its idle screen, and `trustctl` warns.
 - **Wiping.** `trustctl wipe` and, if you enable it, the autonomous wipe (a long hold at idle, no host needed) destroy the keys, so a
   device that must not be taken can be emptied. The keys come back from your offline backups.
 

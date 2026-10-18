@@ -35,7 +35,7 @@ These are documented design limits:
 - A patient attacker with physical access guessing a short update PIN. USB and the button are reachable by design, so a laptop plus a servo on the button can try PINs unattended. PIN length against the time the device is out of your sight is the only defence.
 - A user tricked into performing the update gesture and entering the PIN on an attacker's prompt.
 - TOTP itself stays phishable: the token passes through the host.
-- A device without the final lock bits (`NOT LOCKED` on the idle screen) is a development device; ISP can read its EEPROM.
+- A device without the final lock bits (`UNLOCKED` on the idle screen) is a development device; ISP can read its EEPROM.
 - There is no key export by design. Keep offline backups of your secrets.
 
 Reports that improve on these limits (for example a cheap way to make the PIN guessing detectable) are still welcome as ideas, just not as vulnerabilities.

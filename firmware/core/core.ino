@@ -196,28 +196,41 @@ static void showLogo(uint8_t contrast) {
   oled.setContrast(contrast);
 }
 
+// Text centered on a row (an odd margin leaves the extra space on the right).
+static void setRowCentered(uint8_t row, const char *text) {
+  char line[17];
+  uint8_t length = strlen(text);
+  if (length > 16) length = 16;
+  uint8_t margin = (16 - length) / 2;
+  memset(line, ' ', 16);
+  memcpy(line + margin, text, length);
+  line[16] = '\0';
+  setRow(row, line);
+}
+
+// Draws text at a column, inverted (the shadow grid's bit 7), over what the row holds.
+static void putInverted(uint8_t row, uint8_t column, PGM_P text) {
+  char buffer[9];
+  strncpy_P(buffer, text, 8);
+  buffer[8] = '\0';
+  for (uint8_t i = 0; buffer[i]; i++) grid[row][column + i] = buffer[i] | 0x80;
+}
+
+// Idle screen: the name, the version (with the show-version setting), the key count centered,
+// and a row of inverted warnings: UNLOCKED in the left 8 columns, NO PIN at the right end.
 static void showIdle() {
   clearScreen();
-  if (tc_store_config() & TC_CFG_SHOWVERSION) {  // "TrustIssue 0.1.5": exactly 16 columns
-    char title[17];
-    snprintf_P(title, sizeof(title), PSTR("TrustIssue %S"), (const __FlashStringHelper *)VERSION);
-    setRow(1, title);
-  } else {
-    setRowP(1, PSTR("Trust Issues"));
+  setRowCentered(0, "Trust Issues");
+  if (tc_store_config() & TC_CFG_SHOWVERSION) {
+    char version[17];
+    snprintf_P(version, sizeof(version), PSTR("v%S"), (const __FlashStringHelper *)VERSION);
+    setRowCentered(1, version);
   }
   char count[17];
   snprintf_P(count, sizeof(count), PSTR("%u / %u keys"), tc_store_count(), (unsigned)TC_SLOT_COUNT);
-  setRow(2, count);
-  // Warnings are inverted, so they cannot pass for a normal idle screen: NOT LOCKED above the
-  // title, NO PIN below the key count.
-  if (deviceUnlocked) {
-    setRowP(0, PSTR(" NOT LOCKED     "));
-    for (uint8_t column = 0; column < 16; column++) grid[0][column] |= 0x80;
-  }
-  if (pinMissing()) {
-    setRowP(3, PSTR(" NO PIN         "));
-    for (uint8_t column = 0; column < 16; column++) grid[3][column] |= 0x80;
-  }
+  setRowCentered(2, count);
+  if (deviceUnlocked) putInverted(3, 0, PSTR("UNLOCKED"));
+  if (pinMissing()) putInverted(3, 10, PSTR("NO PIN"));
   render();
 }
 

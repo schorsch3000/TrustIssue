@@ -89,7 +89,7 @@ def scenario(name, attestation_ok=True, make_release=0, raise_in_make_release=No
     def run(cmd, *a, **kw):
         if cmd[0] == rig_ci.POWER:
             return real_run(cmd, *a, **kw)
-        if cmd[:3] == ["gh", "attestation", "verify"]:
+        if os.path.basename(cmd[0]) == "gh" and list(cmd[1:3]) == ["attestation", "verify"]:
             verified.append(os.path.basename(cmd[3]))
             return subprocess.CompletedProcess(cmd, 0 if attestation_ok else 1, "", "Loaded digest\n\nThe following policy criteria\n  workflow\n\n\u2717 Policy verification failed\nError: verifying with issuer sigstore.dev")
         if "make_release.py" in " ".join(cmd):
@@ -146,6 +146,19 @@ on_off, statuses, marker, error = scenario("stale marker", marker_before=True)
 check(on_off[:2] == ["off", "on"] and on_off[-1] == "off" and not marker, "a rig left on by a killed run is switched off first", f"{on_off}")
 on_off, statuses, marker, error = scenario("no power script", no_power_script=True)
 check(on_off == [] and statuses[-1] == "success", "without rig-power the run works as before", f"{on_off} {statuses}")
+
+# the preflight knows an old gh: Debian's 2.46 has no `attestation`
+old_gh = os.path.join(tempfile.mkdtemp(), "gh")
+open(old_gh, "w").write('#!/bin/sh\n[ "$1" = attestation ] && { echo \'unknown command "attestation" for "gh"\' >&2; exit 1; }\nexit 0\n')
+os.chmod(old_gh, 0o755)
+os.environ["TRUSTISSUE_GH"] = old_gh
+problems = rig.missing_tools(rig=False, gh=True)
+check(len(problems) == 1 and "too old" in problems[0] and "2.49" in problems[0], "an old gh without `attestation` is reported by the preflight with the fix", f"{problems}")
+new_gh = os.path.join(tempfile.mkdtemp(), "gh")
+open(new_gh, "w").write("#!/bin/sh\nexit 0\n")
+os.chmod(new_gh, 0o755)
+os.environ["TRUSTISSUE_GH"] = new_gh
+check(rig.missing_tools(rig=False, gh=True) == [], "a gh that knows `attestation` passes the preflight")
 
 print("ALL PASSED" if not failures else f"{failures} FAILED")
 sys.exit(1 if failures else 0)

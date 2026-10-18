@@ -220,7 +220,8 @@ def main():
                 raise RuntimeError(f"{name} does not match SHA256SUMS")
         for key in ("trustctl", "firmware"):  # built by CI for this very repository, not just the same bytes as SHA256SUMS lists
             env = dict(os.environ, GH_TOKEN=token) if token else None
-            check = subprocess.run(["gh", "attestation", "verify", os.path.join(work, wanted[key]), "--repo", REPO],
+            import rig
+            check = subprocess.run([rig.find_gh(), "attestation", "verify", os.path.join(work, wanted[key]), "--repo", REPO],
                                    capture_output=True, text=True, env=env, timeout=120)
             if check.returncode:
                 raise RuntimeError(f"attestation of the {key} download not verified: {why((check.stderr or '') + (check.stdout or ''))}")

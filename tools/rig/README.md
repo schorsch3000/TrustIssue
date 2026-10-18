@@ -9,11 +9,20 @@ and no code from pull requests ever reaches it. Only what CI built for a commit 
 As an admin:
 
 ```sh
-sudo apt install python3 python3-serial avrdude git gh
+sudo apt install python3 python3-serial avrdude git
 sudo useradd -m -s /bin/bash rig            # no sudo for this user
 sudo usermod -aG dialout rig                # access to the serial ports
 sudo loginctl enable-linger rig             # lets its timer run without a login
 ```
+
+`gh` must be 2.49 or newer (for `gh attestation`); Debian's package is older. As the user `rig`, without sudo:
+
+```sh
+cd /tmp; url=$(curl -s https://api.github.com/repos/cli/cli/releases/latest | grep -o 'https://[^"]*linux_arm64.tar.gz' | head -1)
+curl -sL "$url" -o gh.tar.gz; mkdir -p ~/.local/bin; tar -xzf gh.tar.gz --strip-components=2 -C ~/.local/bin --wildcards '*/bin/gh'
+```
+
+`rig_ci.py` uses `~/.local/bin/gh` if it exists (or the program in `TRUSTISSUE_GH`) and checks at the start that it knows `attestation`.
 
 As the user `rig`:
 

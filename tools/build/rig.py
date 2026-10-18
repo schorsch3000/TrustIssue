@@ -48,6 +48,12 @@ APT = {"avrdude": "avrdude", "make": "make", "git": "git", "go": "golang-go", "g
        "tail": "coreutils", "sh": "dash", "scp": "openssh-client", "gh": "gh"}
 
 
+def find_gh():
+    """The gh to use: TRUSTISSUE_GH, else ~/.local/bin/gh (where a newer one goes when the distribution's is too old), else the PATH."""
+    local = os.path.expanduser("~/.local/bin/gh")
+    return os.environ.get("TRUSTISSUE_GH") or (local if os.access(local, os.X_OK) else None) or shutil.which("gh")
+
+
 def find_avr_gcc():
     """avr-gcc from the PATH or from the Arduino AVR core (what the bootloader Makefile uses)."""
     return shutil.which("avr-gcc") or next(iter(glob.glob(os.path.expanduser("~/.arduino15/packages/arduino/tools/avr-gcc/*/bin/avr-gcc"))), None)
@@ -62,13 +68,18 @@ def missing_tools(rig=True, build_bootloader=False, host=False, git=False, scp=F
         tools += ["git"]
     if scp:
         tools += ["scp"]
-    if gh:
-        tools += ["gh"]
     if build_bootloader or host:
         tools += ["make"]
     if host:
         tools += ["go", "gofmt", "shellcheck", "g++", "arduino-cli"]
     problems = [f"{t} (Debian: sudo apt install {APT[t]})" for t in dict.fromkeys(tools) if not shutil.which(t)]
+    if gh:
+        path = find_gh()
+        if not path:
+            problems.append("gh (Debian: sudo apt install gh; it must be 2.49 or newer for `gh attestation`)")
+        elif subprocess.run([path, "attestation", "verify", "--help"], capture_output=True).returncode != 0:
+            problems.append(f"{path} is too old: it has no `gh attestation` (needs 2.49 or newer). A current one for the runner user without sudo: "
+                            "download the linux_arm64 .tar.gz from https://github.com/cli/cli/releases/latest and put bin/gh into ~/.local/bin")
     if rig and not os.path.exists(os.path.join(ROOT, "tools", "user", "flash_bootloader.sh")):
         problems.append("tools/user/flash_bootloader.sh (run this from a complete checkout)")
     if (build_bootloader or host) and not find_avr_gcc():

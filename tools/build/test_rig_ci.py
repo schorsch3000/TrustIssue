@@ -91,7 +91,7 @@ def scenario(name, attestation_ok=True, make_release=0, raise_in_make_release=No
             return real_run(cmd, *a, **kw)
         if cmd[:3] == ["gh", "attestation", "verify"]:
             verified.append(os.path.basename(cmd[3]))
-            return subprocess.CompletedProcess(cmd, 0 if attestation_ok else 1, "", "Error: no attestation found")
+            return subprocess.CompletedProcess(cmd, 0 if attestation_ok else 1, "", "Loaded digest\n\nThe following policy criteria\n  workflow\n\n\u2717 Policy verification failed\nError: verifying with issuer sigstore.dev")
         if "make_release.py" in " ".join(cmd):
             if raise_in_make_release:
                 raise raise_in_make_release
@@ -127,7 +127,7 @@ on_off, statuses, marker, error = scenario("passing tests")
 check(on_off == ["on", "off"] and statuses[-1] == "success" and not marker, "passing tests: power on, then off", f"{on_off} {statuses} {marker}")
 check(len(scenario.verified) == 2, "both downloads are checked against the attestation", f"{scenario.verified}")
 on_off, statuses, marker, error = scenario("no attestation", attestation_ok=False)
-check(on_off == [] and "error" in statuses and statuses[-1] == "error" and "attestation" in scenario.descriptions[-1],
+check(on_off == [] and "error" in statuses and statuses[-1] == "error" and "attestation" in scenario.descriptions[-1] and "Error: verifying with issuer" in scenario.descriptions[-1],
       "without a valid attestation the rig is never powered and the status says so", f"{on_off} {statuses} {scenario.descriptions}")
 on_off, statuses, marker, error = scenario("failing tests", make_release=1)
 check(on_off == ["on", "off"] and statuses[-1] == "failure" and not marker, "failing tests: power off all the same", f"{on_off} {statuses}")

@@ -86,6 +86,13 @@ def sha256(path):
     return h.hexdigest()
 
 
+def why(output, limit=110):
+    """The reason in the output of a failed gh: its Error and failure lines, else the last two lines."""
+    lines = [l.strip() for l in output.splitlines() if l.strip()]
+    picked = [l for l in lines if l.startswith(("Error", "\u2717", "X ", "error"))] or lines[-2:]
+    return " | ".join(picked)[:limit] if picked else "no output"
+
+
 def power(state):
     """Switches the rig on or off with rig-power, if there is one. The marker records that it is on, so that a run that was
     killed without a chance to switch off is noticed by the next poll."""
@@ -216,7 +223,7 @@ def main():
             check = subprocess.run(["gh", "attestation", "verify", os.path.join(work, wanted[key]), "--repo", REPO],
                                    capture_output=True, text=True, env=env, timeout=120)
             if check.returncode:
-                raise RuntimeError(f"attestation of {wanted[key]} not verified: {(check.stderr or check.stdout).strip().splitlines()[-1] if (check.stderr or check.stdout).strip() else check.returncode}")
+                raise RuntimeError(f"attestation of {wanted[key]} not verified: {why((check.stderr or '') + (check.stdout or ''))}")
         tree = os.path.join(work, "tree")
         git("worktree", "add", "--detach", "--quiet", tree, sha)
         with tarfile.open(os.path.join(work, wanted["trustctl"])) as tar:

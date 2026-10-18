@@ -21,6 +21,7 @@ device on the same machine, say) is never picked, and nothing but its serial por
 """
 import argparse
 import glob
+import shutil
 import os
 import subprocess
 import sys
@@ -39,6 +40,47 @@ WANTED_VERSION = "0.2"
 
 class RigNotFound(Exception):
     pass
+
+
+# what each tool is called on Debian, for the hint
+APT = {"avrdude": "avrdude", "make": "make", "git": "git", "go": "golang-go", "gofmt": "golang-go", "shellcheck": "shellcheck",
+       "g++": "g++", "arduino-cli": "(arduino-cli, see https://arduino.github.io/arduino-cli)", "sed": "sed", "tr": "coreutils",
+       "tail": "coreutils", "sh": "dash"}
+
+
+def find_avr_gcc():
+    """avr-gcc from the PATH or from the Arduino AVR core (what the bootloader Makefile uses)."""
+    return shutil.which("avr-gcc") or next(iter(glob.glob(os.path.expanduser("~/.arduino15/packages/arduino/tools/avr-gcc/*/bin/avr-gcc"))), None)
+
+
+def missing_tools(rig=True, build_bootloader=False, host=False, git=False):
+    """Everything the chosen jobs call that is not there, as readable lines. Empty when all is in place."""
+    tools = []
+    if rig:
+        tools += ["avrdude", "sh", "sed", "tr", "tail"]
+    if git or host:
+        tools += ["git"]
+    if build_bootloader or host:
+        tools += ["make"]
+    if host:
+        tools += ["go", "gofmt", "shellcheck", "g++", "arduino-cli"]
+    problems = [f"{t} (Debian: sudo apt install {APT[t]})" for t in dict.fromkeys(tools) if not shutil.which(t)]
+    if rig and not os.path.exists(os.path.join(ROOT, "tools", "user", "flash_bootloader.sh")):
+        problems.append("tools/user/flash_bootloader.sh (run this from a complete checkout)")
+    if (build_bootloader or host) and not find_avr_gcc():
+        problems.append("avr-gcc (the Arduino AVR core: arduino-cli core install arduino:avr, or Debian: sudo apt install gcc-avr avr-libc)")
+    try:
+        import serial  # noqa: F401
+    except ImportError:
+        problems.append("the python module serial (Debian: sudo apt install python3-serial)")
+    return problems
+
+
+def require_tools(**what):
+    """The preflight: stops before anything is touched, naming everything that is missing at once."""
+    problems = missing_tools(**what)
+    if problems:
+        sys.exit("preflight: this is missing:\n  - " + "\n  - ".join(problems))
 
 
 def serial_ports():
@@ -165,6 +207,7 @@ def merged_hex(bootloader_hex, core_hex, out):
 def provision(rig, core_hex=None, bootloader_hex=None):
     """Chip erase, bootloader, firmware and fuses over ISP (tools/user/flash_bootloader.sh). Wipes the EEPROM too."""
     core_hex = core_hex or os.path.join(ROOT, "trustctl", "internal", "firmware", "core.hex")
+    require_tools(rig=True, build_bootloader=bootloader_hex is None)
     if bootloader_hex is None:
         subprocess.run(["make", "-B", "-C", os.path.join(ROOT, "firmware", "bootloader")], check=True, capture_output=True)
         bootloader_hex = os.path.join(ROOT, "firmware", "bootloader", "boot.hex")

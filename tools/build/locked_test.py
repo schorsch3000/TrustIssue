@@ -28,6 +28,8 @@ ROOT = rig_module.ROOT
 parser = argparse.ArgumentParser()
 parser.add_argument("--rig")
 parser.add_argument("--device")
+parser.add_argument("--core", help="provision again with this firmware hex (default: the embedded core.hex)")
+parser.add_argument("--bootloader", help="provision again with this bootloader hex (default: build one)")
 parser.add_argument("--bin", default=os.path.join(ROOT, "trustctl", "bin", "trustctl"))
 args = parser.parse_args()
 failures = 0
@@ -39,6 +41,7 @@ def check(ok, what, detail=""):
     print(f"{'PASS' if ok else 'FAIL'}  {what}" + (f"   [{detail}]" if detail and not ok else ""), flush=True)
 
 
+rig_module.require_tools(rig=True, build_bootloader=not args.bootloader)  # before anything is touched
 rig = rig_module.Rig(args.rig) if args.rig else rig_module.find_rig()
 device = args.device or rig_module.find_device(rig)
 
@@ -106,7 +109,7 @@ try:
 finally:
     r = isp(os.path.join(ROOT, "tools", "user", "unlock.sh"), rig.path, "--yes")
     check(r.returncode == 0 and "0xff" in r.stdout.lower(), "unlock.sh erases the chip and the lock reads 0xff again", r.stdout[-300:] + r.stderr[-200:])
-    rig = rig_module.provision(rig)
+    rig = rig_module.provision(rig, os.path.abspath(args.core) if args.core else None, os.path.abspath(args.bootloader) if args.bootloader else None)
     line = hello()
     check(line.startswith("TrustIssue") and line.endswith("unlocked"), "provisioned again: the device is open and answers", line)
 

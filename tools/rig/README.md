@@ -30,6 +30,8 @@ systemctl --user enable --now rig-ci.timer
 
 ## What it does
 
+Before anything is touched, `rig_ci.py` and `make_release.py` run a preflight (`rig.require_tools`) that names every missing tool at once, with the Debian package. On the Pi that is `avrdude`, `git`, `sed`, `tr`, `tail` and the python module `serial`; no compiler is needed, because the bootloader and firmware come from the download.
+
 Every 5 minutes: asks GitHub which commit the prerelease `nightly` was built from. For a new one it downloads that release's `trustctl`
 (for this machine) and firmware archive, checks them against `SHA256SUMS`, checks out the scripts at exactly that commit (it must be on `master`),
 provisions the device over ISP with the downloaded bootloader and firmware and runs the rig suites (`make_release.py --rig-only`).

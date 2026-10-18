@@ -75,6 +75,10 @@ def die(msg):
     sys.exit(f"make_release: {msg}")
 
 
+# ---- 0. preflight: every tool the chosen jobs call, before anything is done
+rig_module.require_tools(rig=not args.host_only, build_bootloader=not args.rig_only or not args.bootloader,
+                         host=not args.rig_only, git=True)
+
 # ---- 1. preconditions ------------------------------------------------------------------------------------------
 if out("git", "rev-parse", "--abbrev-ref", "HEAD") != "master" and not no_git:
     die("not on master")
@@ -142,7 +146,9 @@ def rig_suites(rig_port, device):
         Suite("trustctl against the device (trustctl_e2e)", "rig", ["tools/build/trustctl_e2e.py", "--bin", trustctl_bin, "--device", device, "--rig", rig_port]),
         Suite("bootloader gate and update PIN (boot_test --pin)", "rig", ["tools/build/boot_test.py", device, rig_port, "--pin"]),
         Suite("trustctl flash and calibrate (trustctl_flash_e2e)", "rig", ["tools/build/trustctl_flash_e2e.py", "--bin", trustctl_bin, "--device", device, "--rig", rig_port]),
-        Suite("lock bits and the unlocked indicator (locked_test)", "rig", ["tools/build/locked_test.py", "--rig", rig_port, "--device", device, "--bin", trustctl_bin]),
+        Suite("lock bits and the unlocked indicator (locked_test)", "rig", ["tools/build/locked_test.py", "--rig", rig_port, "--device", device, "--bin", trustctl_bin]
+              + (["--core", os.path.abspath(args.core)] if args.core else [])
+              + (["--bootloader", os.path.abspath(args.bootloader)] if args.bootloader else [])),
     ]
 
 

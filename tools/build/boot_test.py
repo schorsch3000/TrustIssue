@@ -201,6 +201,8 @@ if PIN_TESTS:
                 break
             time.sleep(2)
         check(ok, "the application runs after a wrong PIN (trustctl hello)")
+        check("nopin" not in hello.stdout.split() and "no update PIN" not in hello.stderr,
+              "with a PIN set HELLO has no nopin and trustctl does not warn", hello.stdout + hello.stderr)
 
         a, port = gate(pin="4711")
         decided = a.verdict - a.pin_sent

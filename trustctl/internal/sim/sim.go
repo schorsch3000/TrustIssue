@@ -52,6 +52,7 @@ type Device struct {
 	out      io.Writer
 	counts   map[string]int
 	unlocked bool
+	noPIN    bool
 }
 
 // New returns the host side of a connection to a fresh simulated device.
@@ -69,11 +70,22 @@ func (d *Device) SetUnlocked(unlocked bool) {
 	d.mu.Unlock()
 }
 
+// SetNoPIN makes the device say that no update PIN is set, like a firmware that finds a blank PIN page.
+func (d *Device) SetNoPIN(noPIN bool) {
+	d.mu.Lock()
+	d.noPIN = noPIN
+	d.mu.Unlock()
+}
+
 func (d *Device) banner() string {
-	if d.unlocked {
-		return "TrustIssue 0.1.0 proto 1 unlocked"
+	line := "TrustIssue 0.1.0 proto 1"
+	if d.noPIN {
+		line += " nopin"
 	}
-	return "TrustIssue 0.1.0 proto 1"
+	if d.unlocked {
+		line += " unlocked"
+	}
+	return line
 }
 
 // Keys returns the names of the stored keys by slot (empty string: free).

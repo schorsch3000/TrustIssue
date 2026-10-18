@@ -78,6 +78,7 @@ def lock_byte():
 try:
     line = hello()
     check(line.startswith("TrustIssue") and line.endswith("unlocked"), "an open device says unlocked in HELLO", line)
+    check("nopin" in line.split(), "a device without an update PIN says nopin in HELLO", line)
     check(lock_byte() == "0xcf", "the lock byte reads 0xcf before")
 
     r = isp(os.path.join(ROOT, "tools", "user", "final_lock.sh"), rig.path, "--yes")
@@ -85,8 +86,10 @@ try:
     check(lock_byte() == "0xcc", "the lock byte reads 0xcc after")
     line = hello()
     check(line.startswith("TrustIssue") and "unlocked" not in line, "a finished device no longer says unlocked", line)
+    check("nopin" in line.split(), "a finished device without a PIN still says nopin", line)
     t = subprocess.run([args.bin, "--no-daemon", "--device", device, "hello"], capture_output=True, text=True, timeout=60)
     check(t.returncode == 0 and "not locked" not in t.stdout + t.stderr and "unlocked" not in t.stdout, "trustctl hello prints no unlocked warning", t.stdout + t.stderr)
+    check("no update PIN" in t.stderr, "trustctl hello warns about the missing PIN", t.stdout + t.stderr)
 
     with tempfile.TemporaryDirectory() as tmp:
         dump = os.path.join(tmp, "flash.bin")

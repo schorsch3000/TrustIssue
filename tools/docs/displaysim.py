@@ -27,7 +27,7 @@ PIXEL_OFF = (6, 8, 12)
 PIXEL_ON = (214, 236, 255)  # the usual blue-white of a small OLED
 TEXT = (38, 40, 46)
 MUTED = (104, 108, 116)
-ACCENT = (168, 92, 0)
+ACCENT = (41, 128, 185)  # the blue of the documentation theme: captions
 BUTTON_RED = (214, 36, 30)  # the red button of the device
 FULL_CONTRAST = 0x20  # the contrast the project uses for "full"; anything above looks the same
 
@@ -204,18 +204,14 @@ def _palette():
     sheet = Image.new("RGB", (len(colors) * 8, 8))
     for i, color in enumerate(colors):
         sheet.paste(color, (i * 8, 0, i * 8 + 8, 8))
-    # antialiased text needs the grays in between
-    gradient = Image.new("RGB", (256, 8))
-    for x in range(256):
-        shade = tuple(round(BACKGROUND[i] + (TEXT[i] - BACKGROUND[i]) * x / 255) for i in range(3))
-        gradient.paste(shade, (x, 0, x + 1, 8))
-    red = Image.new("RGB", (256, 8))  # antialiased red text
-    for x in range(256):
-        red.paste(tuple(round(BACKGROUND[i] + (BUTTON_RED[i] - BACKGROUND[i]) * x / 255) for i in range(3)), (x, 0, x + 1, 8))
-    both = Image.new("RGB", (sheet.width + 512, 8))
+    # antialiased text needs the shades in between
+    inks = (TEXT, BUTTON_RED, ACCENT)
+    both = Image.new("RGB", (sheet.width + 256 * len(inks), 8))
     both.paste(sheet, (0, 0))
-    both.paste(gradient, (sheet.width, 0))
-    both.paste(red, (sheet.width + 256, 0))
+    for k, ink in enumerate(inks):
+        for x in range(256):
+            shade = tuple(round(BACKGROUND[i] + (ink[i] - BACKGROUND[i]) * x / 255) for i in range(3))
+            both.paste(shade, (sheet.width + 256 * k + x, 0, sheet.width + 256 * k + x + 1, 8))
     return both.quantize(colors=128, dither=Image.NONE)
 
 

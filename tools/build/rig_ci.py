@@ -85,6 +85,13 @@ def main():
     os.makedirs(STATE, exist_ok=True)
     os.makedirs(REPORTS, exist_ok=True)
 
+    for tool in ("avrdude", "git"):
+        if not shutil.which(tool):
+            sys.exit(f"rig_ci: {tool} is not installed")
+    try:
+        import serial  # noqa: F401
+    except ImportError:
+        sys.exit("rig_ci: pyserial is not installed (on Debian: sudo apt install python3-serial)")
     arch = ARCH.get(platform.machine())
     if not arch:
         sys.exit(f"rig_ci: no trustctl build for {platform.machine()}")

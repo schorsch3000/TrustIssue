@@ -10,6 +10,7 @@
 # Another ISP programmer: set ISP_ARGS, e.g. ISP_ARGS="-c usbasp" tools/user/unlock.sh - --yes
 set -e
 port="$1"
+command -v avrdude >/dev/null 2>&1 || { echo "avrdude is not installed (on Debian: sudo apt install avrdude)" >&2; exit 69; }
 if [ -z "$port" ] || [ "$2" != "--yes" ]; then
   sed -n '2,12p' "$0"
   exit 64

@@ -14,6 +14,7 @@
 # EESAVE unprogrammed, so a chip erase also empties the EEPROM).
 set -e
 port="$1"
+command -v avrdude >/dev/null 2>&1 || { echo "avrdude is not installed (on Debian: sudo apt install avrdude)" >&2; exit 69; }
 if [ -z "$port" ] || [ "$2" != "--yes" ]; then
   sed -n '2,16p' "$0"
   exit 64

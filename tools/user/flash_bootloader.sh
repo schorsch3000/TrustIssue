@@ -19,6 +19,7 @@ usage() { sed -n '2,15p' "$0"; exit 64; }
 [ $# -ge 1 ] || usage
 port="$1"
 shift
+command -v avrdude >/dev/null 2>&1 || { echo "avrdude is not installed (on Debian: sudo apt install avrdude)" >&2; exit 69; }
 yes=0 keep=0 hex=""
 while [ $# -gt 0 ]; do
   case "$1" in

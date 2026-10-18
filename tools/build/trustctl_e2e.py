@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import os
 import queue
+import re
 import struct
 import subprocess
 import sys
@@ -122,7 +123,7 @@ check(code == 1 and prompts == 0, "an unknown key", f"{code} {err}")
 
 code, out, err, prompts = trustctl("config", "set", "invert=on")
 code, out, err, prompts = trustctl("config")
-check("invert    on" in out and "rotate    off" in out, "config set and get", out)
+check(re.search(r"invert\s+on", out) and re.search(r"rotate\s+off", out), "config set and get", out)
 trustctl("config", "set", "invert=off")
 
 code, out, err, prompts = trustctl("del", "e2e")

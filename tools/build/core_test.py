@@ -150,7 +150,7 @@ check(d.ask("GETCFG") == "OK 00", "GETCFG default")
 check(d.confirmed("SETCFG 04") == "OK", "SETCFG accepted")
 check(d.ask("GETCFG") == "OK 04", "GETCFG after SETCFG")
 check(d.confirmed("SETCFG 00") == "OK", "SETCFG back to default")
-check(d.ask("SETCFG 10") == "ERR BADARG", "reserved config bit")
+check(d.ask("SETCFG 20") == "ERR BADARG", "reserved config bit")
 check(d.ask("FROB") == "ERR UNKNOWN", "unknown command")
 check(d.ask("TOKEN 0") == "ERR BADARG", "missing argument")
 

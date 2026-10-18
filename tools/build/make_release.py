@@ -286,7 +286,7 @@ def verify_device(port):
     if not re.search(r"device:\s+UTC\+0(:00)?\s", tz + " "):
         die(f"the device is not on UTC+0 after provisioning ({tz.strip().splitlines()[0]})")
     cfg = dict(l.split() for l in ask("config", "get").splitlines() if l.strip())
-    if cfg != {"rotate": "off", "invert": "off", "logo": "off", "autowipe": "off"}:
+    if cfg != {"rotate": "off", "invert": "off", "logo": "off", "autowipe": "off", "show-version": "off"}:
         die(f"the device settings are not the defaults: {cfg}")
     print(f"dev device on {port}: no keys, UTC+0, default settings", flush=True)
 

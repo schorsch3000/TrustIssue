@@ -22,7 +22,7 @@ status `device-tests` on it. A release tags a commit it has already tested, so t
 1. Bump `VERSION` in `firmware/core/core.ino` (and the expectation in `tools/build/core_test.py`) if the firmware version
    changes, run `tools/build/embed_firmware.sh`, commit and push. The tag `vX.Y.Z` must equal the firmware version.
 2. Wait until the commit shows green CI and `device-tests: success` on GitHub (about 15 minutes).
-3. `tools/build/make_release.py X.Y.Z --report-host trustissue-test@homedisplay`
+3. `export TRUSTISSUE_RIG_HOST=trustissue-test@homedisplay` (once, e.g. in your shell profile), then `tools/build/make_release.py X.Y.Z`
    checks both, copies that commit's report from the rig machine with `scp`, makes the signed tag on `HEAD`, verifies it and asks
    before it pushes the tag. Then it commits the report as `docs/test-reports/vX.Y.Z.md` (after the tag, so the tag stays on the
    tested commit) and asks before it pushes `master`.
@@ -30,7 +30,7 @@ status `device-tests` on it. A release tags a commit it has already tested, so t
    for the tagged commit), runs the tests again, builds, attests and publishes the release with the commit list and a link to
    the report.
 
-With a rig attached to your own machine instead, `tools/build/make_release.py X.Y.Z` runs everything here (the tests of CI, the
+With a rig attached to your own machine instead, `tools/build/make_release.py X.Y.Z --local` (or without the variable) runs everything here (the tests of CI, the
 rig tests) and commits the report before the tag (`--dry-run`: no commit, tag or push; `--host-only`: no rig). The workflow
 accepts that too, if the tagged commit only adds the report to a tested commit.
 

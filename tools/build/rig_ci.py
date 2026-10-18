@@ -77,6 +77,20 @@ def sha256(path):
     return h.hexdigest()
 
 
+def prune_reports(keep=100):
+    """Keeps the reports and logs of the `keep` newest commits (by modification time) and deletes the rest. latest.* stays."""
+    groups = {}
+    for name in os.listdir(REPORTS):
+        stem, dot, ext = name.partition(".")
+        if dot and len(stem) == 40 and ext in ("md", "log") and all(c in "0123456789abcdef" for c in stem):
+            groups.setdefault(stem, []).append(os.path.join(REPORTS, name))
+    newest_first = sorted(groups, key=lambda stem: max(os.path.getmtime(p) for p in groups[stem]), reverse=True)
+    for stem in newest_first[keep:]:
+        for path in groups[stem]:
+            os.remove(path)
+    return max(0, len(newest_first) - keep)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--once", action="store_true", help="accepted for the service file; every run is one poll anyway")
@@ -84,6 +98,13 @@ def main():
     args = parser.parse_args()
     os.makedirs(STATE, exist_ok=True)
     os.makedirs(REPORTS, exist_ok=True)
+    removed = prune_reports()
+    if removed:
+        print(f"rig_ci: removed the reports of {removed} old commits (the newest 100 stay)", flush=True)
+    try:  # leftovers of a killed run
+        git("worktree", "prune")
+    except subprocess.CalledProcessError:
+        pass
 
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import rig  # noqa: E402

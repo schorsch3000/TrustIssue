@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """Makes a release: runs every test (the rig tests too), writes the test report, tags.
 
-  tools/build/make_release.py X.Y.Z --report-host USER@HOST         the usual way: tag the commit the rig machine tested
+  TRUSTISSUE_RIG_HOST=USER@HOST tools/build/make_release.py X.Y.Z   the usual way: tag the commit the rig machine tested
   tools/build/make_release.py X.Y.Z [--rig PORT] [--yes]
   tools/build/make_release.py X.Y.Z --dry-run [--report FILE]       everything, the rig too, but nothing is committed or tagged
   tools/build/make_release.py X.Y.Z --host-only [--report FILE]     dry run: only the tests that need no device,
                                                                      report to a file, nothing is committed or tagged
 
---report-host USER@HOST (the rig machine, see tools/rig/README.md): no tests run here. HEAD must be pushed, CI must be green for it and the rig
+With the environment variable TRUSTISSUE_RIG_HOST set to USER@HOST of the rig machine (see tools/rig/README.md) no tests run here. HEAD must be pushed, CI must be green for it and the rig
 machine must have posted device-tests: success for it (GitHub says so). The script copies that commit's report from the machine with scp,
 makes the signed tag on HEAD itself (the tagged commit is exactly the tested one, no report commit in between), asks, pushes the tag, then
 commits the report as docs/test-reports/vX.Y.Z.md, asks again and pushes master. The release workflow links the report in the release
 notes (no asset upload: that would need write access to the repository for whoever runs this).
 
-The rest of this text is about running the tests here, with a rig attached to this machine. What it does, in order:
+The rest of this text is about running the tests here, with a rig attached to this machine (--local does that even when the variable is set; --dry-run, --rig-only and --host-only always do). What it does, in order:
   1. checks that you are on master with a clean tree, that X.Y.Z equals the firmware version (core.ino and the
      embedded copy), that the tag does not exist yet and that tag signing is set up;
   2. rebuilds the firmware and trustctl, runs the tests that need no device (the same as CI), then, on the rig
@@ -47,7 +47,7 @@ import rig as rig_module  # noqa: E402
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("version", help="X.Y.Z, without the v")
-parser.add_argument("--report-host", help="USER@HOST of the rig machine: tag the commit it tested and take its report (no tests run here)")
+parser.add_argument("--local", action="store_true", help="run the tests here with a rig attached to this machine, even if TRUSTISSUE_RIG_HOST names a rig machine")
 parser.add_argument("--rig", help="serial port of the rig Nano (default: look at every serial port)")
 parser.add_argument("--dry-run", action="store_true", help="with the rig, but nothing is committed, tagged or pushed; the report goes to a file")
 parser.add_argument("--rig-only", action="store_true", help="only the rig: provision and run the rig suites (what the Pi does for CI); nothing is committed or tagged, the report goes to --report")
@@ -61,6 +61,8 @@ parser.add_argument("--timeout", type=int, default=7200, help="seconds the whole
 parser.add_argument("--yes", action="store_true", help="do not ask before starting the rig tests (still asks before pushing)")
 args = parser.parse_args()
 no_git = args.host_only or args.dry_run or args.rig_only
+# the rig machine (USER@HOST) whose tested commit and report a release takes: an environment variable, not an argument
+rig_host = None if (args.local or no_git) else os.environ.get("TRUSTISSUE_RIG_HOST")
 
 version = args.version
 tag = f"v{version}"
@@ -84,7 +86,7 @@ def die(msg):
 
 
 # ---- 0. preflight: every tool the chosen jobs call, before anything is done
-if args.report_host:
+if rig_host:
     rig_module.require_tools(rig=False, git=True, scp=True)
 else:
     rig_module.require_tools(rig=not args.host_only, build_bootloader=not args.rig_only or not args.bootloader,
@@ -139,9 +141,9 @@ def release_from_host():
 
     report = os.path.join(ROOT, "docs", "test-reports", f"{tag}.md")
     os.makedirs(os.path.dirname(report), exist_ok=True)
-    fetch = subprocess.run(["scp", "-q", f"{args.report_host}:reports/{sha}.md", report], capture_output=True, text=True)
+    fetch = subprocess.run(["scp", "-q", f"{rig_host}:reports/{sha}.md", report], capture_output=True, text=True)
     if fetch.returncode:
-        die(f"could not copy reports/{sha}.md from {args.report_host}: {fetch.stderr.strip()}")
+        die(f"could not copy reports/{sha}.md from {rig_host}: {fetch.stderr.strip()}")
     text = open(report).read()
     if sha not in text or "FAILED" in text.split("## Not covered")[0]:
         os.remove(report)
@@ -165,7 +167,7 @@ def release_from_host():
     sys.exit(0)
 
 
-if args.report_host:
+if rig_host:
     release_from_host()
 
 

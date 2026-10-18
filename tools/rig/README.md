@@ -35,7 +35,7 @@ Before anything is touched, `rig_ci.py` and `make_release.py` run a preflight (`
 Every 5 minutes: asks GitHub which commit the prerelease `nightly` was built from. For a new one it downloads that release's `trustctl`
 (for this machine) and firmware archive, checks them against `SHA256SUMS`, checks out the scripts at exactly that commit (it must be on `master`),
 provisions the device over ISP with the downloaded bootloader and firmware and runs the rig suites (`make_release.py --rig-only`).
-The result is posted on the commit as the status `device-tests`. The report and the log stay on the machine in `~/reports/<commit>.md` and `.log` (`latest.md` and `latest.log` point at the newest run: the files sort by hash, not by time).
+The result is posted on the commit as the status `device-tests`. The report and the log stay on the machine in `~/reports/<commit>.md` and `.log` (`latest.md` and `latest.log` point at the newest run: the files sort by hash, not by time). At most the 100 newest are kept; older ones are deleted at the start of the next poll.
 A missing rig gives the status `error` and the commit is tried again at the next poll.
 
 Look at it: `systemctl --user list-timers`, `journalctl --user -u rig-ci`, `tools/build/rig_ci.py --dry-run` (everything except the status; it also re-tests the newest commit).

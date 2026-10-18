@@ -24,7 +24,7 @@ mkdir -p ~/.config/trustissue-rig ~/.local/state/trustissue-rig ~/.config/system
 install -m 600 /dev/stdin ~/.config/trustissue-rig/token     # paste the token, then Ctrl-D
 cp ~/TrustIssue/tools/rig/rig-ci.service ~/TrustIssue/tools/rig/rig-ci.timer ~/.config/systemd/user/
 systemctl --user daemon-reload
-tools_check=$(cd ~/TrustIssue && python3 tools/build/rig.py find) && echo "$tools_check"    # rig and device found?
+(cd ~/TrustIssue && python3 tools/build/rig.py find)    # must print the rig and the device
 systemctl --user enable --now rig-ci.timer
 ```
 

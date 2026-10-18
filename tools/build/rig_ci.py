@@ -121,7 +121,8 @@ def main():
         git("merge-base", "--is-ancestor", sha, "origin/master")
     except subprocess.CalledProcessError:
         print(f"rig_ci: {short} is not on master: not testing it")
-        open(os.path.join(STATE, "last"), "w").write(sha)
+        if not args.dry_run:
+            open(os.path.join(STATE, "last"), "w").write(sha)
         return
 
     work = tempfile.mkdtemp(prefix="rig-ci-")
@@ -173,7 +174,8 @@ def main():
         else:
             failed = [l for l in text.splitlines() if l.startswith("FAIL")][:2]
             post_status(token, sha, "failure", "rig tests failed: " + "; ".join(failed)[:100] if failed else "rig tests failed, see the log on the rig", args.dry_run)
-        open(os.path.join(STATE, "last"), "w").write(sha)
+        if not args.dry_run:  # a dry run does not count as tested
+            open(os.path.join(STATE, "last"), "w").write(sha)
     except Exception as e:
         post_status(token, sha, "error", f"rig CI error: {e}"[:140], args.dry_run)
         raise

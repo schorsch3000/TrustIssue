@@ -28,6 +28,7 @@ PIXEL_ON = (214, 236, 255)  # the usual blue-white of a small OLED
 TEXT = (38, 40, 46)
 MUTED = (104, 108, 116)
 ACCENT = (168, 92, 0)
+BUTTON_RED = (214, 36, 30)  # the red button of the device
 FULL_CONTRAST = 0x20  # the contrast the project uses for "full"; anything above looks the same
 
 
@@ -186,17 +187,17 @@ def draw_picture(state, t, command=None):
         d.text((BEZEL, y + 28), "< " + state.reply, font=_font(17), fill=MUTED)
     # the button: a ring, filled while pressed, with the hold time next to it
     cx, cy, r = width - BEZEL - 150, y + 11, 11
-    d.ellipse((cx - r, cy - r, cx + r, cy + r), outline=MUTED, width=2, fill=(236, 150, 30) if state.button else BACKGROUND)
+    d.ellipse((cx - r, cy - r, cx + r, cy + r), outline=MUTED, width=2, fill=BUTTON_RED if state.button else BACKGROUND)
     label = "button"
     if state.button:
         label = "held %.1f s" % ((t - state.pressed_at) / 1000)
-    d.text((cx + r + 12, cy - 10), label, font=_font(17), fill=ACCENT if state.button else MUTED)
+    d.text((cx + r + 12, cy - 10), label, font=_font(17), fill=BUTTON_RED if state.button else MUTED)
     return picture
 
 
 def _palette():
     """One fixed palette for every GIF frame, so colors cannot flicker between frames."""
-    colors = [BACKGROUND, PIXEL_OFF, TEXT, MUTED, ACCENT]
+    colors = [BACKGROUND, PIXEL_OFF, TEXT, MUTED, ACCENT, BUTTON_RED]
     for level in range(0, 0x21, 4):
         b = brightness(level)
         colors.append(tuple(round(PIXEL_OFF[i] + (PIXEL_ON[i] - PIXEL_OFF[i]) * b) for i in range(3)))
@@ -208,9 +209,13 @@ def _palette():
     for x in range(256):
         shade = tuple(round(BACKGROUND[i] + (TEXT[i] - BACKGROUND[i]) * x / 255) for i in range(3))
         gradient.paste(shade, (x, 0, x + 1, 8))
-    both = Image.new("RGB", (sheet.width + 256, 8))
+    red = Image.new("RGB", (256, 8))  # antialiased red text
+    for x in range(256):
+        red.paste(tuple(round(BACKGROUND[i] + (BUTTON_RED[i] - BACKGROUND[i]) * x / 255) for i in range(3)), (x, 0, x + 1, 8))
+    both = Image.new("RGB", (sheet.width + 512, 8))
     both.paste(sheet, (0, 0))
     both.paste(gradient, (sheet.width, 0))
+    both.paste(red, (sheet.width + 256, 0))
     return both.quantize(colors=128, dither=Image.NONE)
 
 

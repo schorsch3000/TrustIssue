@@ -37,13 +37,13 @@ On the first development display 0x20 and 0x00 were comfortable: 0x00 is not dar
 is what the dimmed phase wants. OLEDs lose brightness with use, which is why the idle logo is dimmed
 and the display turns off.
 
-![Logo at full contrast](/_static/display/calibrate-contrast-full.png)
+![Logo at full contrast](/_static/display/calibrate-contrast-full.gif)
 
-`contrast full 0x20`
+`contrast full 0x20` (the demo logos in turn)
 
-![Logo dimmed](/_static/display/calibrate-contrast-dim.png)
+![Logo dimmed](/_static/display/calibrate-contrast-dim.gif)
 
-`contrast dim 0`
+`contrast dim 0`, the same logos dimmed
 
 ## Logo
 
@@ -62,13 +62,13 @@ The picture is streamed to the display in about a second and remembered for `fla
   dark); all other entries are on.
 - `--invert` swaps lit and dark, including the margin around a smaller image.
 
-![A logo](/_static/display/calibrate-logo.png)
+![A logo](/_static/display/calibrate-logo.gif)
 
-`calibrate logo trust_issue_03.png`
+`calibrate logo FILE.png`, shown here with each of the demo logos in turn
 
-![The same inverted](/_static/display/calibrate-logo-invert.png)
+![The same inverted](/_static/display/calibrate-logo-invert.gif)
 
-`calibrate logo trust_issue_03.png --invert`
+`calibrate logo FILE.png --invert`
 
 A fast way to design one: watch the file and let every save show up on the display,
 

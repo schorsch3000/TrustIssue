@@ -142,6 +142,7 @@ BOOT_SCENARIOS = {
 }
 
 
+LOGO_SHOWN_MS = 1800  # how long each demo logo is shown in the calibrate pictures
 FONT_DIR = os.path.join(ROOT, "trustctl", "internal", "fonts")
 FONTS = ["victoriamedium8", "victoriabold8", "chroma48medium8", "artossans8", "artosserif8", "torussansbold8", "5x8"]
 FONT_SAMPLE = ["Il1 O0oQ 5S 8B", "GitHub paypa1", "rn m vv cl .:-", "AaBbCcDdEeFfGgHh"]  # what calibrate font shows
@@ -184,10 +185,27 @@ def calibration_stills(outdir):
     save("calibrate-home", home)
     save("calibrate-rotate", transformed(home, flip=True))
     save("calibrate-invert", transformed(home, invert=True))
-    save("calibrate-logo", logo)
-    save("calibrate-logo-invert", transformed(logo, invert=True))
-    save("calibrate-contrast-full", logo, 0x20)
-    save("calibrate-contrast-dim", logo, 0x00)
+    # the logos: every demo logo in turn, as the picture of the calibrate commands
+    for name, command, flip_invert, contrast in (
+            ("calibrate-logo", "trustctl calibrate logo %s", False, displaysim.FULL_CONTRAST),
+            ("calibrate-logo-invert", "trustctl calibrate logo %s --invert", True, displaysim.FULL_CONTRAST),
+            ("calibrate-contrast-full", "trustctl calibrate contrast full 0x20", False, 0x20),
+            ("calibrate-contrast-dim", "trustctl calibrate contrast dim 0", False, 0x00)):
+        states, t = [], 0
+        for path in DEMO_LOGOS:
+            frame = logo_bytes(path)
+            if flip_invert:
+                frame = transformed(frame, invert=True)
+            label = os.path.basename(path)
+            if "%s" in command:  # the command itself names the file: show it in the caption line
+                label = "$ " + command % label
+            for _ in range(LOGO_SHOWN_MS // displaysim.FRAME_MS):
+                states.append((t, displaysim.State(frame.hex(), contrast, caption=label)))
+                t += displaysim.FRAME_MS
+        shown = None if "%s" in command else command
+        displaysim.write_gif(os.path.join(outdir, name + ".gif"), states, shown, max_gap=LOGO_SHOWN_MS, tail=LOGO_SHOWN_MS,
+                             show_button=False)
+        made.append(name + ".gif")
     for name in FONTS:
         font = open(os.path.join(FONT_DIR, name + ".bin"), "rb").read()
         save("calibrate-font-" + name, text_frame(font, FONT_SAMPLE))

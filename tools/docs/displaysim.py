@@ -171,7 +171,7 @@ def _font(size):
     return ImageFont.load_default()
 
 
-def draw_picture(state, t, command=None):
+def draw_picture(state, t, command=None, show_button=True):
     """The display with a caption strip: the command on the host, the reply, and the button."""
     image = draw_display(state.frame, state.contrast)
     width = image.width
@@ -185,6 +185,8 @@ def draw_picture(state, t, command=None):
         d.text((BEZEL, y + 28), state.caption, font=_font(17), fill=ACCENT)
     elif command and state.reply:
         d.text((BEZEL, y + 28), "< " + state.reply, font=_font(17), fill=MUTED)
+    if not show_button:
+        return picture
     # the button: a ring, filled while pressed, with the hold time next to it
     cx, cy, r = width - BEZEL - 150, y + 11, 11
     d.ellipse((cx - r, cy - r, cx + r, cy + r), outline=MUTED, width=2, fill=BUTTON_RED if state.button else BACKGROUND)
@@ -215,7 +217,7 @@ def _palette():
     return both.quantize(colors=128, dither=Image.NONE)
 
 
-def write_gif(path, states, command=None, max_gap=1500, tail=1500, speed=1.0):
+def write_gif(path, states, command=None, max_gap=1500, tail=1500, speed=1.0, show_button=True):
     """Writes the clip as an animated GIF. A picture that stays the same is shown once, at most
     max_gap ms long (so waiting for a timeout does not make a huge file); the last one stays tail ms."""
     palette = _palette()
@@ -227,7 +229,7 @@ def write_gif(path, states, command=None, max_gap=1500, tail=1500, speed=1.0):
             durations[-1] += FRAME_MS
             continue
         keys.append(key)
-        frames.append(draw_picture(state, t, command).quantize(palette=palette, dither=Image.NONE))
+        frames.append(draw_picture(state, t, command, show_button).quantize(palette=palette, dither=Image.NONE))
         durations.append(FRAME_MS)
     durations = [max(20, round(min(d, max_gap) / speed / 10) * 10) for d in durations]
     durations[-1] = tail

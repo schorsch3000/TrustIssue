@@ -1,0 +1,7 @@
+/* The display pictures are pixel art: never smooth them, and keep them from overflowing small screens. */
+img[src*="display/"] {
+  image-rendering: pixelated;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}

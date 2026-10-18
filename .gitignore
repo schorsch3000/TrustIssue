@@ -7,3 +7,4 @@ trustctl/bin/
 dist/
 resume
 logs_*/
+/docs/_build/

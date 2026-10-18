@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" font-family="DejaVu Sans, Verdana, sans-serif" font-size="14">
+  <title>Wiring of a Trust Issues device</title>
+  <rect width="760" height="360" fill="#ffffff"/>
+  <!-- Nano -->
+  <rect x="30" y="40" width="250" height="280" rx="8" fill="#1d6fa5" stroke="#0e3d5c" stroke-width="2"/>
+  <text x="155" y="68" text-anchor="middle" fill="#fff" font-weight="bold">Arduino Nano</text>
+  <text x="155" y="88" text-anchor="middle" fill="#cde" font-size="12">analog side of the header row</text>
+  <g fill="#fff" font-size="13">
+    <circle cx="280" cy="120" r="5" fill="#f4c542"/><text x="262" y="125" text-anchor="end">5V</text>
+    <circle cx="280" cy="160" r="5" fill="#222"/><text x="262" y="165" text-anchor="end">GND</text>
+    <circle cx="280" cy="200" r="5" fill="#3a9"/><text x="262" y="205" text-anchor="end">A5 (SCL)</text>
+    <circle cx="280" cy="240" r="5" fill="#d55"/><text x="262" y="245" text-anchor="end">A4 (SDA)</text>
+    <circle cx="280" cy="280" r="5" fill="#a5d"/><text x="262" y="285" text-anchor="end">A3</text>
+  </g>
+  <!-- display -->
+  <rect x="520" y="40" width="210" height="150" rx="6" fill="#222" stroke="#000" stroke-width="2"/>
+  <rect x="540" y="50" width="170" height="50" fill="#050a10" stroke="#555"/>
+  <text x="625" y="82" text-anchor="middle" fill="#9fd4ff" font-size="12">128x32 OLED</text>
+  <g fill="#fff" font-size="13">
+    <text x="535" y="130">VCC</text><circle cx="520" cy="126" r="5" fill="#f4c542"/>
+    <text x="535" y="148">GND</text><circle cx="520" cy="144" r="5" fill="#222" stroke="#fff"/>
+    <text x="535" y="166">SCL</text><circle cx="520" cy="162" r="5" fill="#3a9"/>
+    <text x="535" y="184">SDA</text><circle cx="520" cy="180" r="5" fill="#d55"/>
+  </g>
+  <text x="625" y="212" text-anchor="middle" fill="#555" font-size="12">check the pin order on your module</text>
+  <!-- display wires -->
+  <g fill="none" stroke-width="3">
+    <path d="M280 120 H400 V126 H520" stroke="#f4c542"/>
+    <path d="M280 160 H420 V144 H520" stroke="#222"/>
+    <path d="M280 200 H440 V162 H520" stroke="#3a9"/>
+    <path d="M280 240 H460 V180 H520" stroke="#d55"/>
+  </g>
+  <!-- button -->
+  <g stroke="#a5d" stroke-width="3" fill="none"><path d="M280 280 H520"/></g>
+  <rect x="520" y="262" width="60" height="36" rx="4" fill="#ddd" stroke="#555" stroke-width="2"/>
+  <circle cx="550" cy="280" r="10" fill="#c33" stroke="#722" stroke-width="2"/>
+  <text x="600" y="285" font-size="13" fill="#333">push button</text>
+  <path d="M520 298 H500 V335 H380 V160" stroke="#222" stroke-width="3" fill="none" stroke-dasharray="6 4"/>
+  <text x="440" y="352" font-size="12" fill="#333">other leg to GND (the same GND pin is fine)</text>
+</svg>

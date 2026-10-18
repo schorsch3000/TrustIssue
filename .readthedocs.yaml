@@ -1,0 +1,17 @@
+# Read the Docs build: the documentation is the Sphinx project in docs/. The display pictures under
+# docs/_static/display/ are committed (tools/docs/gen_display_images.py makes them), so the build
+# needs nothing but Sphinx.
+version: 2
+
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.12"
+
+sphinx:
+  configuration: docs/conf.py
+  fail_on_warning: true
+
+python:
+  install:
+    - requirements: docs/requirements.txt

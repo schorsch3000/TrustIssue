@@ -79,7 +79,7 @@ class Device:
 
 d = Device()
 d.send("HELLO")
-check(d.line().startswith("TrustIssue 0.1.5 proto 1"), "HELLO")
+check(d.line().startswith("TrustIssue 0.2.0 proto 1"), "HELLO")
 d.send("LIST")
 keys = d.lines_until_end()
 if keys:

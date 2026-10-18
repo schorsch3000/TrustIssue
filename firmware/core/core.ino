@@ -19,7 +19,7 @@
 
 // ---------------------------------------------------------------- settings
 
-static const char VERSION[] PROGMEM = "0.1.5";
+static const char VERSION[] PROGMEM = "0.2.0";
 static const uint8_t BUTTON_PIN = A3;  // Nano analog side, next to the I2C pins; the bootloader reads the same pin
 static const uint8_t DISPLAY_ADDRESS = 0x3C;
 static const uint8_t DEFAULT_CONFIG = 0;

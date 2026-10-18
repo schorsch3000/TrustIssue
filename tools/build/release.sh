@@ -1,5 +1,6 @@
 #!/bin/sh
-# Builds the release binaries of trustctl into dist/. Each one carries the core
+# Builds the release binaries of trustctl into dist/ (and the ones of trustctl-import, the
+# Google Authenticator import tool, into dist/import/). Each trustctl carries the core
 # and the calibration firmware built from this very checkout, so "trustctl flash"
 # works without any other file.
 #
@@ -26,6 +27,11 @@ for target in linux/amd64 linux/arm64 linux/arm linux/386 windows/amd64 windows/
   [ "$os" = windows ] && out="$out.exe"
   GOOS=$os GOARCH=$arch go build -trimpath -ldflags "-s -w -X main.version=$version" -o "$out" ./cmd/trustctl
   echo "built $out"
+  imp="$dist/import/trustctl-import-$os-$arch"
+  [ "$os" = windows ] && imp="$imp.exe"
+  mkdir -p "$dist/import"
+  GOOS=$os GOARCH=$arch go build -trimpath -ldflags "-s -w" -o "$imp" ./cmd/trustctl-import
+  echo "built $imp"
 done
 (cd "$dist" && sha256sum trustctl-* > SHA256SUMS)
 echo "release $version in $dist"

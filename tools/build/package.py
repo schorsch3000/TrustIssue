@@ -3,8 +3,8 @@
 
   tools/build/package.py VERSION [--tray PATH.exe] [--bootloader PATH.hex] [--out DIR]
 
-One archive per platform (.zip for Windows, .tar.gz for the others) holding trustctl, the
-user tools (tools/user), README.md, LICENSE and THIRD_PARTY_LICENSES.md, plus a firmware
+One archive per platform (.zip for Windows, .tar.gz for the others) holding trustctl, trustctl-import
+(from dist/import/), the user tools (tools/user), README.md, LICENSE and THIRD_PARTY_LICENSES.md, plus a firmware
 archive with core.hex, calibration.hex and boot.hex, and SHA256SUMS over everything in the
 output directory. The archives are reproducible: sorted entries, fixed timestamps (the
 commit time), fixed permissions.
@@ -93,6 +93,10 @@ for fname in sorted(os.listdir(dist)):
     windows = osname == "windows"
     found = True
     entries = [("trustctl.exe" if windows else "trustctl", 0o755, read(os.path.join(dist, fname)))]
+    importer = os.path.join(dist, "import", f"trustctl-import-{osname}-{arch}" + (".exe" if windows else ""))
+    if not os.path.isfile(importer):
+        sys.exit(f"{importer} is missing: run tools/build/release.sh first")
+    entries.append(("trustctl-import.exe" if windows else "trustctl-import", 0o755, read(importer)))
     entries += [(d, 0o644, read(os.path.join(ROOT, d))) for d in DOCS]
     entries += list(user_tools(windows))
     if windows:

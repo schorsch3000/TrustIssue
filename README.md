@@ -62,7 +62,7 @@ to the Nano's D11 to D13 (full table in `CLAUDE.md`).
    `--keep-eeprom`. `tools/user/unlock.sh <uno port> --yes` is the way back from the final lock bits
    (`final_lock.sh`): a chip erase that destroys flash and EEPROM, followed by `flash_bootloader.sh`.
 1. **Host tool.** Download the archive for your system from the
-   [releases](https://github.com/schorsch3000/TrustIssue/releases) (it holds `trustctl` and the tools from `tools/user`; the
+   [releases](https://github.com/schorsch3000/TrustIssue/releases) (it holds `trustctl`, `trustctl-import` and the tools from `tools/user`; the
    `nightly` prerelease is the latest commit), or build it: `cd trustctl && go build -o bin/trustctl ./cmd/trustctl` (a static binary; Go 1.25+, which
    the module fetches by itself).
 1. **Firmware.** `trustctl --device /dev/ttyUSB0 flash` (the core firmware is built into the `trustctl` binary;
@@ -286,7 +286,7 @@ avr-libc, U8g2 and Go libraries, CC0 and public domain fonts). Their notices, wh
 cross-compiles all platforms into `dist/` with `SHA256SUMS`. Commit the embedded images with the code; a test fails if the
 embedded version differs from the source. Bump `VERSION` in `core.ino` for every firmware change that is released.
 
-Every push to master runs the tests that need no device and updates the rolling prerelease `nightly` (archives with `trustctl`
+Every push to master runs the tests that need no device and updates the rolling prerelease `nightly` (archives with `trustctl` and `trustctl-import`
 for all platforms, `tools/user`, the Windows tray tool and a firmware archive). A tag `vX.Y.Z` makes a full release with the
 list of commit messages and the test report. The tag is made by `tools/build/make_release.py X.Y.Z --nano PORT --uno PORT`,
 which runs every test including the rig tests first. See `docs/RELEASING.md`. Every archive has a build provenance

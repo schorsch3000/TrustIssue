@@ -20,6 +20,7 @@ to the binaries as well.
 | Go standard library, `golang.org/x/sys`, `golang.org/x/term` (The Go Authors)                  | `trustctl`                                                             | BSD 3 clause                         |
 | Victoria, Chroma48, Artos, Torus fonts (U8g2 font group "Open Game Art", from opengameart.org) | font data in the bootloader, the device parameter block and `trustctl` | CC0 1.0 (public domain)              |
 | X11 "misc fixed" 5x8                                                                           | font data in `trustctl`                                                | public domain                        |
+| jsQR 1.4.0 (Cosmo Wolfe)                                                                       | `trustctl-import` (the page's QR reader, `web/jsQR.js`)                | Apache 2.0                           |
 
 ## Arduino core, Wire, EEPROM (LGPL 2.1 or later)
 
@@ -185,3 +186,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `Case/` (3D models of a case) is work in progress and not committed yet. It will be added under the project license
   once finished. The case files include third-party models (the Arduino Nano, a push button and an SSD1306 display)
   whose licenses are those of their authors; this project does not relicense them.
+
+## jsQR (Apache 2.0)
+
+`trustctl/cmd/trustctl-import/web/jsQR.js` is jsQR 1.4.0 (https://github.com/cozmo/jsQR, Copyright Cosmo Wolfe),
+unmodified, licensed under the Apache License, version 2.0 (the license text is `trustctl/cmd/trustctl-import/web/jsQR-LICENSE.txt`
+and is served by the tool at `/jsQR-LICENSE.txt`). It is embedded in the `trustctl-import` binary. Apache 2.0 is
+compatible with the GPL version 3. The page prefers the browser's own QR detector (`BarcodeDetector`) and uses jsQR when
+there is none.

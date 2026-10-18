@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Import from Google Authenticator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<style>
+  :root {
+    color-scheme: light dark;
+    --fg: #222; --bg: #fff; --hint: #555; --muted: #888; --err: #b00020; --ok: #0a7a3c;
+    --bad-bg: #ffd6d6; --field-bg: #fff; --field-border: #767676;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e6e6e6; --bg: #1c1c1e; --hint: #a0a0a0; --muted: #8a8a8e; --err: #ff6b7d; --ok: #4cd08a;
+      --bad-bg: #5a2328; --field-bg: #2a2a2d; --field-border: #6a6a70;
+    }
+  }
+  body { font: 15px system-ui, sans-serif; max-width: 760px; margin: 1.5em auto; padding: 0 1em; color: var(--fg); background: var(--bg); }
+  h1 { font-size: 1.3em; }
+  .hint { color: var(--hint); }
+  #video { width: 100%; max-height: 60vh; background: #000; border-radius: 6px; object-fit: contain; }
+  #status { min-height: 1.5em; margin: .6em 0; }
+  #status.err { color: var(--err); }
+  .row { display: flex; align-items: center; gap: .6em; margin: .3em 0; }
+  .row input[type=text] { width: 20em; font: inherit; padding: .25em .4em; color: var(--fg); background: var(--field-bg); border: 1px solid var(--field-border); border-radius: 3px; }
+  .row input[type=text]:disabled { opacity: .6; }
+  .row input.bad { background: var(--bad-bg); }
+  .note { font-size: .9em; color: var(--muted); }
+  .note.err { color: var(--err); }
+  .note.ok { color: var(--ok); }
+  button { font: inherit; padding: .4em 1em; }
+  #buttons { margin-top: 1em; display: flex; gap: .6em; justify-content: flex-end; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<h1>Import from Google Authenticator</h1>
+
+<section id="scan">
+  <p class="hint">In Google Authenticator choose <b>Transfer accounts</b>, then <b>Export accounts</b>, and show
+  the QR code to the camera. Hold it still, bright and with the whole code in view. If there are several codes,
+  show them one after the other.</p>
+  <p id="cameraRow" hidden><label>Camera: <select id="camera"></select></label></p>
+  <video id="video" autoplay playsinline muted></video>
+  <div id="status"></div>
+</section>
+
+<section id="review" hidden>
+  <p class="hint">Untick the accounts you do not need and correct the names, then import. Every key needs a
+  button press on the device (hold 1 to 2 seconds).</p>
+  <div id="rows"></div>
+  <p id="summary"></p>
+  <div id="buttons">
+    <button id="again">Scan again</button>
+    <button id="import">Import selected</button>
+    <button id="quit">Quit</button>
+  </div>
+</section>
+
+<script src="/jsQR.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

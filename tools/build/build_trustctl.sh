@@ -1,8 +1,9 @@
 #!/bin/sh
-# Builds trustctl for this machine from the current checkout, for testing:
+# Builds trustctl and trustctl-import (the Google Authenticator import tool) for this machine
+# from the current checkout, for testing:
 #
 #   tools/build/build_trustctl.sh                 -> trustctl/bin/trustctl
-#   tools/build/build_trustctl.sh OUTPUT          -> OUTPUT
+#   tools/build/build_trustctl.sh OUTPUT          -> OUTPUT (trustctl-import goes next to it)
 #
 # It always rebuilds the firmware from firmware/ first and embeds it in
 # trustctl/internal/firmware (the same files release.sh and CI use), so the binary carries
@@ -19,4 +20,7 @@ mkdir -p "$(dirname "$out")"
 cd "$root/trustctl"
 go build -trimpath -ldflags "-X main.version=fw$firmware-$describe" -o "$out" ./cmd/trustctl
 echo "built $out"
+ldir=$(dirname "$out")
+go build -trimpath -o "$ldir/trustctl-import" ./cmd/trustctl-import
+echo "built $ldir/trustctl-import"
 "$out" version

@@ -8,14 +8,24 @@ somebody to hold the button on the device while its display shows what is being 
 laptop can neither export the secrets nor silently use them, and it cannot reflash the device either:
 the bootloader only opens after a gesture on the button.
 
+```{image} /_static/device/device.jpg
+:alt: The finished device: a black 3D printed case with a red button and the display, connected by USB.
+:align: center
+:width: 70%
+```
+
 ```{image} /_static/display/token.gif
 :alt: The display while a code is requested with "trustctl token GitHub": the name, the date and time, a bar while the button is held, then the code.
 :align: center
 ```
 
+**The one thing to know:** to confirm anything on the device, hold the button and let go while the bar on the display is a checkerboard (see {ref}`reading-the-bar`). Too early and too late are both a no.
+
 *Every picture of the display in this documentation is made by running the real firmware on a
 computer, see {doc}`development/display-images`. The animations show the button too, with the time it
 has been held.*
+
+The project is on [GitHub](https://github.com/schorsch3000/TrustIssue): source, releases, issues.
 
 ## Where to start
 
@@ -25,7 +35,7 @@ has been held.*
 :widths: 18 82
 
 * - **Build one**
-  - {doc}`hardware/wiring` (parts and wires), then {doc}`setup/onboarding` (bootloader and firmware, once, over ISP).
+  - {doc}`hardware/wiring` (parts and wires), {doc}`hardware/case` (3D printed case), then {doc}`setup/onboarding` (bootloader and firmware, once, over ISP).
 * - **Set it up**
   - {doc}`setup/host-tool` (install `trustctl`), {doc}`setup/flashing` (updates over USB), {doc}`setup/calibration` (font, logo, contrast), {doc}`setup/first-use`.
 * - **Use it**
@@ -60,6 +70,7 @@ Both can be used together; they solve different parts of the problem.
 :caption: Build and set up
 
 hardware/wiring
+hardware/case
 setup/onboarding
 setup/host-tool
 setup/flashing

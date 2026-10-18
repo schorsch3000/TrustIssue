@@ -2,13 +2,15 @@
 
 A hardware TOTP vault for people who don't trust their computers.
 
+![The finished device: a 3D printed case with a red button and the display, on a USB cable](docs/_static/device/device-readme.jpg)
+
 The secrets live on a small device (an Arduino Nano with a 128x32 OLED and one button) and never
 leave it. The host can add keys, list their names, and ask for a code, but every one of those
 needs somebody to hold the button on the device while its display shows what is being done.
 Malware on the laptop can neither export the secrets nor silently use them, and it cannot reflash
 the device either: the bootloader only opens after a gesture on the button.
 
-`wiring.md` shows how to wire the Nano, the display and the button.
+`wiring.md` shows how to wire the Nano, the display and the button; the 3D printed case is described in the documentation (`docs/hardware/case.md`, files in `Case/`).
 
 `CLAUDE.md` holds the design decisions and the detailed state of the project.
 

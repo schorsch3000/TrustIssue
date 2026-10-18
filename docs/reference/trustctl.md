@@ -241,14 +241,10 @@ if you deny. **On the device:** hold 1 to 2 seconds.
 :alt: config set rotate=on: the confirm screen is already rotated, the button is held, Done, and the idle screen stays rotated.
 ```
 
-```{list-table}
-:widths: 50 50
-* - ![Settings screen with changed flags inverted](/_static/display/config-flags.png)
+![Settings screen with changed flags inverted](/_static/display/config-flags.png)
 
-    `trustctl config set show-version=on rotate=off` on a device where rotate and logo were on: the changed
-    flags are inverted.
-  -
-```
+`trustctl config set show-version=on rotate=off` on a device where rotate and logo were on: the changed
+flags are inverted.
 
 `invert` works the same way:
 

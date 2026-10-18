@@ -37,15 +37,13 @@ On the first development display 0x20 and 0x00 were comfortable: 0x00 is not dar
 is what the dimmed phase wants. OLEDs lose brightness with use, which is why the idle logo is dimmed
 and the display turns off.
 
-```{list-table}
-:widths: 50 50
-* - ![Logo at full contrast](/_static/display/calibrate-contrast-full.png)
+![Logo at full contrast](/_static/display/calibrate-contrast-full.png)
 
-    `contrast full 0x20`
-  - ![Logo dimmed](/_static/display/calibrate-contrast-dim.png)
+`contrast full 0x20`
 
-    `contrast dim 0`
-```
+![Logo dimmed](/_static/display/calibrate-contrast-dim.png)
+
+`contrast dim 0`
 
 ## Logo
 
@@ -64,15 +62,13 @@ The picture is streamed to the display in about a second and remembered for `fla
   dark); all other entries are on.
 - `--invert` swaps lit and dark, including the margin around a smaller image.
 
-```{list-table}
-:widths: 50 50
-* - ![A logo](/_static/display/calibrate-logo.png)
+![A logo](/_static/display/calibrate-logo.png)
 
-    `calibrate logo trust_issue_03.png`
-  - ![The same inverted](/_static/display/calibrate-logo-invert.png)
+`calibrate logo trust_issue_03.png`
 
-    `calibrate logo trust_issue_03.png --invert`
-```
+![The same inverted](/_static/display/calibrate-logo-invert.png)
+
+`calibrate logo trust_issue_03.png --invert`
 
 A fast way to design one: watch the file and let every save show up on the display,
 
@@ -106,31 +102,33 @@ The font shows up on a test text that is built to expose lookalikes: `Il1`, `O0o
 `I`, `l` and `1` apart. Twelve fonts were compared on the real display and `victoriamedium8` is the
 default. All built-in fonts:
 
-```{list-table}
-:widths: 50 50
-* - ![victoriamedium8](/_static/display/calibrate-font-victoriamedium8.png)
+![victoriamedium8](/_static/display/calibrate-font-victoriamedium8.png)
 
-    `victoriamedium8` (default)
-  - ![victoriabold8](/_static/display/calibrate-font-victoriabold8.png)
+`victoriamedium8` (default)
 
-    `victoriabold8`
-* - ![chroma48medium8](/_static/display/calibrate-font-chroma48medium8.png)
+![victoriabold8](/_static/display/calibrate-font-victoriabold8.png)
 
-    `chroma48medium8`
-  - ![artossans8](/_static/display/calibrate-font-artossans8.png)
+`victoriabold8`
 
-    `artossans8`
-* - ![artosserif8](/_static/display/calibrate-font-artosserif8.png)
+![chroma48medium8](/_static/display/calibrate-font-chroma48medium8.png)
 
-    `artosserif8`
-  - ![torussansbold8](/_static/display/calibrate-font-torussansbold8.png)
+`chroma48medium8`
 
-    `torussansbold8`
-* - ![5x8](/_static/display/calibrate-font-5x8.png)
+![artossans8](/_static/display/calibrate-font-artossans8.png)
 
-    `5x8`
-  -
-```
+`artossans8`
+
+![artosserif8](/_static/display/calibrate-font-artosserif8.png)
+
+`artosserif8`
+
+![torussansbold8](/_static/display/calibrate-font-torussansbold8.png)
+
+`torussansbold8`
+
+![5x8](/_static/display/calibrate-font-5x8.png)
+
+`5x8`
 
 Only the redistributable ones are built in (CC0 / public domain; sources and licenses are in
 `trustctl/internal/fonts/README.md`). A font file of your own works wherever a name does: an 8x8 font
@@ -151,15 +149,13 @@ $ trustctl calibrate invert on
 $ trustctl config set rotate=on         # later, on the core firmware, with a button confirm
 ```
 
-```{list-table}
-:widths: 50 50
-* - ![Rotated](/_static/display/calibrate-rotate.png)
+![Rotated](/_static/display/calibrate-rotate.png)
 
-    `calibrate rotate on`
-  - ![Inverted](/_static/display/calibrate-invert.png)
+`calibrate rotate on`
 
-    `calibrate invert on`
-```
+![Inverted](/_static/display/calibrate-invert.png)
+
+`calibrate invert on`
 
 The bootloader reads the same setting, so its prompts follow the rotation and inversion too.
 

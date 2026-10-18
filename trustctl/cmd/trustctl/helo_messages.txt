@@ -1,0 +1,10 @@
+HELO? This is not SMTP. Try HELLO.
+Wrong protocol, buddy. This isn't SMTP.
+HELO is for mail servers. HELLO is for humans.
+550 HELO NOT ACCEPTED — this is not an SMTP server.
+SMTP detected. Initiating protocol confusion... Aborted.
+HELO? Are you trying to establish an SMTP session with a CLI?
+EHLO, actually. And still wrong CLI, pal.
+Protocol violation: HELO received outside an SMTP context.
+I'm a CLI, not your mail server. Keep your handshakes local.
+HELO is not a greeting here. It is a cry for help.

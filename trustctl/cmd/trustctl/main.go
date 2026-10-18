@@ -100,6 +100,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	command, rest := global.Arg(0), global.Args()[1:]
 	rest = takeGlobalOptions(rest, &opt) // they may also stand after the command
+	switch strings.ToLower(command) {
+	case "helo":
+		return heloReply(stderr)
+	}
 	switch command {
 	case "help":
 		fmt.Fprint(stdout, usage)

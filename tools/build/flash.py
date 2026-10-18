@@ -91,8 +91,28 @@ class Programmer:
         self.exchange([0x64, len(data) >> 8, len(data) & 0xFF, ord("F")] + list(data) + [sum(data) & 0xFF, 0x20], 2)
 
 
-def open_gate_and_sync(args, rig=None):
+class GateSilent(SystemExit):
+    """The device never answered at all: the gesture probably missed its moment."""
+
+
+def open_gate_and_sync(args, rig=None, attempts=3):
+    """Opens the update mode. With the rig the whole sequence is tried again (up to `attempts` times, 25 s each, the
+    last one for args.wait) when the device does not answer at all, which happens on a slow machine; a retry is
+    announced, so that flakes do not go unnoticed. A device that asks for its PIN is never retried."""
     rig = rig or (Rig(args.rig) if args.rig else None)
+    if not rig:
+        return _open_gate_once(args, rig, args.wait)
+    for attempt in range(1, attempts + 1):
+        try:
+            return _open_gate_once(args, rig, args.wait if attempt == attempts else min(args.wait, 25))
+        except GateSilent:
+            if attempt == attempts:
+                raise
+            print(f"NOTE: the gate did not answer, trying again (attempt {attempt + 1} of {attempts})", flush=True)
+            time.sleep(3)
+
+
+def _open_gate_once(args, rig, wait):
     if rig:
         rig.command("PRESS")
     else:
@@ -116,9 +136,10 @@ def open_gate_and_sync(args, rig=None):
         pressing = rig.command_in_background("SEQ 150 200 150 200 2300")  # tap, tap, press and hold
     else:
         print("Follow the display: release the button, wait for the bar to drain, then tap, tap, and press again and hold for 2 s.")
-    deadline = time.time() + args.wait
+    deadline = time.time() + wait
     try:
         answered = 0
+        heard = False
         while time.time() < deadline:
             # a wrong PIN starts the application, which says nothing at this baud rate: the update mode
             # opens about 7 s after the PIN, so silence for 12 s means it did not
@@ -128,6 +149,7 @@ def open_gate_and_sync(args, rig=None):
             port.reset_input_buffer()
             port.write(b"\x30\x20")
             reply = port.read(2)
+            heard = heard or bool(reply)
             if reply == bytes([INSYNC, OK]):
                 if pressing:
                     pressing.join()
@@ -143,6 +165,10 @@ def open_gate_and_sync(args, rig=None):
                 args.pin = None
                 continue
             time.sleep(0.2)
+        if pressing:
+            pressing.join()
+        if not heard:
+            raise GateSilent("the bootloader did not open (gate not passed?)")
         raise SystemExit("the bootloader did not open (gate not passed?)")
     except BaseException:
         port.close()  # a leaked handle on the port misleads the tests that follow

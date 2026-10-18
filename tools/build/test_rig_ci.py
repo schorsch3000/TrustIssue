@@ -91,12 +91,16 @@ def scenario(name, make_release=0, raise_in_make_release=None, power_on_fails=Fa
         if "make_release.py" in " ".join(cmd):
             if raise_in_make_release:
                 raise raise_in_make_release
+            if make_release == 2:  # crashed between the suites: no FAIL line, only a traceback
+                kw["stdout"].write("=== provision\nTraceback (most recent call last):\nValueError: the reason it broke\n")
+                return subprocess.CompletedProcess(cmd, 1)
             kw["stdout"].write(("PASS  a check\n" if make_release == 0 else "FAIL  a check\n"))
             return subprocess.CompletedProcess(cmd, make_release)
         raise AssertionError(cmd)
 
     rig_ci.api, rig_ci.download, rig_ci.git = api, download, git
-    rig_ci.post_status = lambda token, sha, state_, description, dry: statuses.append(state_)
+    descriptions = []
+    rig_ci.post_status = lambda token, sha, state_, description, dry: (statuses.append(state_), descriptions.append(description))
     fake = types.SimpleNamespace(**{k: getattr(subprocess, k) for k in dir(subprocess) if not k.startswith("_")})
     fake.run = run
     rig_ci.subprocess = fake
@@ -110,6 +114,7 @@ def scenario(name, make_release=0, raise_in_make_release=None, power_on_fails=Fa
     except BaseException as e:  # noqa: BLE001
         error = e
     on_off = open(calls).read().split() if os.path.exists(calls) else []
+    scenario.descriptions = descriptions
     return on_off, statuses, os.path.exists(rig_ci.POWER_MARKER), error
 
 
@@ -117,6 +122,9 @@ on_off, statuses, marker, error = scenario("passing tests")
 check(on_off == ["on", "off"] and statuses[-1] == "success" and not marker, "passing tests: power on, then off", f"{on_off} {statuses} {marker}")
 on_off, statuses, marker, error = scenario("failing tests", make_release=1)
 check(on_off == ["on", "off"] and statuses[-1] == "failure" and not marker, "failing tests: power off all the same", f"{on_off} {statuses}")
+on_off, statuses, marker, error = scenario("crash", make_release=2)
+check(on_off == ["on", "off"] and statuses[-1] == "failure" and "ValueError: the reason it broke" in scenario.descriptions[-1],
+      "a crash without a FAIL line: the status names the last line of the log", f"{statuses} {scenario.descriptions}")
 on_off, statuses, marker, error = scenario("exception", raise_in_make_release=RuntimeError("boom"))
 check(on_off == ["on", "off"] and isinstance(error, RuntimeError) and not marker, "an exception during the tests: power off all the same", f"{on_off} {error!r}")
 on_off, statuses, marker, error = scenario("timeout", raise_in_make_release=subprocess.TimeoutExpired("x", 1))

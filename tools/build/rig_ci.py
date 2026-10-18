@@ -244,7 +244,10 @@ def main():
             return  # try this commit again at the next poll
         else:
             failed = [l for l in text.splitlines() if l.startswith("FAIL")][:2]
-            post_status(token, sha, "failure", "rig tests failed: " + "; ".join(failed)[:100] if failed else "rig tests failed, see the log on the rig", args.dry_run)
+            lines = [l.strip() for l in text.splitlines() if l.strip()]
+            # without a FAIL line the run broke before or between the suites: the last line of the log is the reason
+            reason = "; ".join(failed) if failed else (lines[-1] if lines else "no output")
+            post_status(token, sha, "failure", f"rig tests failed: {reason}"[:140], args.dry_run)
         if not args.dry_run:  # a dry run does not count as tested
             open(os.path.join(STATE, "last"), "w").write(sha)
     except Exception as e:

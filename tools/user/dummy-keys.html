@@ -177,7 +177,7 @@ globalThis.TI = { sha1, hmacSha1, base32Encode, normalizeSecret, hotp, totp, val
 // ---------------------------------------------------------------- the page
 
 if (typeof document !== "undefined") {
-  const STORE = "trustissues-dummy-keys";
+  const STORE = "trustissue-dummy-keys";
   const $ = (id) => document.getElementById(id);
   let keys = [];
   try { keys = JSON.parse(localStorage.getItem(STORE) || "[]"); } catch (e) { keys = []; }

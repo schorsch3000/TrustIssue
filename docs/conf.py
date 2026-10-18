@@ -15,6 +15,7 @@ exclude_patterns = ["_build", "test-reports", "RELEASING.md", "Thumbs.db", ".DS_
 
 html_theme = "furo"
 html_title = "Trust Issue"
+html_favicon = "_static/favicon.ico"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_theme_options = {

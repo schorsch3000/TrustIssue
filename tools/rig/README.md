@@ -9,7 +9,7 @@ and no code from pull requests ever reaches it. Only what CI built for a commit 
 As an admin:
 
 ```sh
-sudo apt install python3 python3-serial avrdude git
+sudo apt install python3 python3-serial avrdude git gh
 sudo useradd -m -s /bin/bash rig            # no sudo for this user
 sudo usermod -aG dialout rig                # access to the serial ports
 sudo loginctl enable-linger rig             # lets its timer run without a login
@@ -43,7 +43,7 @@ and the timer cannot meet at the rig. After updating, copy the changed service f
 Before anything is touched, `rig_ci.py` and `make_release.py` run a preflight (`rig.require_tools`) that names every missing tool at once, with the Debian package. On the Pi that is `avrdude`, `git`, `sed`, `tr`, `tail` and the python module `serial`; no compiler is needed, because the bootloader and firmware come from the download.
 
 Every 5 minutes (`OnCalendar=*:0/5`; a run that is still going makes the next one exit at once, see the lock): asks GitHub which commit the prerelease `nightly` was built from. For a new one it downloads that release's `trustctl`
-(for this machine) and firmware archive, checks them against `SHA256SUMS`, checks out the scripts at exactly that commit (it must be on `master`),
+(for this machine) and firmware archive, checks them against `SHA256SUMS` and against the GitHub build attestation (`gh attestation verify`, run with the status token as `GH_TOKEN`; a download without a valid attestation gives the status `error` and the rig is never powered), checks out the scripts at exactly that commit (it must be on `master`),
 provisions the device over ISP with the downloaded bootloader and firmware and runs the rig suites (`make_release.py --rig-only`).
 The result is posted on the commit as the status `device-tests`. The report and the log stay on the machine in `~/reports/<commit>.md` and `.log` (`latest.md` and `latest.log` point at the newest run: the files sort by hash, not by time). At most the 100 newest are kept; older ones are deleted at the start of the next poll.
 A missing rig gives the status `error` and the commit is tried again at the next poll.

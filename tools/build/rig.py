@@ -45,7 +45,7 @@ class RigNotFound(Exception):
 # what each tool is called on Debian, for the hint
 APT = {"avrdude": "avrdude", "make": "make", "git": "git", "go": "golang-go", "gofmt": "golang-go", "shellcheck": "shellcheck",
        "g++": "g++", "arduino-cli": "(arduino-cli, see https://arduino.github.io/arduino-cli)", "sed": "sed", "tr": "coreutils",
-       "tail": "coreutils", "sh": "dash", "scp": "openssh-client"}
+       "tail": "coreutils", "sh": "dash", "scp": "openssh-client", "gh": "gh"}
 
 
 def find_avr_gcc():
@@ -53,7 +53,7 @@ def find_avr_gcc():
     return shutil.which("avr-gcc") or next(iter(glob.glob(os.path.expanduser("~/.arduino15/packages/arduino/tools/avr-gcc/*/bin/avr-gcc"))), None)
 
 
-def missing_tools(rig=True, build_bootloader=False, host=False, git=False, scp=False):
+def missing_tools(rig=True, build_bootloader=False, host=False, git=False, scp=False, gh=False):
     """Everything the chosen jobs call that is not there, as readable lines. Empty when all is in place."""
     tools = []
     if rig:
@@ -62,6 +62,8 @@ def missing_tools(rig=True, build_bootloader=False, host=False, git=False, scp=F
         tools += ["git"]
     if scp:
         tools += ["scp"]
+    if gh:
+        tools += ["gh"]
     if build_bootloader or host:
         tools += ["make"]
     if host:

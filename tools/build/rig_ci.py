@@ -8,7 +8,7 @@ tools/rig/README.md) does this:
   1. asks GitHub which commit the rolling prerelease "nightly" was built from (only CI on a push to master can move it);
   2. does nothing if that commit was tested already;
   3. downloads that release's trustctl for this machine and its firmware archive (core.hex, boot.hex), checks them against
-     SHA256SUMS, and checks out the test scripts at exactly that commit (it must be on master) in a separate worktree;
+     SHA256SUMS and against the GitHub build attestation (`gh attestation verify`), and checks out the test scripts at exactly that commit (it must be on master) in a separate worktree;
   4. switches the rig's power on (`/usr/local/bin/rig-power on`, if that exists), waits for its USB ports, runs
      `make_release.py --rig-only`: provisions the device over ISP with those files and runs the rig suites, and switches the
      power off again (`rig-power off`) NO MATTER HOW IT ENDS: a failing test, an exception, a SIGTERM (systemd's timeout), and
@@ -17,7 +17,7 @@ tools/rig/README.md) does this:
 
 Only one run at a time (a lock in the state directory, so a manual run and the timer cannot meet at the rig).
 
-Needs: python3 with pyserial, avrdude, git, and a fine-grained token with only "Commit statuses: read and write" on the
+Needs: python3 with pyserial, avrdude, git, gh (the attestation check), and a fine-grained token with only "Commit statuses: read and write" on the
 repository, in ~/.config/trustissue-rig/token (mode 600). Reports and logs: ~/reports/<commit>.md and .log.
 Only the Python standard library is used besides pyserial (through rig.py).
 """
@@ -154,7 +154,7 @@ def main():
 
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import rig  # noqa: E402
-    rig.require_tools(rig=True, git=True)  # the bootloader comes from the download: no compiler is needed
+    rig.require_tools(rig=True, git=True, gh=True)  # the bootloader comes from the download: no compiler is needed
     arch = ARCH.get(platform.machine())
     if not arch:
         sys.exit(f"rig_ci: no trustctl build for {platform.machine()}")
@@ -211,6 +211,12 @@ def main():
             name = wanted[key]
             if sums.get(name) != sha256(os.path.join(work, name)):
                 raise RuntimeError(f"{name} does not match SHA256SUMS")
+        for key in ("trustctl", "firmware"):  # built by CI for this very repository, not just the same bytes as SHA256SUMS lists
+            env = dict(os.environ, GH_TOKEN=token) if token else None
+            check = subprocess.run(["gh", "attestation", "verify", os.path.join(work, wanted[key]), "--repo", REPO],
+                                   capture_output=True, text=True, env=env, timeout=120)
+            if check.returncode:
+                raise RuntimeError(f"attestation of {wanted[key]} not verified: {(check.stderr or check.stdout).strip().splitlines()[-1] if (check.stderr or check.stdout).strip() else check.returncode}")
         tree = os.path.join(work, "tree")
         git("worktree", "add", "--detach", "--quiet", tree, sha)
         with tarfile.open(os.path.join(work, wanted["trustctl"])) as tar:

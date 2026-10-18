@@ -36,6 +36,27 @@ characters (the 95 characters from space to `~`).
 | 8 digits  | 10^8          | about 24 years        | 48 years   |
 | 10 digits | 10^10         | about 2,400 years     | 4,800 years |
 
+**A password in a normal shape:** one capital letter, then lower case letters, then an ending. All letters
+random (26 possibilities each), 32 symbols on a normal keyboard (`!` to `/`, `:` to `@`, `[` to `` ` ``, `{` to `~`).
+Length is the total number of characters.
+
+| Shape                                    | Length | Possibilities | Average time to guess | Worst case      |
+| ---------------------------------------- | ------ | ------------- | --------------------- | --------------- |
+| Capital, lower case, ending in a digit   | 6      | 1.2 x 10^8    | about 28 years        | 56 years        |
+|                                          | 8      | 8.0 x 10^10   | about 19,000 years    | 38,000 years    |
+|                                          | 10     | 5.4 x 10^13   | about 13 million years | 26 million years |
+| Capital, lower case, digit, then a symbol | 6      | 1.5 x 10^8    | about 35 years        | 70 years        |
+|                                          | 8      | 9.9 x 10^10   | about 24,000 years    | 47,000 years    |
+|                                          | 10     | 6.7 x 10^13   | about 16 million years | 32 million years |
+| Capital, lower case, ending in a symbol  | 6      | 3.8 x 10^8    | about 90 years        | 181 years       |
+|                                          | 8      | 2.6 x 10^11   | about 61,000 years    | 120,000 years   |
+|                                          | 10     | 1.7 x 10^14   | about 41 million years | 83 million years |
+
+Even this plain shape is far out of reach once the letters are random. The catch is the word "random":
+`Sunshine7` is not. A person's password is drawn from a much smaller set (a dictionary word, a capital, a digit
+or two is on the order of 10^6 to 10^7 candidates), and at 15 seconds a guess that is still about 3 months to
+2 years on average. A longer pattern with random letters, or several unrelated words, keeps the margin large.
+
 **Random password** from all 95 printable characters (upper and lower case, digits, symbols):
 
 | Length        | Possibilities | Average time to guess        | Worst case                |

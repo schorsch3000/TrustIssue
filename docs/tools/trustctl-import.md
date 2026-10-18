@@ -44,8 +44,3 @@ The secrets stay in the `trustctl-import` process and in the pipe to `trustctl` 
 standard input, never a command line or a file). The browser page only ever gets names, ids and reasons.
 An export QR code holds every secret in the clear: do this on a computer you trust and close the
 Authenticator screen afterwards.
-
-:::{note}
-It has been tested with a fake camera and a real `trustctl --simulate`, not yet with a real webcam, a
-real Authenticator export or a real device.
-:::

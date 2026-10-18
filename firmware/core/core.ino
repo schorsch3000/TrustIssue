@@ -40,6 +40,12 @@ static const uint32_t LOGO_DIM_MS = 120000;   // ... then dimmed, then the displ
 static const uint8_t FINAL_LOCK_BITS = 0xCC;
 static bool deviceUnlocked;
 
+// The bootloader's update PIN sits in the last application page; a blank page (first byte 0xFF)
+// means none is set (see PIN_ADDRESS in firmware/bootloader). Read live, so a PIN set by
+// `trustctl flash pin` shows on the next idle screen.
+static const uint16_t PIN_ADDRESS = 0x7780;
+static bool pinMissing() { return pgm_read_byte(PIN_ADDRESS) == 0xFF; }
+
 static void checkLock() {
   uint8_t lock = boot_lock_fuse_bits_get(GET_LOCK_BITS);
   uint8_t high = boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS);
@@ -196,8 +202,14 @@ static void showIdle() {
   char count[17];
   snprintf_P(count, sizeof(count), PSTR("%u / %u keys"), tc_store_count(), (unsigned)TC_SLOT_COUNT);
   setRow(2, count);
-  if (deviceUnlocked) {  // inverted, so it cannot pass for a normal idle screen
-    setRowP(3, PSTR(" NOT LOCKED     "));
+  // Warnings are inverted, so they cannot pass for a normal idle screen: NOT LOCKED above the
+  // title, NO PIN below the key count.
+  if (deviceUnlocked) {
+    setRowP(0, PSTR(" NOT LOCKED     "));
+    for (uint8_t column = 0; column < 16; column++) grid[0][column] |= 0x80;
+  }
+  if (pinMissing()) {
+    setRowP(3, PSTR(" NO PIN         "));
     for (uint8_t column = 0; column < 16; column++) grid[3][column] |= 0x80;
   }
   render();
@@ -501,6 +513,7 @@ static void printBanner() {
 #ifdef AUTONOMOUS_WIPE
   Serial.print(F(" caps=autowipe"));
 #endif
+  if (pinMissing()) Serial.print(F(" nopin"));
   if (deviceUnlocked) Serial.print(F(" unlocked"));
   Serial.println();
 }

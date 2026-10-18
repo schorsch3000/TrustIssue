@@ -86,7 +86,7 @@ try:
     line = hello()
     check(line.startswith("TrustIssue") and "unlocked" not in line, "a finished device no longer says unlocked", line)
     t = subprocess.run([args.bin, "--no-daemon", "--device", device, "hello"], capture_output=True, text=True, timeout=60)
-    check(t.returncode == 0 and "WARNING" not in t.stdout + t.stderr and "unlocked" not in t.stdout, "trustctl hello prints no warning", t.stdout + t.stderr)
+    check(t.returncode == 0 and "not locked" not in t.stdout + t.stderr and "unlocked" not in t.stdout, "trustctl hello prints no unlocked warning", t.stdout + t.stderr)
 
     with tempfile.TemporaryDirectory() as tmp:
         dump = os.path.join(tmp, "flash.bin")

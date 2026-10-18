@@ -398,7 +398,7 @@ func dispatch(c *protocol.Client, command string, args []string, stdout, stderr 
 		line, err := c.Hello()
 		if err == nil {
 			fmt.Fprintln(stdout, line)
-			warnIfUnlocked(line, stderr)
+			warnAboutDevice(line, stderr)
 		}
 		return err
 	case "list":
@@ -521,18 +521,27 @@ const unlockedWarning = "WARNING: this device is not locked (its lock bits or fu
 	"Anyone with physical access can read the keys out of it. Fine for a dev device, not for real keys.\n" +
 	"(tools/user/final_lock.sh locks a finished device; this cannot be undone except by erasing it)"
 
-func warnIfUnlocked(helloLine string, stderr io.Writer) {
+// noPINWarning is printed when the device says no update PIN is set.
+const noPINWarning = "WARNING: this device has no update PIN.\n" +
+	"Anyone who can press its button can flash a firmware that reads the keys out (the evil maid).\n" +
+	"(trustctl flash pin --set-pin sets one)"
+
+// warnAboutDevice prints a warning for each flag word of the HELLO line that marks a device
+// as not finished: "unlocked" (lock bits) and "nopin" (no update PIN).
+func warnAboutDevice(helloLine string, stderr io.Writer) {
 	for _, word := range strings.Fields(helloLine) {
-		if word == "unlocked" {
+		switch word {
+		case "unlocked":
 			fmt.Fprintln(stderr, unlockedWarning)
-			return
+		case "nopin":
+			fmt.Fprintln(stderr, noPINWarning)
 		}
 	}
 }
 
 func add(c *protocol.Client, args []string, stdout, stderr io.Writer) error {
 	if line, err := c.Hello(); err == nil { // before real keys go in, say if the device is a dev unit
-		warnIfUnlocked(line, stderr)
+		warnAboutDevice(line, stderr)
 	}
 	input, err := readSecret(stderr)
 	if err != nil {

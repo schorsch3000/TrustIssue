@@ -64,16 +64,26 @@ func TestExtractFontAndLogo(t *testing.T) {
 	}
 }
 
-// A device that says it is unlocked is called out by hello and add.
+// A device that says it is unlocked or has no PIN is called out by hello and add.
 func TestUnlockedWarning(t *testing.T) {
 	var out bytes.Buffer
-	warnIfUnlocked("TrustIssue 0.1.0 proto 1 caps=autowipe", &out)
+	warnAboutDevice("TrustIssue 0.1.0 proto 1 caps=autowipe", &out)
 	if out.Len() != 0 {
 		t.Errorf("a locked device was warned about: %q", out.String())
 	}
-	warnIfUnlocked("TrustIssue 0.1.0 proto 1 caps=autowipe unlocked", &out)
-	if !strings.Contains(out.String(), "not locked") {
-		t.Errorf("no warning: %q", out.String())
+	warnAboutDevice("TrustIssue 0.1.0 proto 1 caps=autowipe unlocked", &out)
+	if !strings.Contains(out.String(), "not locked") || strings.Contains(out.String(), "no update PIN") {
+		t.Errorf("no warning, or a wrong one: %q", out.String())
+	}
+	out.Reset()
+	warnAboutDevice("TrustIssue 0.1.0 proto 1 nopin", &out)
+	if !strings.Contains(out.String(), "no update PIN") || strings.Contains(out.String(), "not locked") {
+		t.Errorf("no PIN warning, or a wrong one: %q", out.String())
+	}
+	out.Reset()
+	warnAboutDevice("TrustIssue 0.1.0 proto 1 nopin unlocked", &out)
+	if !strings.Contains(out.String(), "no update PIN") || !strings.Contains(out.String(), "not locked") {
+		t.Errorf("both warnings expected: %q", out.String())
 	}
 }
 

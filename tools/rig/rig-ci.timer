@@ -1,0 +1,10 @@
+[Unit]
+Description=Poll GitHub for a new master commit to test on the rig
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

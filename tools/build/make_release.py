@@ -42,13 +42,17 @@ parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.R
 parser.add_argument("version", help="X.Y.Z, without the v")
 parser.add_argument("--rig", help="serial port of the rig Nano (default: look at every serial port)")
 parser.add_argument("--dry-run", action="store_true", help="with the rig, but nothing is committed, tagged or pushed; the report goes to a file")
+parser.add_argument("--rig-only", action="store_true", help="only the rig: provision and run the rig suites (what the Pi does for CI); nothing is committed or tagged, the report goes to --report")
+parser.add_argument("--trustctl", help="use this trustctl binary for the tests instead of trustctl/bin/trustctl (CI builds)")
+parser.add_argument("--core", help="provision with this firmware hex instead of the embedded core.hex")
+parser.add_argument("--bootloader", help="provision with this bootloader hex instead of building one")
 parser.add_argument("--host-only", action="store_true", help="dry run without the rig; never commits, tags or pushes")
 parser.add_argument("--report", help="with --host-only: where to write the report")
 parser.add_argument("--suite-timeout", type=int, default=None, help="seconds one suite may take (default: 900 for host suites, 1800 for rig suites)")
 parser.add_argument("--timeout", type=int, default=7200, help="seconds the whole run may take, rig included; what is left is not run and counts as failed")
 parser.add_argument("--yes", action="store_true", help="do not ask before starting the rig tests (still asks before pushing)")
 args = parser.parse_args()
-no_git = args.host_only or args.dry_run
+no_git = args.host_only or args.dry_run or args.rig_only
 
 version = args.version
 tag = f"v{version}"
@@ -111,7 +115,7 @@ def sh(script):
     return ["sh", "-ec", script]
 
 
-trustctl_bin = os.path.join(ROOT, "trustctl", "bin", "trustctl")
+trustctl_bin = os.path.abspath(args.trustctl) if args.trustctl else os.path.join(ROOT, "trustctl", "bin", "trustctl")
 host = [
     Suite("gofmt and go vet", "host", sh('cd trustctl; test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }; go vet ./... && echo "PASS  gofmt, go vet"')),
     Suite("trustctl unit tests (go test)", "host", sh("cd trustctl && go test -count=1 ./...")),
@@ -126,6 +130,8 @@ host = [
     Suite("trustctl build and simulated-device smoke test (--device DUMMY)", "host", sh(
         "cd trustctl && CGO_ENABLED=0 go build -o bin/trustctl ./cmd/trustctl && cd .. && tools/build/smoke_dummy.py trustctl/bin/trustctl")),
 ]
+if args.rig_only:
+    host = []  # CI ran these already
 rig = []
 
 
@@ -232,7 +238,9 @@ for s in host:
         break
 if all(s.status != "FAILED" for s in host) and rig_port:
     provision = Suite("provision the device over ISP: chip erase, bootloader, firmware under test (rig.py provision)", "rig",
-                      ["tools/build/rig.py", "provision"])
+                      ["tools/build/rig.py", "provision"]
+                      + (["--core", os.path.abspath(args.core)] if args.core else [])
+                      + (["--bootloader", os.path.abspath(args.bootloader)] if args.bootloader else []))
     rig = [provision]
     if run_suite(provision):
         device = next((l.split()[-1] for l in provision.lines if l.startswith("device:")), None)
@@ -269,6 +277,8 @@ for s in allsuites:
     report.append(f"| {s.name} | {s.where} | {s.status} | {s.passed or ''} | {s.failed or ''} | {s.seconds:.0f} s |")
 if args.host_only:
     report += ["", "**Dry run: the rig suites were not run.**"]
+if args.rig_only:
+    report += ["", "**Only the rig suites were run here; the host suites ran in CI.**"]
 report += ["", "## Not covered by any automated test", "",
            "- The display, checked by eye on the dev device: text, the large result screens, the progress bar, rotation, inversion and the logo.",
            "- `trustctl` on macOS and the BSDs (cross-compiled only), the zsh and fish completions, and the Windows tray tool's window (its helpers are tested).",

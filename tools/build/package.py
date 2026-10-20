@@ -43,14 +43,16 @@ def read(path):
         return f.read()
 
 
-def user_tools(windows):
+def user_tools(osname):
     """(archive path, mode, content) for everything in tools/user."""
     base = os.path.join(ROOT, "tools", "user")
     for dirpath, dirnames, filenames in os.walk(base):
         dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
         rel_dir = os.path.relpath(dirpath, base)
-        if rel_dir.split(os.sep)[0] == "trustctl-tray" and not windows:
+        if rel_dir.split(os.sep)[0] == "trustctl-tray" and osname != "windows":
             continue  # the tray tool is for Windows
+        if rel_dir.split(os.sep)[0] == "trustctl-menubar" and osname != "darwin":
+            continue  # the menu bar tool is for macOS (sources only: there is no macOS runner to build it)
         for name in sorted(filenames):
             if name.endswith((".pyc", ".exe", ".gitignore")) or name == "test.sh":
                 continue
@@ -98,7 +100,7 @@ for fname in sorted(os.listdir(dist)):
         sys.exit(f"{importer} is missing: run tools/build/release.sh first")
     entries.append(("trustctl-import.exe" if windows else "trustctl-import", 0o755, read(importer)))
     entries += [(d, 0o644, read(os.path.join(ROOT, d))) for d in DOCS]
-    entries += list(user_tools(windows))
+    entries += list(user_tools(osname))
     if windows:
         if args.tray:
             entries.append(("tools/user/trustctl-tray/trustctl-tray.exe", 0o755, read(args.tray)))

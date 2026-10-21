@@ -6,7 +6,8 @@
   protocol, time).
 - `cd trustctl && go test ./...`: the host tool against a simulated device.
 - `tools/build/smoke_dummy.py`: a built `trustctl` against its simulated device.
-- `tools/build/test_trustctl_menu.sh`, `tools/build/test_onboard_usbtiny.sh`, `tools/user/trustctl-tray/test.sh`.
+- `tools/build/test_trustctl_menu.sh`, `tools/build/test_onboard_usbtiny.sh`, `tools/user/trustctl-tray/test.sh`,
+  `tools/user/trustctl-menubar/test.sh` (needs macOS; not in CI).
 - `tools/docs/gen_display_images.py --check`: the display pictures of this documentation are up to date.
 
 CI (`.github/workflows`) runs all of this on every push to `master`, and checks that a firmware build is

@@ -188,6 +188,20 @@ Build it on Windows with `tools\user\trustctl-tray\build.cmd`: it uses the C# co
 Framework 4, no SDK to install) and writes `trustctl-tray.exe` next to the source. `tools/user/trustctl-tray/test.sh` compiles the
 source with Mono on Linux and runs the tests of the filter, argument quoting, hotkey and settings code. It was tried on Windows by the user and works (hotkey, picker, button confirmation, typing the code).
 
+### A menu bar icon for macOS
+
+`tools/user/trustctl-menubar/` does the same on macOS: an icon in the menu bar (a click opens the picker, a right click
+its menu with `Settings...`), an optional global hotkey, the same filtering picker, and the code typed into the app that
+was active before (an optional Return after it) or copied to the clipboard (marked as concealed for clipboard managers).
+The settings (path of `trustctl`, found by itself in the `PATH`, `/opt/homebrew/bin`, `/usr/local/bin`, `~/bin`,
+`~/.local/bin` or `~/go/bin` when left empty; an optional port such as `/dev/cu.usbserial-110`; the hotkey; sorting;
+typing or clipboard; start at login through a LaunchAgent) are in `~/Library/Application Support/trustctl/menubar.ini`.
+Typing needs the Accessibility permission (System Settings > Privacy & Security > Accessibility).
+
+Build it with `tools/user/trustctl-menubar/build.sh` (the Swift compiler of the Command Line Tools, no Xcode): it writes
+`trustctl-menubar.app` (arm64 and x86_64, ad-hoc signed) next to the sources. `tools/user/trustctl-menubar/test.sh` runs
+the tests of the list parsing, filter, hotkey, `trustctl` search and settings code.
+
 ### Importing from Google Authenticator
 
 `trustctl-import` (`trustctl/cmd/trustctl-import`, its own small binary, `tools/build/build_trustctl.sh` builds it next to

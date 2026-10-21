@@ -39,7 +39,7 @@ certified security key (see {ref}`why-not-a-yubikey`), and it does not make TOTP
   bootloader and the firmware, with a 3D printable case.
 - **`trustctl`, the command line interface:** add, list and delete keys, get codes, flash and calibrate the
   device, in one static binary for every common platform.
-- **Desktop integrations and import tools:** a launcher menu for Linux and the BSDs, a Windows tray tool and an
+- **Desktop integrations and import tools:** a launcher menu for Linux and the BSDs, a Windows tray tool, a macOS menu bar tool and an
   importer for Google Authenticator exports.
 - **Documentation for developers and people building compatible tools:** the serial protocol, the storage
   layout, the security model, build and test instructions, and a host simulation of the firmware.
@@ -121,6 +121,7 @@ reference/storage
 
 tools/trustctl-menu
 tools/trustctl-tray
+tools/trustctl-menubar
 tools/trustctl-import
 tools/misc
 ```

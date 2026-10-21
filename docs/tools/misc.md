@@ -31,6 +31,6 @@ gives `NAME_font.EXT`. Only the ASCII range is taken (screen codes mapped to ASC
 as `\` or `_` are approximated or blank) and it never overwrites the ROM. Mind the license of the ROM you
 convert: the original Commodore ROM is not ours to ship.
 
-## trustctl-menu, trustctl-tray, trustctl-import
+## trustctl-menu, trustctl-tray, trustctl-menubar, trustctl-import
 
-{doc}`trustctl-menu`, {doc}`trustctl-tray`, {doc}`trustctl-import`.
+{doc}`trustctl-menu`, {doc}`trustctl-tray`, {doc}`trustctl-menubar`, {doc}`trustctl-import`.

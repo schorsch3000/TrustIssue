@@ -116,5 +116,5 @@ ways to change a key.
 ## Use it from a launcher
 
 Linux and the BSDs have {doc}`../tools/trustctl-menu` (a dmenu/rofi style picker that types or copies the
-code), Windows has {doc}`../tools/trustctl-tray`. To move an existing Google Authenticator onto the device
+code), Windows has {doc}`../tools/trustctl-tray`, macOS {doc}`../tools/trustctl-menubar`. To move an existing Google Authenticator onto the device
 there is {doc}`../tools/trustctl-import`.
